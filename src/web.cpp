@@ -32,8 +32,6 @@
 #include "webh/PAGE_SYSTOOLS.html.gz.h"
 #include "webh/PAGE_WIFI.html.gz.h"
 #include "webh/PAGE_LOGOUT.html.gz.h"
-#include "web_routes.h"
-// #define HTTP_DOWNLOAD_UNIT_SIZE 3000
 
 // #define HTTP_UPLOAD_BUFLEN 3000
 
@@ -97,6 +95,8 @@ enum API_PAGE_t : uint8_t
 };
 
 WebServer serverWeb(80);
+
+#include "web_routes.h"
 
 //HTTPClient clientWeb;
 WiFiClient eventsClient;
@@ -317,6 +317,7 @@ void initWebServer()
 
     const char *headerkeys[] = {"Content-Length"};
     size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
+    registerStaticRoutes();
     serverWeb.collectHeaders(headerkeys, headerkeyssize);
     serverWeb.begin();
     DEBUG_PRINTLN(F("webserver setup done"));

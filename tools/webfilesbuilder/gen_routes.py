@@ -63,9 +63,10 @@ def main():
     content += f'// Generated: {now}\n\n'
     for inc in includes:
         content += inc + '\n'
-    content += '\n// Static asset routes\n'
+    content += '\ninline void registerStaticRoutes() {\n'
     for route in routes:
-        content += route + '\n'
+        content += '    ' + route + '\n'
+    content += '}\n'
 
     with open(OUTPUT_FILE, 'w') as f:
         f.write(content)
