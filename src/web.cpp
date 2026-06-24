@@ -31,6 +31,14 @@
 #include "webh/PAGE_SERIAL.html.gz.h"
 #include "webh/PAGE_SYSTOOLS.html.gz.h"
 #include "webh/PAGE_WIFI.html.gz.h"
+#include "webh/i18next.min.js.gz.h"
+#include "webh/commonmark.min.js.gz.h"
+#include "webh/bootstrap.min.js.gz.h"
+#include "webh/favicon.ico.gz.h"
+#include "webh/functions.js.gz.h"
+#include "webh/jquery-min.js.gz.h"
+#include "webh/masonry.js.gz.h"
+#include "webh/required.css.gz.h"
 #include "webh/PAGE_LOGOUT.html.gz.h"
 
 // #define HTTP_UPLOAD_BUFLEN 3000
@@ -130,6 +138,124 @@ void checkFwHexTask(void *param)
 
 void initWebServer()
 {
+serverWeb.on("/js/bootstrap.min.js", []()
+                 { sendGzip(contTypeTextJs, bootstrap_min_js_gz, bootstrap_min_js_gz_len); });
+    serverWeb.on("/js/masonry.js", []()
+                 { sendGzip(contTypeTextJs, masonry_js_gz, masonry_js_gz_len); });
+    serverWeb.on("/js/functions.js", []()
+                 { sendGzip(contTypeTextJs, functions_js_gz, functions_js_gz_len); });
+    serverWeb.on("/js/jquery-min.js", []()
+                 { sendGzip(contTypeTextJs, jquery_min_js_gz, jquery_min_js_gz_len); });
+    serverWeb.on("/js/i18next.min.js", []()
+                 { sendGzip(contTypeTextJs, i18next_min_js_gz, i18next_min_js_gz_len); });
+    serverWeb.on("/js/commonmark.min.js", []()
+                 { sendGzip(contTypeTextJs, commonmark_min_js_gz, commonmark_min_js_gz_len); });
+    serverWeb.on("/css/required.css", []()
+                 { sendGzip(contTypeTextJs, required_css_gz, required_css_gz_len); });
+    serverWeb.on("/favicon.ico", []()
+                 { sendGzip("img/png", favicon_ico_gz, favicon_ico_gz_len); });
+
+    serverWeb.on("/icon_left_dash.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_dash_svg_gz, icon_left_dash_svg_gz_len); });
+
+    serverWeb.on("/AVATTO.svg", []()
+                 { sendGzip("image/svg+xml", AVATTO_svg_gz, AVATTO_svg_gz_len); });
+    serverWeb.on("/AVATTO_B.svg", []()
+                 { sendGzip("image/svg+xml", AVATTO_B_svg_gz, AVATTO_B_svg_gz_len); });
+    serverWeb.on("/icon_left_general.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_general_svg_gz, icon_left_general_svg_gz_len); });
+    serverWeb.on("/icon_left_ethernet.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_ethernet_svg_gz, icon_left_ethernet_svg_gz_len); });
+    serverWeb.on("/icon_left_wifi.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_wifi_svg_gz, icon_left_wifi_svg_gz_len); });
+    serverWeb.on("/lan_connection.svg", []()
+                 { sendGzip("image/svg+xml", lan_connection_svg_gz, lan_connection_svg_gz_len); });
+    serverWeb.on("/realTime_control.svg", []()
+                 { sendGzip("image/svg+xml", realTime_control_svg_gz, realTime_control_svg_gz_len); });
+    serverWeb.on("/usb_connection.svg", []()
+                 { sendGzip("image/svg+xml", usb_connection_svg_gz, usb_connection_svg_gz_len); });
+    serverWeb.on("/wifi_connection.svg", []()
+                 { sendGzip("image/svg+xml", wifi_connection_svg_gz, wifi_connection_svg_gz_len); });
+    serverWeb.on("/workMode_selection.svg", []()
+                 { sendGzip("image/svg+xml", workMode_selection_svg_gz, workMode_selection_svg_gz_len); });
+
+    // serverWeb.on("/device_operating_lan.svg", []()
+    //              { sendGzip("image/svg+xml", device_operating_lan_svg_gz, device_operating_lan_svg_gz_len); });
+    serverWeb.on("/icon_operating_mode.svg", []()
+                 { sendGzip("image/svg+xml", icon_operating_mode_svg_gz, icon_operating_mode_svg_gz_len); });
+    serverWeb.on("/Temp.svg", []()
+                 { sendGzip("image/svg+xml", Temp_svg_gz, Temp_svg_gz_len); });
+    serverWeb.on("/Time.svg", []()
+                 { sendGzip("image/svg+xml", Time_svg_gz, Time_svg_gz_len); });
+
+    serverWeb.on("/device_operating_wifi.png", []()
+                 { sendGzip("image/png", device_operating_wifi_png_gz, device_operating_wifi_png_gz_len); });
+    serverWeb.on("/device_operating_usb.png", []()
+                 { sendGzip("image/png", device_operating_usb_png_gz, device_operating_usb_png_gz_len); });
+    serverWeb.on("/device_operating_lan.png", []()
+                 { sendGzip("image/png", device_operating_lan_png_gz, device_operating_lan_png_gz_len); });
+
+    serverWeb.on("/icon_header_wifi.svg", []()
+                 { sendGzip("image/svg+xml", icon_header_wifi_svg_gz, icon_header_wifi_svg_gz_len); });
+    serverWeb.on("/icon_header_ethernet.svg", []()
+                 { sendGzip("image/svg+xml", icon_header_ethernet_svg_gz, icon_header_ethernet_svg_gz_len); });
+    serverWeb.on("/icon_header_vpn.svg", []()
+                 { sendGzip("image/svg+xml", icon_header_vpn_svg_gz, icon_header_vpn_svg_gz_len); });
+    serverWeb.on("/icon_header_hardware.svg", []()
+                 { sendGzip("image/svg+xml", icon_header_hardware_svg_gz, icon_header_hardware_svg_gz_len); });
+
+    serverWeb.on("/device_about_info.png", []()
+                 { sendGzip("image/png", device_about_info_png_gz, device_about_info_png_gz_len); });
+    serverWeb.on("/icon_brand_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_brand_info_svg_gz, icon_brand_info_svg_gz_len); });
+    serverWeb.on("/icon_hardware_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_hardware_info_svg_gz, icon_hardware_info_svg_gz_len); });
+    serverWeb.on("/icon_mqtt_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_mqtt_info_svg_gz, icon_mqtt_info_svg_gz_len); });
+    serverWeb.on("/icon_docment_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_docment_info_svg_gz, icon_docment_info_svg_gz_len); });
+    serverWeb.on("/icon_scan_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_scan_info_svg_gz, icon_scan_info_svg_gz_len); });
+    serverWeb.on("/icon_zigbee_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_zigbee_info_svg_gz, icon_zigbee_info_svg_gz_len); });
+    serverWeb.on("/icon_web_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_web_info_svg_gz, icon_web_info_svg_gz_len); });
+    serverWeb.on("/icon_purchase_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_purchase_info_svg_gz, icon_purchase_info_svg_gz_len); });
+    serverWeb.on("/icon_service_info.svg", []()
+                 { sendGzip("image/svg+xml", icon_service_info_svg_gz, icon_service_info_svg_gz_len); });
+    serverWeb.on("/device_operating_default.png", []()
+                 { sendGzip("image/png", device_operating_default_png_gz, device_operating_default_png_gz_len); });
+    serverWeb.on("/icon_left_zigbee.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_zigbee_svg_gz, icon_left_zigbee_svg_gz_len); });
+    serverWeb.on("/icon_left_security.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_security_svg_gz, icon_left_security_svg_gz_len); });
+    serverWeb.on("/icon_left_mqtt.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_mqtt_svg_gz, icon_left_mqtt_svg_gz_len); });
+    serverWeb.on("/icon_left_vpn.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_vpn_svg_gz, icon_left_vpn_svg_gz_len); });
+    serverWeb.on("/icon_left_tools.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_tools_svg_gz, icon_left_tools_svg_gz_len); });
+    serverWeb.on("/icon_left_about.svg", []()
+                 { sendGzip("image/svg+xml", icon_left_about_svg_gz, icon_left_about_svg_gz_len); });
+    serverWeb.on("/icon_wifi_config.svg", []()
+                 { sendGzip("image/svg+xml", icon_wifi_config_svg_gz, icon_wifi_config_svg_gz_len); });
+    serverWeb.on("/icon_ethernet_config.svg", []()
+                 { sendGzip("image/svg+xml", icon_ethernet_config_svg_gz, icon_ethernet_config_svg_gz_len); });
+    serverWeb.on("/icon_serial_settings.svg", []()
+                 { sendGzip("image/svg+xml", icon_serial_settings_svg_gz, icon_serial_settings_svg_gz_len); });
+    serverWeb.on("/icon_config_generator.svg", []()
+                 { sendGzip("image/svg+xml", icon_config_generator_svg_gz, icon_config_generator_svg_gz_len); });
+    serverWeb.on("/icon_mqtt_settings.svg", []()
+                 { sendGzip("image/svg+xml", icon_mqtt_settings_svg_gz, icon_mqtt_settings_svg_gz_len); });
+    serverWeb.on("/icon_mqtt_status.svg", []()
+                 { sendGzip("image/svg+xml", icon_mqtt_status_svg_gz, icon_mqtt_status_svg_gz_len); });
+    serverWeb.on("/icon_vpn_configuration.svg", []()
+                 { sendGzip("image/svg+xml", icon_vpn_configuration_svg_gz, icon_vpn_configuration_svg_gz_len); });
+    serverWeb.on("/icon_firmware_update.svg", []()
+                 { sendGzip("image/svg+xml", icon_firmware_update_svg_gz, icon_firmware_update_svg_gz_len); });
+    serverWeb.on("/icon_system_control.svg", []()
+                 { sendGzip("image/svg+xml", icon_system_control_svg_gz, icon_system_control_svg_gz_len); });
     serverWeb.onNotFound([]()
                          // { serverWeb.send(HTTP_CODE_OK, contTypeText, F("URL NOT FOUND")); }); // handleNotFound);
                          { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
