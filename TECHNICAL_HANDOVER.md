@@ -1,325 +1,325 @@
-# AVATTO GW90 Zigbee 网关固件 — 技术交接文档
+# AVATTO GW90 Zigbee Gateway Firmware — Technical Handover Document
 
-> **项目名称**: avatto-gw90-firmware (PREGW90)  
-> **当前版本**: v1.0.1  
-> **固件构建时间**: 2024-03-26  
-> **基础仓库**: mercenaruss/uzg-firmware (fork)  
-> **文档编写日期**: 2026-02-24
-
----
-
-## 目录
-
-1. [项目概述](#1-项目概述)
-2. [硬件平台说明](#2-硬件平台说明)
-3. [开发环境与工具链](#3-开发环境与工具链)
-4. [项目目录结构](#4-项目目录结构)
-5. [核心源码模块说明](#5-核心源码模块说明)
-6. [配置文件体系](#6-配置文件体系)
-7. [Flash 分区表](#7-flash-分区表)
-8. [三方库依赖](#8-三方库依赖)
-9. [构建流程与自动化脚本](#9-构建流程与自动化脚本)
-10. [Web 前端构建](#10-web-前端构建)
-11. [固件功能特性](#11-固件功能特性)
-12. [MQTT 集成](#12-mqtt-集成)
-13. [WireGuard VPN 支持](#13-wireguard-vpn-支持)
-14. [Zigbee 协调器管理](#14-zigbee-协调器管理)
-15. [OTA 与固件升级](#15-ota-与固件升级)
-16. [按键与 LED 交互逻辑](#16-按键与-led-交互逻辑)
-17. [网络连接管理](#17-网络连接管理)
-18. [调试方法](#18-调试方法)
-19. [已知问题与注意事项](#19-已知问题与注意事项)
-20. [后续开发建议](#20-后续开发建议)
+> **Project Name**: avatto-gw90-firmware (PREGW90)  
+> **Current Version**: v1.0.1  
+> **Firmware Build Date**: 2024-03-26  
+> **Base Repository**: mercenaruss/uzg-firmware (fork)  
+> **Document Date**: 2026-02-24
 
 ---
 
-## 1. 项目概述
+## Table of Contents
 
-本项目为 **AVATTO GW90-TI** Zigbee 网关的 ESP32 固件，基于开源项目 `mercenaruss/uzg-firmware` 定制开发。核心功能是将 **CC2652P Zigbee 协调器**通过 ESP32 桥接到网络（LAN/WiFi/USB），使其可被 Home Assistant（ZHA/Zigbee2MQTT）等智能家居平台使用。
-
-**主要功能：**
-- 三种协调器工作模式：LAN (以太网)、WiFi、USB 直连
-- 内嵌 Web 管理界面（配置网络、串口、安全、MQTT 等）
-- MQTT 集成与 Home Assistant 自动发现
-- WireGuard VPN 隧道支持
-- CC2652P Zigbee 芯片固件在线烧录（BSL 模式）
-- mDNS 服务发现
-- TCP Socket 透传（Zigbee 数据桥接）
-
----
-
-## 2. 硬件平台说明
-
-### 2.1 主控芯片
-
-| 组件 | 型号 | 说明 |
-|------|------|------|
-| 主控 MCU | **ESP32-SOLO1** | 单核 Xtensa LX6, 160MHz |
-| Zigbee 协调器 | **CC2652P** | TI, 支持 Zigbee 3.0 |
-| 以太网 PHY | **LAN8720** | 通过 RMII 接口连接 |
-| Flash | **16MB** | 外部 SPI Flash |
-
-### 2.2 GPIO 引脚分配
-
-| 引脚 | GPIO | 功能 | 说明 |
-|------|------|------|------|
-| CC2652P_RST | GPIO 16 | Zigbee 复位 | 输出，高电平有效 |
-| CC2652P_FLASH | GPIO 32 | Zigbee BSL 模式 | 输出，用于进入烧录模式 |
-| CC2652P_RXD | GPIO 36 | Zigbee 串口 RX | Serial2 接收 |
-| CC2652P_TXD | GPIO 4 | Zigbee 串口 TX | Serial2 发送 |
-| BTN | GPIO 35 | 用户按键 | 输入，下降沿中断 |
-| MODE_SWITCH | GPIO 33 | USB/串口模式开关 | 输出，HIGH=USB模式 |
-| LED_USB | GPIO 12 | 红色 LED | USB 模式指示 |
-| LED_PWR | GPIO 14 | 蓝色 LED | 电源指示 |
-| ETH_MDC | GPIO 23 | LAN8720 MDC | 以太网管理 |
-| ETH_MDIO | GPIO 18 | LAN8720 MDIO | 以太网管理 |
-| ETH_CLK | GPIO 17 | LAN8720 时钟输出 | `ETH_CLOCK_GPIO17_OUT` |
-| ETH_PWR_ALT | GPIO 5 | LAN8720 电源控制 | 硬件复位 LAN PHY |
-
-### 2.3 CC2652P BSL 引脚
-
-- BSL 验证引脚: CC2652 Pin **15**
-- BSL 触发电平: **LOW** (0)
+1. [Project Overview](#1-project-overview)
+2. [Hardware Platform](#2-hardware-platform)
+3. [Development Environment & Toolchain](#3-development-environment--toolchain)
+4. [Project Directory Structure](#4-project-directory-structure)
+5. [Core Source Modules](#5-core-source-modules)
+6. [Configuration System](#6-configuration-system)
+7. [Flash Partition Table](#7-flash-partition-table)
+8. [Third-Party Library Dependencies](#8-third-party-library-dependencies)
+9. [Build Process & Automation Scripts](#9-build-process--automation-scripts)
+10. [Web Frontend Build](#10-web-frontend-build)
+11. [Firmware Features](#11-firmware-features)
+12. [MQTT Integration](#12-mqtt-integration)
+13. [WireGuard VPN Support](#13-wireguard-vpn-support)
+14. [Zigbee Coordinator Management](#14-zigbee-coordinator-management)
+15. [OTA & Firmware Updates](#15-ota--firmware-updates)
+16. [Button & LED Interaction](#16-button--led-interaction)
+17. [Network Connection Management](#17-network-connection-management)
+18. [Debugging Methods](#18-debugging-methods)
+19. [Known Issues & Precautions](#19-known-issues--precautions)
+20. [Future Development Suggestions](#20-future-development-suggestions)
 
 ---
 
-## 3. 开发环境与工具链
+## 1. Project Overview
 
-### 3.1 IDE 与框架
+This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked and customized from the open-source project `mercenaruss/uzg-firmware`. The core function bridges a **CC2652P Zigbee coordinator** to the network (LAN/WiFi/USB) via the ESP32, making it usable by Home Assistant (ZHA/Zigbee2MQTT) and other smart home platforms.
 
-- **IDE**: PlatformIO (VSCode 插件)
-- **框架**: Arduino for ESP32
-- **ESP32 平台**:
-  - **生产环境 (Solo)**: `tasmota/platform-espressif32 @ 2023.07.00` — 经验证在 ESP32-SOLO1 上работает стабильно
-  - **标准 ESP32 开发板**: `espressif32 @ 6.4.0`
+**Main Features:**
+- Three coordinator operating modes: LAN (Ethernet), WiFi, USB direct
+- Embedded web management interface (network, serial, security, MQTT configuration, etc.)
+- MQTT integration with Home Assistant auto-discovery
+- WireGuard VPN tunnel support
+- CC2652P Zigbee chip firmware flashing (BSL mode)
+- mDNS service discovery
+- TCP socket passthrough (Zigbee data bridging)
 
-> ⚠️ 平台版本选择非常关键！`platformio.ini` 中有详细的版本测试记录，请勿随意升级平台版本。
+---
 
-### 3.2 环境变量说明
+## 2. Hardware Platform
 
-| 环境名称 | 说明 |
-|----------|------|
-| `prod-solo` | **默认生产环境**，ESP32-SOLO1，160MHz，16MB Flash |
-| `debug-solo` | Solo 调试版本，启用 `-DDEBUG` 宏 |
-| `prod` | 标准 ESP32 开发板生产版本 |
-| `debug` | 标准 ESP32 调试版本 |
+### 2.1 Main Components
 
-### 3.3 编译参数
+| Component | Model | Description |
+|-----------|-------|-------------|
+| Main MCU | **ESP32-SOLO1** | Single-core Xtensa LX6, 160MHz |
+| Zigbee Coordinator | **CC2652P** | TI, supports Zigbee 3.0 |
+| Ethernet PHY | **LAN8720** | Connected via RMII interface |
+| Flash | **16MB** | External SPI Flash |
+
+### 2.2 GPIO Pin Assignment
+
+| Pin | GPIO | Function | Description |
+|-----|------|----------|-------------|
+| CC2652P_RST | GPIO 16 | Zigbee reset | Output, active high |
+| CC2652P_FLASH | GPIO 32 | Zigbee BSL mode | Output, used to enter flash mode |
+| CC2652P_RXD | GPIO 36 | Zigbee serial RX | Serial2 receive |
+| CC2652P_TXD | GPIO 4 | Zigbee serial TX | Serial2 transmit |
+| BTN | GPIO 35 | User button | Input, falling-edge interrupt |
+| MODE_SWITCH | GPIO 33 | USB/serial mode switch | Output, HIGH=USB mode |
+| LED_USB | GPIO 12 | Red LED | USB mode indicator |
+| LED_PWR | GPIO 14 | Blue LED | Power indicator |
+| ETH_MDC | GPIO 23 | LAN8720 MDC | Ethernet management |
+| ETH_MDIO | GPIO 18 | LAN8720 MDIO | Ethernet management |
+| ETH_CLK | GPIO 17 | LAN8720 clock output | `ETH_CLOCK_GPIO17_OUT` |
+| ETH_PWR_ALT | GPIO 5 | LAN8720 power control | Hardware reset LAN PHY |
+
+### 2.3 CC2652P BSL Pin
+
+- BSL verify pin: CC2652 Pin **15**
+- BSL trigger level: **LOW** (0)
+
+---
+
+## 3. Development Environment & Toolchain
+
+### 3.1 IDE & Framework
+
+- **IDE**: PlatformIO (VSCode plugin)
+- **Framework**: Arduino for ESP32
+- **ESP32 Platform**:
+  - **Production (Solo)**: `tasmota/platform-espressif32 @ 2023.07.00` — verified stable on ESP32-SOLO1
+  - **Standard ESP32 dev board**: `espressif32 @ 6.4.0`
+
+> ⚠️ Platform version selection is critical! Detailed version test history is documented in `platformio.ini`. Do not upgrade the platform version casually.
+
+### 3.2 Environment Variables
+
+| Environment | Description |
+|-------------|-------------|
+| `prod-solo` | **Default production build**, ESP32-SOLO1, 160MHz, 16MB Flash |
+| `debug-solo` | Solo debug build, enables `-DDEBUG` macro |
+| `prod` | Standard ESP32 dev board production build |
+| `debug` | Standard ESP32 debug build |
+
+### 3.3 Build Parameters
 
 ```
-board_build.f_cpu = 160000000L      # CPU 频率 160MHz
-board_upload.flash_size = 16MB       # Flash 大小
-board_build.partitions = partitions.csv  # 自定义分区表
-monitor_speed = 115200               # 串口监视波特率
-upload_speed = 460800                # 上传速度
+board_build.f_cpu = 160000000L      # CPU frequency 160MHz
+board_upload.flash_size = 16MB       # Flash size
+board_build.partitions = partitions.csv  # Custom partition table
+monitor_speed = 115200               # Serial monitor baud rate
+upload_speed = 460800                # Upload speed
 ```
 
-### 3.4 必要的开发工具
+### 3.4 Required Development Tools
 
-- **Node.js + npm**: 用于构建 Web 前端 (gulp 打包 gzip)
-- **Python 3**: 用于构建脚本 (版本管理、固件合并)
-- **PlatformIO Core**: 编译与上传
+- **Node.js + npm**: Web frontend build (gulp gzip packaging)
+- **Python 3**: Build scripts (version management, firmware merging)
+- **PlatformIO Core**: Compilation and upload
 
 ---
 
-## 4. 项目目录结构
+## 4. Project Directory Structure
 
 ```
 PREGW90/
-├── bin/                          # 构建输出（固件二进制文件）
-│   ├── AVATTO-GW90-Ti.bin        # OTA 升级用固件
-│   ├── AVATTO-GW90-Ti_v1.0.1.full.bin  # 完整固件（含 bootloader + 分区表）
+├── bin/                          # Build output (firmware binaries)
+│   ├── AVATTO-GW90-Ti.bin        # OTA upgrade firmware
+│   ├── AVATTO-GW90-Ti_v1.0.1.full.bin  # Full firmware (bootloader + partition table)
 │   ├── bootloader_dio_40m.bin    # Bootloader
-│   └── partitions.bin            # 分区表二进制
+│   └── partitions.bin            # Partition table binary
 │
-├── lib/                          # 本地库（非 PIO 注册库）
-│   ├── CCTools/                  # CC2652P 控制库（BSL 烧录、复位等）
-│   ├── IntelHex/                 # Intel HEX 格式解析库（固件烧录）
-│   └── WireGuard-ESP32/          # WireGuard VPN 实现
+├── lib/                          # Local libraries (not PIO-registered)
+│   ├── CCTools/                  # CC2652P control library (BSL flash, reset, etc.)
+│   ├── IntelHex/                 # Intel HEX format parser (firmware flashing)
+│   └── WireGuard-ESP32/          # WireGuard VPN implementation
 │
-├── src/                          # 主要源代码
-│   ├── main.cpp                  # 主程序入口（setup/loop、配置加载、模式切换）
-│   ├── config.h                  # 全局配置结构体、引脚定义、常量
-│   ├── version.h                 # 自动生成的版本头文件
-│   ├── web.cpp / web.h           # Web 服务器、API、页面路由
-│   ├── mqtt.cpp / mqtt.h         # MQTT 客户端、HA 自动发现
-│   ├── etc.cpp / etc.h           # 工具函数（LED、Zigbee控制、配置读写）
-│   ├── zb.cpp / zb.h             # Zigbee 固件管理（版本检测、BSL 烧录）
-│   ├── log.cpp / log.h           # 环形日志缓冲区
-│   ├── zones.h                   # 时区数据表
-│   ├── webh/                     # 自动生成 — Web 资源 gzip 压缩后的 C 头文件
-│   └── websrc/                   # Web 前端源码（HTML/CSS/JS/图片）
-│       ├── html/                 # HTML 页面模板
-│       ├── css/                  # 样式表
+├── src/                          # Main source code
+│   ├── main.cpp                  # Program entry (setup/loop, config loading, mode switching)
+│   ├── config.h                  # Global config structs, pin definitions, constants
+│   ├── version.h                 # Auto-generated version header
+│   ├── web.cpp / web.h           # Web server, API, page routing
+│   ├── mqtt.cpp / mqtt.h         # MQTT client, HA auto-discovery
+│   ├── etc.cpp / etc.h           # Utility functions (LED, Zigbee control, config I/O)
+│   ├── zb.cpp / zb.h             # Zigbee firmware management (version check, BSL flash)
+│   ├── log.cpp / log.h           # Ring log buffer
+│   ├── zones.h                   # Timezone data table
+│   ├── webh/                     # Auto-generated — gzip-compressed C headers for web resources
+│   └── websrc/                   # Web frontend source (HTML/CSS/JS/images)
+│       ├── html/                 # HTML page templates
+│       ├── css/                  # Stylesheets
 │       ├── js/                   # JavaScript
-│       ├── img/                  # 图标与图片
-│       └── gzipped/              # 中间 gzip 产物
+│       ├── img/                  # Icons and images
+│       └── gzipped/              # Intermediate gzip artifacts
 │
-├── tools/                        # 构建工具与脚本
-│   ├── build.py                  # 后处理脚本（合并固件、命名）
-│   ├── version_increment_pre.py  # 前处理脚本（版本号自增）
-│   ├── merge_bin_esp.py          # 固件合并工具
-│   ├── version                   # 版本号文件（当前 1.0.1）
-│   ├── esptool.py                # ESP 烧录工具
-│   ├── flash.sh                  # 烧录脚本
-│   └── webfilesbuilder/          # Web 前端构建工具
-│       ├── build_html.py         # PIO 前处理：触发 npm/gulp 构建
-│       ├── gulpfile.js           # Gulp 任务配置
+├── tools/                        # Build tools and scripts
+│   ├── build.py                  # Post-processing script (firmware merge, naming)
+│   ├── version_increment_pre.py  # Pre-processing script (version auto-increment)
+│   ├── merge_bin_esp.py          # Firmware merge tool
+│   ├── version                   # Version number file (currently 1.0.1)
+│   ├── esptool.py                # ESP flashing tool
+│   ├── flash.sh                  # Flashing script
+│   └── webfilesbuilder/          # Web frontend build tools
+│       ├── build_html.py         # PIO pre-process: triggers npm/gulp build
+│       ├── gulpfile.js           # Gulp task configuration
 │       ├── gulp.js / gulp.meta.js
-│       └── package.json          # npm 依赖
+│       └── package.json          # npm dependencies
 │
-├── debug-ui/                     # 调试用 Web UI 模拟器
-├── platformio.ini                # PlatformIO 项目配置
-├── partitions.csv                # Flash 分区表
-├── manifest.json                 # ESP Web Tools 刷写清单
-└── CHANGELOG.md                  # 变更日志
+├── debug-ui/                     # Debug Web UI emulator
+├── platformio.ini                # PlatformIO project configuration
+├── partitions.csv                # Flash partition table
+├── manifest.json                 # ESP Web Tools flash manifest
+└── CHANGELOG.md                  # Change log
 ```
 
 ---
 
-## 5. 核心源码模块说明
+## 5. Core Source Modules
 
-### 5.1 `main.cpp` (1506 行)
+### 5.1 `main.cpp` (1506 lines)
 
-**程序入口**，包含：
+**Program entry point**, contains:
 
-| 函数 | 功能 |
-|------|------|
-| `setup()` | 初始化：GPIO、Serial2(Zigbee)、LittleFS、加载所有配置、LED 设置、协调器模式 |
-| `loop()` | 主循环：按键处理、定时器更新、Web 服务、TCP Socket 透传、MQTT 循环 |
-| `initLan()` | 初始化 LAN8720 以太网（含硬件复位 PHY） |
-| `startServers()` | 启动 Web 服务、Socket 服务、mDNS、获取 Zigbee 版本 |
-| `setupCoordinatorMode()` | 根据配置选择 LAN/WiFi/USB 模式并启动相应网络 |
-| `handleTmrNetworkOverseer()` | 定时检查网络连接，超时后启动 AP 热点 |
-| `NetworkEvent()` | WiFi/ETH 事件回调处理 |
-| `connectWifi()` | WiFi STA 连接逻辑 |
-| `startAP()` | 启动 AP 热点（fallback 或首次配置） |
-| `toggleUsbMode()` | USB/非 USB 模式切换（保存配置并重启） |
-| `loadConfig*()` | 系列配置加载函数（WiFi/Ether/General/Security/Serial/MQTT/WG） |
-| `mDNS_start()` | mDNS 服务注册（含 ZHA zeroconf 信息） |
+| Function | Description |
+|----------|-------------|
+| `setup()` | Initialization: GPIO, Serial2(Zigbee), LittleFS, load all configs, LED setup, coordinator mode |
+| `loop()` | Main loop: button handling, timer updates, web server, TCP socket passthrough, MQTT loop |
+| `initLan()` | Initialize LAN8720 Ethernet (including hardware PHY reset) |
+| `startServers()` | Start web server, socket server, mDNS, fetch Zigbee version |
+| `setupCoordinatorMode()` | Select LAN/WiFi/USB mode based on config and start the corresponding network |
+| `handleTmrNetworkOverseer()` | Periodic network check, start AP hotspot on timeout |
+| `NetworkEvent()` | WiFi/ETH event callback handler |
+| `connectWifi()` | WiFi STA connection logic |
+| `startAP()` | Start AP hotspot (fallback or first-time configuration) |
+| `toggleUsbMode()` | USB/non-USB mode toggle (save config and restart) |
+| `loadConfig*()` | Configuration loading functions (WiFi/Ether/General/Security/Serial/MQTT/WG) |
+| `mDNS_start()` | mDNS service registration (including ZHA zeroconf info) |
 
-**TCP Socket 透传逻辑**（`loop()` 中）：
-1. 最多支持 **5 个** TCP 客户端同时连接（`MAX_SOCKET_CLIENTS = 5`）
-2. 从 TCP 客户端读取数据 → 写入 Serial2 (CC2652P)
-3. 从 Serial2 读取数据 → 广播给所有已连接 TCP 客户端
-4. 支持 IP 白名单过滤 (`fwEnabled` / `fwIp`)
+**TCP Socket Passthrough Logic** (in `loop()`):
+1. Supports up to **5** simultaneous TCP client connections (`MAX_SOCKET_CLIENTS = 5`)
+2. Read data from TCP client → write to Serial2 (CC2652P)
+3. Read data from Serial2 → broadcast to all connected TCP clients
+4. Supports IP whitelist filtering (`fwEnabled` / `fwIp`)
 
-### 5.2 `config.h` (160 行)
+### 5.2 `config.h` (160 lines)
 
-全局头文件，定义：
+Global header file defining:
 
-- **硬件引脚宏** (GPIO)
-- **协调器模式枚举** `COORDINATOR_MODE_t`：`LAN(0)`, `WIFI(1)`, `USB(2)`
-- **配置结构体**：
-  - `ConfigSettingsStruct` — WiFi/以太网/串口/Web/LED/防火墙等
-  - `MqttSettingsStruct` — MQTT 服务器/端口/认证/主题/间隔
-  - `WgSettingsStruct` — WireGuard 隧道配置
-  - `zbVerStruct` — Zigbee 固件版本信息
-- **日志缓冲区类型**: `LogConsoleType` — `CircularBuffer<char, 8024>`
-- **调试宏**: `DEBUG_PRINT` / `DEBUG_PRINTLN`
+- **Hardware pin macros** (GPIO)
+- **Coordinator mode enum** `COORDINATOR_MODE_t`: `LAN(0)`, `WIFI(1)`, `USB(2)`
+- **Configuration structs**:
+  - `ConfigSettingsStruct` — WiFi/Ethernet/Serial/Web/LED/firewall, etc.
+  - `MqttSettingsStruct` — MQTT server/port/auth/topic/interval
+  - `WgSettingsStruct` — WireGuard tunnel configuration
+  - `zbVerStruct` — Zigbee firmware version info
+- **Log buffer type**: `LogConsoleType` — `CircularBuffer<char, 8024>`
+- **Debug macros**: `DEBUG_PRINT` / `DEBUG_PRINTLN`
 
-### 5.3 `web.cpp` (1944 行)
+### 5.3 `web.cpp` (1944 lines)
 
-Web 管理界面，基于 **ESP32 WebServer**：
+Web management interface, based on **ESP32 WebServer**:
 
-**页面路由**：
-| URL | 功能 |
-|-----|------|
-| `/` | 仪表板首页 |
-| `/general` | 通用设置（主机名、协调器模式、LED、时区） |
-| `/wifi` | WiFi 配置 |
-| `/ethernet` | 以太网配置 |
-| `/serial` | 串口配置（波特率、端口号） |
-| `/security` | 安全设置（Web 认证、防火墙） |
-| `/mqtt` | MQTT 设置 |
-| `/wg` | WireGuard VPN 设置 |
-| `/about` | 设备信息 |
-| `/sys-tools` | 系统工具（重启、固件升级等） |
-| `/api` | JSON API 接口 |
+**Page Routing**:
+| URL | Function |
+|-----|----------|
+| `/` | Dashboard home |
+| `/general` | General settings (hostname, coordinator mode, LED, timezone) |
+| `/wifi` | WiFi configuration |
+| `/ethernet` | Ethernet configuration |
+| `/serial` | Serial configuration (baud rate, port number) |
+| `/security` | Security settings (web auth, firewall) |
+| `/mqtt` | MQTT settings |
+| `/wg` | WireGuard VPN settings |
+| `/about` | Device information |
+| `/sys-tools` | System tools (reboot, firmware upgrade, etc.) |
+| `/api` | JSON API endpoints |
 
-**API 接口** (`/api`): 提供 JSON 格式的设备状态、配置数据，支持页面异步刷新。
+**API** (`/api`): Provides device status and configuration data in JSON format, supports page asynchronous refresh.
 
-**Web 资源处理**: 所有 HTML/JS/CSS/图片均预压缩为 gzip 字节数组，编译时嵌入固件，通过 `sendGzip()` 函数发送。
+**Web Resource Handling**: All HTML/JS/CSS/images are pre-compressed into gzip byte arrays, embedded at compile time, and served via `sendGzip()`.
 
-**安全特性**：
-- 可选 HTTP Basic Auth (`checkAuth()`)
-- IP 白名单防火墙
+**Security Features**:
+- Optional HTTP Basic Auth (`checkAuth()`)
+- IP whitelist firewall
 
-### 5.4 `mqtt.cpp` (467 行)
+### 5.4 `mqtt.cpp` (467 lines)
 
-基于 **PubSubClient** 的 MQTT 客户端：
+MQTT client based on **PubSubClient**:
 
-| 功能 | 说明 |
-|------|------|
-| `mqttConnectSetup()` | 初始化 MQTT 连接参数 |
-| `mqttReconnect()` | 断线重连（带 LWT 遗嘱消息） |
-| `mqttPublishState()` | 发布设备状态（uptime、温度、IP、模式、Zigbee 固件版本等） |
-| `mqttPublishDiscovery()` | Home Assistant MQTT 自动发现（sensor/button/binary_sensor） |
-| `mqttPublishIo()` | 发布 I/O 状态（重启/BSL/Socket） |
-| `mqttCallback()` | 接收 MQTT 命令（`rst_esp`、`rst_zig`、`enbl_bsl`） |
+| Function | Description |
+|----------|-------------|
+| `mqttConnectSetup()` | Initialize MQTT connection parameters |
+| `mqttReconnect()` | Reconnect on disconnect (with LWT) |
+| `mqttPublishState()` | Publish device state (uptime, temperature, IP, mode, Zigbee firmware version, etc.) |
+| `mqttPublishDiscovery()` | Home Assistant MQTT auto-discovery (sensor/button/binary_sensor) |
+| `mqttPublishIo()` | Publish I/O state (reboot/BSL/Socket) |
+| `mqttCallback()` | Receive MQTT commands (`rst_esp`, `rst_zig`, `enbl_bsl`) |
 
-**MQTT 主题结构**：
+**MQTT Topic Structure**:
 ```
-{topic}/avty        — 在线/离线 (LWT)
-{topic}/state       — 设备状态 JSON
-{topic}/io/{name}   — I/O 控制状态
-{topic}/cmd         — 命令订阅
+{topic}/avty        — Online/offline (LWT)
+{topic}/state       — Device state JSON
+{topic}/io/{name}   — I/O control state
+{topic}/cmd         — Command subscription
 ```
 
-### 5.5 `etc.cpp` (373 行)
+### 5.5 `etc.cpp` (373 lines)
 
-工具函数模块：
+Utility function module:
 
-| 函数 | 功能 |
-|------|------|
-| `zigbeeRouterRejoin()` | Zigbee 路由器重新加入 |
-| `zigbeeEnableBSL()` | 进入 CC2652P BSL 烧录模式 |
-| `zigbeeRestart()` | 重启 CC2652P |
-| `getCPUtemp()` | 读取 ESP32 CPU 温度（需临时开启 WiFi） |
-| `getDeviceID()` | 生成设备唯一 ID |
-| `writeDefaultConfig()` | 写入默认配置到 LittleFS |
-| `resetSettings()` | 恢复出厂设置 |
-| `setClock()` / `setTimezone()` | NTP 时间同步与时区设置 |
-| `ledPowerToggle()` / `ledUSBToggle()` | LED 控制 |
+| Function | Description |
+|----------|-------------|
+| `zigbeeRouterRejoin()` | Zigbee router rejoin |
+| `zigbeeEnableBSL()` | Enter CC2652P BSL flash mode |
+| `zigbeeRestart()` | Restart CC2652P |
+| `getCPUtemp()` | Read ESP32 CPU temperature (requires temporary WiFi activation) |
+| `getDeviceID()` | Generate unique device ID |
+| `writeDefaultConfig()` | Write default configuration to LittleFS |
+| `resetSettings()` | Factory reset |
+| `setClock()` / `setTimezone()` | NTP time sync and timezone setting |
+| `ledPowerToggle()` / `ledUSBToggle()` | LED control |
 
-**配置文件路径常量**（LittleFS 文件系统）：
+**Configuration File Path Constants** (LittleFS filesystem):
 ```cpp
-/config/system.json        — 系统变量（温度偏移）
-/config/configWifi.json    — WiFi 配置
-/config/configEther.json   — 以太网配置
-/config/configGeneral.json — 通用设置
-/config/configSecurity.json — 安全设置
-/config/configSerial.json  — 串口配置
-/config/configMqtt.json    — MQTT 配置
-/config/configWg.json      — WireGuard 配置
+/config/system.json        — System variables (temperature offset)
+/config/configWifi.json    — WiFi configuration
+/config/configEther.json   — Ethernet configuration
+/config/configGeneral.json — General settings
+/config/configSecurity.json — Security settings
+/config/configSerial.json  — Serial configuration
+/config/configMqtt.json    — MQTT configuration
+/config/configWg.json      — WireGuard configuration
 ```
 
-### 5.6 `zb.cpp` (347 行)
+### 5.6 `zb.cpp` (347 lines)
 
-Zigbee 协调器管理：
+Zigbee coordinator management:
 
-| 函数 | 功能 |
-|------|------|
-| `getZbVer()` | 通过 SYS_VERSION 命令获取 CC2652P 固件版本 |
-| `zbCheck()` | 检测 Zigbee 模块是否正常（LED 闪烁测试） |
-| `zbInit()` | 初始化 Zigbee 通讯 |
-| `checkFwHex()` | 验证上传的 HEX 固件文件 |
-| `runFlash()` / `programFlashFromFile()` | 通过 BSL 烧录 CC2652P 固件 |
-| `zbLedToggle()` | 切换 Zigbee 模块 LED |
+| Function | Description |
+|----------|-------------|
+| `getZbVer()` | Get CC2652P firmware version via SYS_VERSION command |
+| `zbCheck()` | Check if Zigbee module is operational (LED blink test) |
+| `zbInit()` | Initialize Zigbee communication |
+| `checkFwHex()` | Validate uploaded HEX firmware file |
+| `runFlash()` / `programFlashFromFile()` | Flash CC2652P firmware via BSL |
+| `zbLedToggle()` | Toggle Zigbee module LED |
 
-**Zigbee 通讯协议**: 使用 TI Z-Stack ZNP (Zigbee Network Processor) 协议，通过 Serial2 (UART) 与 CC2652P 通信。
+**Zigbee Communication Protocol**: Uses TI Z-Stack ZNP (Zigbee Network Processor) protocol, communicates with CC2652P via Serial2 (UART).
 
 ### 5.7 `log.cpp` / `log.h`
 
-环形日志缓冲区（8024 字节），用于 Web 控制台实时日志显示。
+Ring log buffer (8024 bytes), used for real-time log display on the web console.
 
 ---
 
-## 6. 配置文件体系
+## 6. Configuration System
 
-所有配置存储于 **LittleFS** 文件系统的 `/config/` 目录下，JSON 格式。
+All configuration is stored in **LittleFS** filesystem under `/config/`, in JSON format.
 
-### 6.1 各配置文件字段说明
+### 6.1 Configuration File Field Descriptions
 
 **`/config/configGeneral.json`**
 ```json
@@ -331,7 +331,7 @@ Zigbee 协调器管理：
     "disableLedUSB": false,
     "coordMode": 0,        // 0=LAN, 1=WiFi, 2=USB
     "prevCoordMode": 0,
-    "keepWeb": false,       // USB 模式下保持 Web 可用
+    "keepWeb": false,       // Keep web accessible in USB mode
     "timeZoneName": ""
 }
 ```
@@ -401,143 +401,143 @@ Zigbee 协调器管理：
 }
 ```
 
-### 6.2 配置加载流程 (setup)
+### 6.2 Configuration Loading Flow (setup)
 
 ```
-loadSystemVar()        → 系统变量（温度偏移校准）
-loadConfigSerial()     → 串口参数
+loadSystemVar()        → System variables (temperature offset calibration)
+loadConfigSerial()     → Serial parameters
 loadConfigWifi()       → WiFi
-loadConfigEther()      → 以太网
-loadConfigGeneral()    → 通用设置
-loadConfigSecurity()   → 安全
+loadConfigEther()      → Ethernet
+loadConfigGeneral()    → General settings
+loadConfigSecurity()   → Security
 loadConfigMqtt()       → MQTT
 loadConfigWg()         → WireGuard
 ```
 
-任何配置加载失败会尝试创建默认配置；反复失败则 `ESP.restart()`。
+If any configuration fails to load, it tries to create a default config; repeated failures trigger `ESP.restart()`.
 
 ---
 
-## 7. Flash 分区表
+## 7. Flash Partition Table
 
-**文件**: `partitions.csv`
+**File**: `partitions.csv`
 
-| 分区名 | 类型 | 子类型 | 偏移地址 | 大小 | 说明 |
-|--------|------|--------|----------|------|------|
+| Partition | Type | Subtype | Offset | Size | Description |
+|-----------|------|---------|--------|------|-------------|
 | nvs | data | nvs | 0x9000 | 20KB | Non-Volatile Storage |
-| otadata | data | ota | 0xE000 | 8KB | OTA 数据 |
-| app0 | app | ota_0 | 0x10000 | **6MB** | 主应用分区 |
-| app1 | app | ota_1 | 0x610000 | **6MB** | OTA 备用分区 |
-| spiffs | data | spiffs | 0xC10000 | ~4MB | LittleFS 文件系统 |
+| otadata | data | ota | 0xE000 | 8KB | OTA data |
+| app0 | app | ota_0 | 0x10000 | **6MB** | Main application partition |
+| app1 | app | ota_1 | 0x610000 | **6MB** | OTA backup partition |
+| spiffs | data | spiffs | 0xC10000 | ~4MB | LittleFS filesystem |
 
-> 总计使用 ~16MB Flash。支持 OTA 双分区切换升级。
+> Total ~16MB Flash used. Supports OTA dual-partition switching for upgrades.
 
 ---
 
-## 8. 三方库依赖
+## 8. Third-Party Library Dependencies
 
 ### 8.1 PlatformIO lib_deps
 
-| 库 | 版本 | 用途 |
-|----|------|------|
-| `bblanchon/ArduinoJson` | 6.21.3 | JSON 序列化/反序列化 |
-| `rlogiacco/CircularBuffer` | ≥1.3.3 | 环形日志缓冲区 |
-| `plerup/EspSoftwareSerial` | 8.1.0 | 软件串口（备用） |
-| `marian-craciunescu/ESP32Ping` | ≥1.7 | Ping 网络检测 |
-| `sstaub/Ticker` | ≥4.4.0 | 非阻塞定时器 |
-| `knolleary/PubSubClient` | ^2.8 | MQTT 客户端 |
-| `mathieucarbou/AsyncTCP` | 3.2.5 | 异步 TCP（依赖项） |
-| `Martin-Laclaustra/CronAlarms` | latest | Cron 定时任务 |
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `bblanchon/ArduinoJson` | 6.21.3 | JSON serialization/deserialization |
+| `rlogiacco/CircularBuffer` | ≥1.3.3 | Ring log buffer |
+| `plerup/EspSoftwareSerial` | 8.1.0 | Software serial (backup) |
+| `marian-craciunescu/ESP32Ping` | ≥1.7 | Ping network detection |
+| `sstaub/Ticker` | ≥4.4.0 | Non-blocking timer |
+| `knolleary/PubSubClient` | ^2.8 | MQTT client |
+| `mathieucarbou/AsyncTCP` | 3.2.5 | Async TCP (dependency) |
+| `Martin-Laclaustra/CronAlarms` | latest | Cron scheduled tasks |
 
-### 8.2 本地库 (lib/)
+### 8.2 Local Libraries (lib/)
 
-| 库 | 用途 |
-|----|------|
-| **CCTools** | CC2652P 芯片控制（BSL 进入、复位、路由器操作） |
-| **IntelHex** | Intel HEX 固件文件解析（Zigbee 固件烧录） |
-| **WireGuard-ESP32** | ESP32 平台的 WireGuard VPN 实现 |
+| Library | Purpose |
+|---------|---------|
+| **CCTools** | CC2652P chip control (BSL entry, reset, router operations) |
+| **IntelHex** | Intel HEX firmware file parsing (Zigbee firmware flashing) |
+| **WireGuard-ESP32** | WireGuard VPN implementation for ESP32 platform |
 
 ---
 
-## 9. 构建流程与自动化脚本
+## 9. Build Process & Automation Scripts
 
-### 9.1 编译命令
+### 9.1 Build Commands
 
 ```bash
-# 默认生产构建（ESP32-SOLO1）
+# Default production build (ESP32-SOLO1)
 pio run -e prod-solo
 
-# 调试构建
+# Debug build
 pio run -e debug-solo
 
-# 上传固件
+# Upload firmware
 pio run -e prod-solo -t upload
 
-# 监视串口
+# Serial monitor
 pio device monitor
 ```
 
-### 9.2 自动构建流程
+### 9.2 Automated Build Pipeline
 
-PlatformIO 通过 `extra_scripts` 配置自动执行以下流程：
+PlatformIO executes the following pipeline via `extra_scripts` configuration:
 
-#### 前处理（Pre-build）
+#### Pre-build
 
 1. **`tools/version_increment_pre.py`**
-   - 读取 `tools/version` 文件中的版本号
-   - 自动递增补丁版本号（除非存在 `.version_no_increment` 标记文件）
-   - 生成 `src/version.h`（含 `VERSION` 和 `BUILD_TIMESTAMP` 宏）
+   - Reads version number from `tools/version`
+   - Auto-increments patch version (unless `.version_no_increment` marker file exists)
+   - Generates `src/version.h` (containing `VERSION` and `BUILD_TIMESTAMP` macros)
 
 2. **`tools/webfilesbuilder/build_html.py`**
-   - 检查 `.no_web_update` 标记文件
-   - 执行 `npm install` + `npx gulp` 构建 Web 前端
-   - 将 HTML/JS/CSS/图片压缩为 gzip 并转为 C 头文件，输出到 `src/webh/`
+   - Checks `.no_web_update` marker file
+   - Runs `npm install` + `npx gulp` to build web frontend
+   - Compresses HTML/JS/CSS/images to gzip and converts to C header files in `src/webh/`
 
-#### 后处理（Post-build）
+#### Post-build
 
 3. **`tools/build.py`**
-   - 复制 `firmware.bin` 到 `bin/`
-   - 复制 `partitions.bin` 和 `bootloader_dio_40m.bin`
-   - 调用 `merge_bin_esp.py` 合并完整固件：
+   - Copies `firmware.bin` to `bin/`
+   - Copies `partitions.bin` and `bootloader_dio_40m.bin`
+   - Calls `merge_bin_esp.py` to merge full firmware:
      - `bootloader @ 0x1000` + `partitions @ 0x8000` + `firmware @ 0x10000`
-   - 生成命名文件：
-     - `AVATTO-GW90-Ti_v{version}.full.bin` — 全量烧录
-     - `AVATTO-GW90-Ti.bin` — OTA 升级
+   - Generates named files:
+     - `AVATTO-GW90-Ti_v{version}.full.bin` — full flash image
+     - `AVATTO-GW90-Ti.bin` — OTA upgrade
 
-### 9.3 版本管理
+### 9.3 Version Management
 
-- 版本号存储在 `tools/version` 文本文件中
-- 格式: `主版本.次版本.补丁号` (如 `1.0.1`)
-- 每次构建自动 +1（补丁号），除非：
-  - 存在 `tools/.version_no_increment` 文件（完全跳过）
-  - 存在 `tools/.version_no_increment_update_date` 文件（不增版本但更新时间戳）
+- Version number stored in `tools/version` text file
+- Format: `major.minor.patch` (e.g. `1.0.1`)
+- Auto-increments by +1 (patch) on each build, unless:
+  - `tools/.version_no_increment` file exists (skip entirely)
+  - `tools/.version_no_increment_update_date` file exists (don't increment but update timestamp)
 
-### 9.4 跳过 Web 构建
+### 9.4 Skipping Web Build
 
-如只修改了 C++ 代码，可在 `tools/webfilesbuilder/` 下创建 `.no_web_update` 空文件跳过 Web 构建，加快编译速度。
+If only modifying C++ code, create an empty `.no_web_update` file under `tools/webfilesbuilder/` to skip the web build and speed up compilation.
 
 ---
 
-## 10. Web 前端构建
+## 10. Web Frontend Build
 
-### 10.1 技术栈
+### 10.1 Tech Stack
 
-- **HTML 模板**: 位于 `src/websrc/html/`
-- **JavaScript**: jQuery + Bootstrap + 自定义 `functions.js`
-- **国际化**: i18next
-- **构建工具**: Gulp (通过 `tools/webfilesbuilder/gulpfile.js`)
+- **HTML templates**: Located in `src/websrc/html/`
+- **JavaScript**: jQuery + Bootstrap + custom `functions.js`
+- **Internationalization**: i18next
+- **Build tool**: Gulp (via `tools/webfilesbuilder/gulpfile.js`)
 
-### 10.2 构建流程
+### 10.2 Build Pipeline
 
 ```
-src/websrc/ (源码)
-    ↓ gulp (压缩 + gzip)
-src/websrc/gzipped/ (中间产物)
-    ↓ 转换为 C 字节数组
-src/webh/*.gz.h (编译时嵌入固件)
+src/websrc/ (source)
+    ↓ gulp (minify + gzip)
+src/websrc/gzipped/ (intermediate)
+    ↓ convert to C byte array
+src/webh/*.gz.h (embedded at compile time)
 ```
 
-### 10.3 手动构建 Web 资源
+### 10.3 Manual Web Resource Build
 
 ```bash
 cd tools/webfilesbuilder
@@ -547,57 +547,57 @@ npx gulp
 
 ---
 
-## 11. 固件功能特性
+## 11. Firmware Features
 
-### 11.1 三种工作模式
+### 11.1 Three Operating Modes
 
-| 模式 | `coordMode` | 说明 |
-|------|-------------|------|
-| **LAN** | 0 | Zigbee 数据通过以太网 TCP Socket 透传，默认端口 6638 |
-| **WiFi** | 1 | Zigbee 数据通过 WiFi TCP Socket 透传 |
-| **USB** | 2 | GPIO33 拉高，CC2652P 直接通过 USB 与主机通讯 |
+| Mode | `coordMode` | Description |
+|------|-------------|-------------|
+| **LAN** | 0 | Zigbee data passthrough via Ethernet TCP socket, default port 6638 |
+| **WiFi** | 1 | Zigbee data passthrough via WiFi TCP socket |
+| **USB** | 2 | GPIO33 pulled high, CC2652P communicates directly with host via USB |
 
-### 11.2 网络服务
+### 11.2 Network Services
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| Web 管理界面 | TCP 80 | HTTP |
-| TCP Socket 透传 | TCP 6638 (默认, 可配置) | Zigbee 数据桥 |
-| mDNS | UDP 5353 | 服务发现 (`_avatto-gw90-ti._tcp`) |
-| DNS (AP 模式) | UDP 53 | 强制门户 |
+| Service | Port | Description |
+|---------|------|-------------|
+| Web management | TCP 80 | HTTP |
+| TCP socket passthrough | TCP 6638 (default, configurable) | Zigbee data bridge |
+| mDNS | UDP 5353 | Service discovery (`_avatto-gw90-ti._tcp`) |
+| DNS (AP mode) | UDP 53 | Captive portal |
 
-### 11.3 AP 热点模式
+### 11.3 AP Hotspot Mode
 
-- **SSID**: 设备 ID (如 `AVATTO-GW90-TI`)
+- **SSID**: Device ID (e.g. `AVATTO-GW90-TI`)
 - **IP**: 192.168.1.1
-- **触发条件**:
-  - 首次启动无配置
-  - 网络连接超时（5秒 × 4次 = 20秒）
-  - WiFi 无凭据
+- **Trigger conditions**:
+  - First boot with no configuration
+  - Network connection timeout (5s × 4 retries = 20s)
+  - No WiFi credentials
 
 ---
 
-## 12. MQTT 集成
+## 12. MQTT Integration
 
-### 12.1 功能
+### 12.1 Features
 
-- 定时发布设备状态（可配置间隔，默认 60 秒）
-- Home Assistant MQTT 自动发现（sensor/button/binary_sensor）
-- 远程命令控制
-- LWT 遗嘱消息（在线/离线检测）
+- Periodic device state publishing (configurable interval, default 60s)
+- Home Assistant MQTT auto-discovery (sensor/button/binary_sensor)
+- Remote command control
+- LWT (Last Will and Testament) messages (online/offline detection)
 
-### 12.2 远程命令
+### 12.2 Remote Commands
 
-通过 `{topic}/cmd` 主题发送 JSON：
+Send JSON via `{topic}/cmd` topic:
 ```json
-{"cmd": "rst_esp"}     // 重启 ESP32
-{"cmd": "rst_zig"}     // 重启 Zigbee
-{"cmd": "enbl_bsl"}    // 进入 BSL 模式
+{"cmd": "rst_esp"}     // Restart ESP32
+{"cmd": "rst_zig"}     // Restart Zigbee
+{"cmd": "enbl_bsl"}    // Enter BSL mode
 ```
 
-### 12.3 状态数据
+### 12.3 State Data
 
-`{topic}/state` 发布的 JSON：
+JSON published to `{topic}/state`:
 ```json
 {
     "uptime": "0 d 01:23:45",
@@ -612,236 +612,235 @@ npx gulp
 
 ---
 
-## 13. WireGuard VPN 支持
+## 13. WireGuard VPN Support
 
-- 基于本地库 `WireGuard-ESP32`
-- 当网络连接建立后自动初始化 WireGuard 隧道
-- 配置项：本地地址/私钥、端点地址/公钥/端口
+- Based on local library `WireGuard-ESP32`
+- Automatically initializes WireGuard tunnel after network connection is established
+- Configuration: local address/private key, endpoint address/public key/port
 
 ---
 
-## 14. Zigbee 协调器管理
+## 14. Zigbee Coordinator Management
 
-### 14.1 CC2652P 固件版本检测
+### 14.1 CC2652P Firmware Version Detection
 
-通过 ZNP 协议的 `SYS_VERSION` 命令获取版本信息，包括：
+Uses the ZNP protocol's `SYS_VERSION` command to retrieve version info, including:
 - `majorrel` / `minorrel` / `maintrel` / `zbRev` / `product` / `transportrev`
 
-### 14.2 BSL 固件烧录
+### 14.2 BSL Firmware Flashing
 
-1. 通过 Web 界面上传 `.hex` 固件文件
-2. 文件保存到 LittleFS `/config/fw.hex`
-3. 使用 CCTools 库将 CC2652P 置入 BSL 模式
-4. 通过串口执行烧录
+1. Upload `.hex` firmware file via web interface
+2. File saved to LittleFS `/config/fw.hex`
+3. Use CCTools library to put CC2652P into BSL mode
+4. Execute flashing via serial port
 
-### 14.3 LED 控制
+### 14.3 LED Control
 
-通过 ZNP 命令控制 CC2652P 模块上的 LED：
-- 命令帧格式: `FE 02 27 0A 01 {00|01} {checksum}`
+Control the LED on the CC2652P module via ZNP command:
+- Command frame format: `FE 02 27 0A 01 {00|01} {checksum}`
 
 ---
 
-## 15. OTA 与固件升级
+## 15. OTA & Firmware Updates
 
 ### 15.1 Web OTA
 
-通过 Web 界面 `/sys-tools` 上传 `.bin` 文件进行 OTA 升级。
+Upload `.bin` file via web interface at `/sys-tools` for OTA upgrade.
 
-### 15.2 远程 OTA
+### 15.2 Remote OTA
 
-固件从 GitHub Release 下载：
+Firmware downloaded from GitHub Release:
 ```
 https://github.com/AVATTO-smart/avatto-gw90-firmware/releases/latest/download/AVATTO-GW90-Ti.bin
 ```
 
-### 15.3 ESP Web Tools 烧录
+### 15.3 ESP Web Tools Flashing
 
-`manifest.json` 支持通过浏览器 Web Serial 直接烧录完整固件（含 bootloader + 分区表 + 应用）。
-
----
-
-## 16. 按键与 LED 交互逻辑
-
-### 16.1 物理按键 (GPIO 35)
-
-| 操作 | 效果 |
-|------|------|
-| **短按** | 切换 USB/非USB 模式（保存并重启） |
-| **长按 2 秒** | 切换 LED 全局开关 |
-| **长按 4 秒** | 进入 Zigbee BSL 烧录模式 |
-| **开机时按住 >2 秒** | 恢复出厂设置 |
-
-### 16.2 LED 指示
-
-| LED | 颜色 | GPIO | 指示 |
-|-----|------|------|------|
-| LED_PWR | 蓝色 | 14 | 电源/运行指示（可禁用） |
-| LED_USB | 红色 | 12 | USB 模式指示（仅 USB 模式亮） |
+`manifest.json` supports flashing full firmware (bootloader + partition table + application) directly via browser Web Serial.
 
 ---
 
-## 17. 网络连接管理
+## 16. Button & LED Interaction
 
-### 17.1 网络监控定时器 (Network Overseer)
+### 16.1 Physical Button (GPIO 35)
 
-- **检查间隔**: 5 秒
-- **最大重试次数**: 4 次 (即 20 秒超时)
-- **行为**:
-  - LAN 模式: 检测以太网连接，超时启动 AP
-  - WiFi 模式: 检测 WiFi 连接，超时重新连接并启动 AP
-  - USB 模式: 10 秒尝试 WiFi，失败后尝试 LAN，均失败启动 AP
+| Action | Effect |
+|--------|--------|
+| **Short press** | Toggle USB/non-USB mode (save and restart) |
+| **Long press 2s** | Toggle LED global on/off |
+| **Long press 4s** | Enter Zigbee BSL flash mode |
+| **Hold > 2s at boot** | Factory reset |
 
-### 17.2 以太网初始化
+### 16.2 LED Indicators
 
-LAN8720 PHY 初始化流程：
-1. GPIO5 拉低 50ms → 拉高 300ms（硬件复位 PHY）
-2. `ETH.begin()` 初始化 RMII 接口
-3. 配置静态 IP 或使用 DHCP
+| LED | Color | GPIO | Indication |
+|-----|-------|------|------------|
+| LED_PWR | Blue | 14 | Power/operation indicator (can be disabled) |
+| LED_USB | Red | 12 | USB mode indicator (only on in USB mode) |
 
-### 17.3 mDNS 服务
+---
 
-注册 `_avatto-gw90-ti._tcp` 服务，包含 ZHA 兼容的 zeroconf 元数据：
+## 17. Network Connection Management
+
+### 17.1 Network Overseer Timer
+
+- **Check interval**: 5 seconds
+- **Max retries**: 4 times (i.e. 20s timeout)
+- **Behavior**:
+  - LAN mode: check Ethernet connection, start AP on timeout
+  - WiFi mode: check WiFi connection, reconnect on timeout and start AP
+  - USB mode: try WiFi for 10s, if failed try LAN, if both fail start AP
+
+### 17.2 Ethernet Initialization
+
+LAN8720 PHY initialization sequence:
+1. GPIO5 LOW for 50ms → HIGH for 300ms (hardware reset PHY)
+2. `ETH.begin()` initializes RMII interface
+3. Configure static IP or use DHCP
+
+### 17.3 mDNS Service
+
+Registers `_avatto-gw90-ti._tcp` service with ZHA-compatible zeroconf metadata:
 - `radio_type`: znp
-- `baud_rate`: 配置的波特率
+- `baud_rate`: configured baud rate
 - `data_flow_control`: software
 
 ---
 
-## 18. 调试方法
+## 18. Debugging Methods
 
-### 18.1 编译调试版本
+### 18.1 Build Debug Version
 
 ```bash
 pio run -e debug-solo
 ```
-启用 `-DDEBUG` 宏后，`DEBUG_PRINT` / `DEBUG_PRINTLN` 宏将输出到 Serial（115200 baud）。
+When the `-DDEBUG` macro is enabled, `DEBUG_PRINT` / `DEBUG_PRINTLN` macros output to Serial (115200 baud).
 
-### 18.2 串口监视器
+### 18.2 Serial Monitor
 
 ```bash
 pio device monitor
 ```
-内置 `esp32_exception_decoder` 过滤器，可自动解码异常堆栈。
+Built-in `esp32_exception_decoder` filter can automatically decode exception stack traces.
 
-### 18.3 Web 日志
+### 18.3 Web Log
 
-Web 界面提供实时日志查看（环形缓冲区 8024 字节），可查看 Zigbee 通讯数据（HEX 格式）。
+The web interface provides real-time log viewing (ring buffer 8024 bytes), including Zigbee communication data in HEX format.
 
 ### 18.4 Debug UI
 
-`debug-ui/` 目录提供独立的调试 Web 界面，可通过 `start-debug-server.bat` 启动，用 mock 数据模拟设备行为。
+The `debug-ui/` directory contains a standalone debug web interface, launchable via `start-debug-server.bat`, simulating device behavior with mock data.
 
-### 18.5 关键调试日志前缀
+### 18.5 Key Debug Log Prefixes
 
-| 前缀 | 模块 |
-|------|------|
-| `[LAN]` | 以太网初始化 |
-| `[ETH_EVENT]` | 以太网事件（连接/断开/获取IP） |
-| `[NET_EVENT]` | 网络事件分发 |
-| `[OVERSEER]` | 网络监控定时器 |
-| `[SRV]` | 服务启动 |
-| `[MODE]` | 协调器模式切换 |
-| `[LED]` | LED 控制状态 |
-| `[ZBVER]` | Zigbee 版本信息 |
-| `[ZB_FW_TASK]` | Zigbee 固件烧录任务 |
-| `[SOCK IP WHITELIST]` | Socket 连接 IP 过滤 |
+| Prefix | Module |
+|--------|--------|
+| `[LAN]` | Ethernet initialization |
+| `[ETH_EVENT]` | Ethernet events (connected/disconnected/IP acquired) |
+| `[NET_EVENT]` | Network event dispatch |
+| `[OVERSEER]` | Network overseer timer |
+| `[SRV]` | Service startup |
+| `[MODE]` | Coordinator mode switch |
+| `[LED]` | LED control state |
+| `[ZBVER]` | Zigbee version info |
+| `[ZB_FW_TASK]` | Zigbee firmware flashing task |
+| `[SOCK IP WHITELIST]` | Socket connection IP filtering |
 
 ---
 
-## 19. 已知问题与注意事项
+## 19. Known Issues & Precautions
 
-### 19.1 平台版本兼容性
+### 19.1 Platform Version Compatibility
 
-**非常重要**: ESP32-SOLO1 的平台版本选择至关重要。经测试：
-- ✅ `tasmota/platform-espressif32 @ 2023.07.00` — 稳定工作
-- ❌ `2023.08.00` 及之后版本 — HTTPS 功能失败
-- ❌ `espressif32 @ 6.4.0` — 不支持 SOLO1 板型
+**Very important**: ESP32-SOLO1 platform version selection is critical. Tested results:
+- ✅ `tasmota/platform-espressif32 @ 2023.07.00` — works reliably
+- ❌ `2023.08.00` and later — HTTPS functionality broken
+- ❌ `espressif32 @ 6.4.0` — does not support SOLO1 board
 
-### 19.2 LAN8720 PHY 初始化
+### 19.2 LAN8720 PHY Initialization
 
-`ETH.begin()` 前必须对 GPIO5 执行硬件复位（LOW 50ms → HIGH 300ms），否则 `ESP.restart()` 后 PHY 可能无法正常初始化。
+GPIO5 must be hardware-reset before `ETH.begin()` (LOW 50ms → HIGH 300ms), otherwise the PHY may not initialize correctly after `ESP.restart()`.
 
-### 19.3 CPU 温度读取
+### 19.3 CPU Temperature Reading
 
-ESP32 温度传感器需要 WiFi 模块处于激活状态才能工作。`getCPUtemp()` 函数会在读取时临时开启再关闭 WiFi。
+The ESP32 temperature sensor requires the WiFi module to be active. `getCPUtemp()` temporarily enables then disables WiFi during the reading.
 
-### 19.4 MQTT 缓冲区
+### 19.4 MQTT Buffer
 
-PubSubClient 默认缓冲区较小，`mqttPublishMsg()` 使用了 `beginPublish/print/endPublish` 模式以支持大消息。
+PubSubClient's default buffer is small; `mqttPublishMsg()` uses `beginPublish/print/endPublish` pattern to support large messages.
 
-### 19.5 配置文件损坏处理
+### 19.5 Config File Corruption Handling
 
-所有 `loadConfig*()` 函数在 JSON 反序列化失败时会**删除损坏文件**并重启设备，下次启动时会自动创建默认配置。
+All `loadConfig*()` functions will **delete the corrupted file** and restart the device upon JSON deserialization failure. Default configuration is automatically created on next boot.
 
-### 19.6 版本号存储
+### 19.6 Version Number Storage
 
-`tools/version` 文件仅保存版本号字符串，不在 Git 提交中自动同步。手动修改版本号需直接编辑此文件。
+The `tools/version` file only stores the version string and is not auto-synced with Git commits. Manually edit this file to change the version number.
 
+---
 
-## 附录 A: 快速上手指南
+## Appendix A: Quick Start Guide
 
-### 首次编译
+### First Compile
 
 ```bash
-# 1. 安装 PlatformIO CLI (或 VSCode 插件)
+# 1. Install PlatformIO CLI (or VSCode plugin)
 pip install platformio
 
-# 2. 安装 Node.js (用于 Web 构建)
-# 下载: https://nodejs.org/
+# 2. Install Node.js (for web build)
+# Download: https://nodejs.org/
 
-# 3. 克隆项目
+# 3. Clone the project
 git clone <repo_url>
 cd PREGW90
 
-# 4. 编译
+# 4. Build
 pio run -e prod-solo
 
-# 5. 输出文件
-# bin/AVATTO-GW90-Ti.bin          — OTA 升级固件
-# bin/AVATTO-GW90-Ti_v*.full.bin  — 全量烧录固件
+# 5. Output files
+# bin/AVATTO-GW90-Ti.bin          — OTA upgrade firmware
+# bin/AVATTO-GW90-Ti_v*.full.bin  — Full flash firmware
 ```
 
-### 首次烧录
+### First Flash
 
 ```bash
-# 通过串口烧录
+# Via serial
 pio run -e prod-solo -t upload
 
-# 或使用 esptool 手动烧录完整固件
+# Or manually with esptool
 python tools/esptool.py --chip esp32 --baud 460800 write_flash 0x0 bin/AVATTO-GW90-Ti_v1.0.1.full.bin
 ```
 
-### 设备首次配置
+### First-Time Device Configuration
 
-1. 设备首次启动会创建 AP 热点 (SSID: `AVATTO-GW90-TI`)
-2. 连接热点后浏览器访问 `192.168.1.1`
-3. 配置网络参数（WiFi 或以太网）
-4. 设备重启后通过配置的网络访问 Web 管理界面
-
----
-
-## 附录 B: 文件行数统计
-
-| 文件 | 行数 | 说明 |
-|------|------|------|
-| `main.cpp` | 1506 | 程序入口与核心逻辑 |
-| `web.cpp` | 1944 | Web 服务器 (最大文件) |
-| `mqtt.cpp` | 467 | MQTT 集成 |
-| `etc.cpp` | 373 | 工具函数 |
-| `zb.cpp` | 347 | Zigbee 管理 |
-| `config.h` | 160 | 配置定义 |
-| `zones.h` | 479 | 时区数据 |
+1. Device creates AP hotspot on first boot (SSID: `AVATTO-GW90-TI`)
+2. Connect to hotspot and browse to `192.168.1.1`
+3. Configure network parameters (WiFi or Ethernet)
+4. After reboot, access web management interface via the configured network
 
 ---
 
-## 附录 C: 联系与资源
+## Appendix B: File Line Counts
 
-- **原始仓库**: https://github.com/mercenaruss/uzg-firmware
-- **OTA 固件下载**: https://github.com/AVATTO-smart/avatto-gw90-firmware/releases
-- **PlatformIO 文档**: https://docs.platformio.org/
-- **CC2652P BSL 文档**: TI CC26xx Technical Reference Manual
-- **Z-Stack ZNP 接口**: TI Z-Stack ZNP Interface Specification
+| File | Lines | Description |
+|------|-------|-------------|
+| `main.cpp` | 1506 | Program entry and core logic |
+| `web.cpp` | 1944 | Web server (largest file) |
+| `mqtt.cpp` | 467 | MQTT integration |
+| `etc.cpp` | 373 | Utility functions |
+| `zb.cpp` | 347 | Zigbee management |
+| `config.h` | 160 | Configuration definitions |
+| `zones.h` | 479 | Timezone data |
 
 ---
 
+## Appendix C: Contacts & Resources
 
+- **Original repository**: https://github.com/mercenaruss/uzg-firmware
+- **OTA firmware download**: https://github.com/AVATTO-smart/avatto-gw90-firmware/releases
+- **PlatformIO documentation**: https://docs.platformio.org/
+- **CC2652P BSL documentation**: TI CC26xx Technical Reference Manual
+- **Z-Stack ZNP interface**: TI Z-Stack ZNP Interface Specification
+
+---

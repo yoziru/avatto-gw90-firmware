@@ -1,15 +1,15 @@
 /**
- * 样式示例和测试区域
+ * Style examples and test area
  * 
- * 这个文件包含一些常用的样式优化示例
- * 您可以复制这些样式到 index.html 的 <style> 标签中进行测试
+ * This file contains common style optimization examples
+ * Copy these styles into index.html's <style> tag to test them
  */
 
 /* ============================================
-   卡片样式优化
+   Card style optimization
    ============================================ */
 
-/* 现代化卡片设计 */
+/* Modern card design */
 .card-modern {
     border: none;
     border-radius: 12px;
@@ -23,7 +23,7 @@
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* 卡片头部渐变 */
+/* Card header gradient */
 .card-header-gradient {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white !important;
@@ -31,7 +31,7 @@
     padding: 1rem 1.25rem;
 }
 
-/* 玻璃态效果卡片 */
+/* Glassmorphism card effect */
 .card-glass {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(10px);
@@ -40,10 +40,10 @@
 }
 
 /* ============================================
-   按钮样式优化
+   Button style optimization
    ============================================ */
 
-/* 渐变按钮 */
+/* Gradient button */
 .btn-gradient-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
@@ -57,7 +57,7 @@
     color: white;
 }
 
-/* 霓虹按钮效果 */
+/* Neon button effect */
 .btn-neon {
     border: 2px solid #667eea;
     color: #667eea;
@@ -73,7 +73,7 @@
     box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
 }
 
-/* 圆角柔和按钮 */
+/* Soft rounded button */
 .btn-soft {
     border-radius: 20px;
     padding: 8px 24px;
@@ -82,21 +82,21 @@
 }
 
 /* ============================================
-   表格样式优化
+   Table style optimization
    ============================================ */
 
-/* 斑马纹表格 */
+/* Zebra striping */
 .table-striped-custom tbody tr:nth-of-type(odd) {
     background-color: rgba(0, 123, 255, 0.03);
 }
 
-/* 悬停效果 */
+/* Hover effect */
 .table-hover-custom tbody tr:hover {
     background-color: rgba(0, 123, 255, 0.08);
     transition: background-color 0.2s ease;
 }
 
-/* 表格边框优化 */
+/* Table border optimization */
 .table-bordered-custom {
     border: none;
 }
@@ -109,7 +109,7 @@
     border-right: none;
 }
 
-/* 表格单元格对齐 */
+/* Table cell alignment */
 .table td:first-child {
     font-weight: 500;
     color: #6c757d;
@@ -122,10 +122,10 @@
 }
 
 /* ============================================
-   表单样式优化
+   Form style optimization
    ============================================ */
 
-/* 现代化输入框 */
+/* Modern input field */
 .form-control-modern {
     border: 2px solid #e9ecef;
     border-radius: 8px;
@@ -138,7 +138,7 @@
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
 }
 
-/* 开关样式优化 */
+/* Toggle switch optimization */
 .form-switch .form-check-input {
     width: 3rem;
     height: 1.5rem;
@@ -151,10 +151,10 @@
 }
 
 /* ============================================
-   导航栏样式优化
+   Navigation style optimization
    ============================================ */
 
-/* 侧边栏美化 */
+/* Sidebar styling */
 .sidebar {
     background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
     border-right: 1px solid #e9ecef;
@@ -178,10 +178,10 @@
 }
 
 /* ============================================
-   状态指示器
+   Status indicators
    ============================================ */
 
-/* 成功/错误/警告标签 */
+/* Success/error/warning badges */
 .status-badge {
     padding: 4px 12px;
     border-radius: 12px;
@@ -204,7 +204,7 @@
     color: #856404;
 }
 
-/* 连接状态指示灯 */
+/* Connection status indicator */
 .status-indicator {
     display: inline-block;
     width: 10px;
@@ -223,10 +223,10 @@
 }
 
 /* ============================================
-   动画效果
+   Animation effects
    ============================================ */
 
-/* 淡入动画 */
+/* Fade in animation */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -242,7 +242,7 @@
     animation: fadeIn 0.5s ease;
 }
 
-/* 脉冲效果 */
+/* Pulse effect */
 @keyframes pulse {
     0%, 100% {
         opacity: 1;
@@ -257,10 +257,10 @@
 }
 
 /* ============================================
-   响应式优化
+   Responsive optimization
    ============================================ */
 
-/* 移动端优化 */
+/* Mobile optimization */
 @media (max-width: 768px) {
     .card {
         margin-bottom: 1rem;
@@ -276,7 +276,7 @@
     }
 }
 
-/* 深色模式支持 */
+/* Dark mode support */
 @media (prefers-color-scheme: dark) {
     .card {
         background-color: #2d3748;
@@ -289,10 +289,10 @@
 }
 
 /* ============================================
-   实用工具类
+   Utility classes
    ============================================ */
 
-/* 阴影效果 */
+/* Shadow effects */
 .shadow-soft {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
@@ -305,7 +305,7 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16) !important;
 }
 
-/* 圆角变体 */
+/* Border-radius variants */
 .rounded-soft {
     border-radius: 8px !important;
 }
@@ -318,7 +318,7 @@
     border-radius: 16px !important;
 }
 
-/* 间距优化 */
+/* Spacing optimization */
 .spacing-comfortable {
     padding: 1.5rem;
 }

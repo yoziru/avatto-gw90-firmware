@@ -12,11 +12,11 @@
     <link rel="stylesheet" href="../src/websrc/css/style.css" />
 
     <style>
-      /* ====================================
-           调试专用样式 - 在这里添加/测试新样式
-           ==================================== */
+/* ====================================
+     Debug-specific styles — add/test new styles here
+   ==================================== */
 
-      /* 调试工具栏样式 */
+      /* Debug toolbar styles */
       .debug-note {
         position: fixed;
         top: 10px;
@@ -48,7 +48,7 @@
         border-radius: 4px;
       }
 
-      /* 侧边栏样式 - 匹配 PAGE_LOADER.html */
+      /* Sidebar styles — matching PAGE_LOADER.html */
       .bg-dark-grey {
         background-color: #1a1a1a;
       }
@@ -108,7 +108,7 @@
         margin: 1rem auto;
       }
 
-      /* 主内容区标题 */
+      /* Main content area title */
       #pagenamePC {
         color: #2c3e50;
         font-weight: 600;
@@ -141,10 +141,10 @@
       }
 
       /* ====================================
-           测试区域 - 在下方添加您的样式测试
+           Test area — add your style tests below
            ==================================== */
 
-      /* 示例：美化卡片（取消注释以启用）
+      /* Example: card styling (uncomment to enable)
         .card {
             border: none;
             border-radius: 12px;
@@ -158,7 +158,7 @@
         }
         */
 
-      /* 示例：渐变按钮（取消注释以启用）
+      /* Example: gradient button (uncomment to enable)
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
@@ -171,7 +171,7 @@
         }
         */
 
-      /* 示例：优化表格（取消注释以启用）
+      /* Example: table optimization (uncomment to enable)
         .table td:first-child {
             font-weight: 500;
             color: #6c757d;
@@ -182,9 +182,9 @@
         }
         */
 
-      /* 您的自定义样式 - 在此处添加 👇 */
+      /* Your custom styles — add below 👇 */
 
-      /* System Tools 页面样式 */
+      /* System Tools page styles */
       #prgbar,
       #prgbar_zb {
         width: 100%;
@@ -228,7 +228,7 @@
         background-color: #e9ecef;
       }
 
-      /* 标签页样式优化 */
+      /* Tab style refinements */
       .nav-tabs {
         border-bottom: 1px solid #dee2e6;
         margin-bottom: 20px;
@@ -254,7 +254,7 @@
         font-weight: 500;
       }
 
-      /* 标签页内容容器 */
+      /* Tab content container */
       .tab-content {
         position: relative;
         min-height: 400px;
@@ -271,7 +271,7 @@
         opacity: 1;
       }
 
-      /* 修复 Masonry 布局问题 */
+      /* Fix Masonry layout issues */
       .tab-pane .masonry {
         width: 100%;
       }
@@ -305,7 +305,7 @@
         margin-top: 1em;
       }
 
-      /* 文件浏览器表格样式 */
+      /* File browser table styles */
       #filelist {
         margin-top: 0;
       }
@@ -319,7 +319,7 @@
         background-color: #f8f9fa;
       }
 
-      /* 调试控制台样式 */
+      /* Debug console styles */
       #console {
         font-family: "Courier New", monospace;
         background-color: #1e1e1e;
@@ -338,13 +338,13 @@
     </div>
     
     <div class="style-toggle">
-        <button onclick="window.open('style-examples.css', '_blank')" title="查看样式示例">
-            🎨 样式示例
+        <button onclick="window.open('style-examples.css', '_blank')" title="View style examples">
+            🎨 Style Examples
         </button>
     </div> -->
 
     <div class="page-selector">
-      <label for="pageSelect"><strong>选择页面:</strong></label>
+      <label for="pageSelect"><strong>Select page:</strong></label>
       <select
         id="pageSelect"
         class="form-select form-select-sm"
@@ -364,10 +364,10 @@
       </select>
     </div>
 
-    <!-- 主容器 -->
+    <!-- Main container -->
     <div class="container-fluid">
       <div class="row flex-nowrap">
-        <!-- 侧边栏 - 参考 PAGE_LOADER.html -->
+        <!-- Sidebar — referenced from PAGE_LOADER.html -->
         <div
           id="sidenav"
           class="col-auto nav-container px-0 col-md-3 col-xl-2 bg-dark-grey nav-shadow"
@@ -375,7 +375,7 @@
           <div
             class="d-flex flex-column align-items-center align-items-sm-start pt-2 text-white min-vh-100"
           >
-            <!-- Logo 区域 -->
+            <!-- Logo area -->
             <div class="logo-wrapper">
               <a>
                 <img
@@ -386,7 +386,7 @@
               </a>
             </div>
 
-            <!-- 导航菜单 -->
+            <!-- Navigation menu -->
             <ul
               class="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start"
               id="menu"
@@ -559,11 +559,11 @@
           </div>
         </div>
 
-        <!-- 主内容区域 -->
+        <!-- Main content area -->
         <div class="col py-3">
           <h2 id="pagenamePC" class="mb-3">Dashboard</h2>
           <div id="content-area" class="container">
-            <!-- 内容将通过 JavaScript 动态加载 -->
+            <!-- Content loaded dynamically via JavaScript -->
           </div>
           <h6
             class="fixed-bottom"
@@ -587,7 +587,7 @@
     <script src="../src/websrc/js/bootstrap.min.js"></script>
     <!-- Masonry JS -->
     <script src="../src/websrc/js/masonry.js"></script>
-    <!-- 模拟数据和功能 -->
+    <!-- Mock data and functions -->
     <script src="mock-data.js"></script>
     <script src="debug-functions.js"></script>
   </body>
