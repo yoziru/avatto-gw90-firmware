@@ -1,11 +1,13 @@
-#!/usr/bin/env python3
-"""Auto-generate static asset routes from webh/ gzip headers."""
+"""Auto-generate static asset routes from webh/ gzip headers.
+
+Called as a PlatformIO pre-extra script (via exec()), so __file__ is not
+available. Falls back to os.getcwd() which is the project root at build time.
+"""
 
 import os
 from datetime import datetime
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))
+PROJECT_ROOT = os.getcwd()
 WEBH_DIR = os.path.join(PROJECT_ROOT, 'src', 'webh')
 OUTPUT_FILE = os.path.join(PROJECT_ROOT, 'src', 'web_routes.h')
 
@@ -70,5 +72,4 @@ def main():
     print(f"Generated {OUTPUT_FILE} with {len(routes)} routes ({len(gz_h_files)} .gz.h files scanned, {len([f for f in gz_h_files if f.endswith('.html.gz.h')])} HTML skipped)")
 
 
-if __name__ == '__main__':
-    main()
+main()
