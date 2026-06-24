@@ -40,3 +40,8 @@ run = "uv run pio run --target clean"
 description = "Build all environments"
 depends = ["setup"]
 run = "uv run pio run"
+
+[tasks.test]
+description = "Run unit tests (native)"
+depends = ["setup"]
+run = "uv run pio test -e native"

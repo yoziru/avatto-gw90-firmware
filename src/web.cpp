@@ -9,6 +9,7 @@
 #include <esp_task_wdt.h>
 
 #include "config.h"
+#include "encoding.h"
 #include "web.h"
 #include "log.h"
 #include "etc.h"
@@ -68,47 +69,10 @@ void sendGzip(const char *contentType, const uint8_t content[], uint16_t content
     serverWeb.send_P(HTTP_CODE_OK, contentType, (const char *)content, contentLen);
 }
 
-void hex2bin(uint8_t *out, const char *in)
+String urlDecode(String input)
 {
-    while (*in)
-    {
-        while (*in == ' ')
-            in++;
-        if (!*in)
-            break;
-        uint8_t c = *in >= 'a' ? *in - 'a' + 10 : *in >= 'A' ? *in - 'A' + 10
-                                                             : *in - '0';
-        in++;
-        c <<= 4;
-        if (!*in)
-            break;
-        c |= *in >= 'a' ? *in - 'a' + 10 : *in >= 'A' ? *in - 'A' + 10
-                                                       : *in - '0';
-        in++;
-        *out++ = c;
-    }
-}
-
-String urlDecode(String input) {
-    String decoded = "";
-    char temp[] = "0x00";
-    unsigned int len = input.length();
-    unsigned int i = 0;
-    while (i < len) {
-        char decodedChar;
-        char encodedChar = input.charAt(i++);
-        if ((encodedChar == '%') && (i + 1 < len)) {
-            temp[2] = input.charAt(i++);
-            temp[3] = input.charAt(i++);
-            decodedChar = strtol(temp, NULL, 16);
-        } else if (encodedChar == '+') {
-            decodedChar = ' ';
-        } else {
-            decodedChar = encodedChar;
-        }
-        decoded += decodedChar;
-    }
-    return decoded;
+    std::string s = input.c_str();
+    return String(urlDecode(s).c_str());
 }
 
 bool checkAuth()

@@ -9,6 +9,7 @@
 #include <esp_task_wdt.h>
 
 #include "config.h"
+#include "encoding.h"
 #include "web.h"
 #include "log.h"
 #include "etc.h"
