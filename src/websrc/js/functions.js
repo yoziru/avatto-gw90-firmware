@@ -1745,101 +1745,97 @@ async function showZigbeeVersionInfo(firmwareType) {
 }
 
 
-// ========== i18next Multi-language Support ==========
+// ========== Lightweight i18n (MicroI18n) ==========
 const languages = [
 	{ value: "en", text: "🇬🇧 English" },
 	{ value: "zh", text: "🇨🇳 中文" },
 	{ value: "de", text: "🇩🇪 Deutsch" }
 ];
 
-// i18next 初始化
-let i18nReady = false;
-i18next.init(
-	{
-		lng: "en",
-		fallbackLng: "en",
-		resources: {
+class MicroI18n {
+	constructor(lang = "en") {
+		this.locale = languages.some((l) => l.value === lang) ? lang : "en";
+		this.vocabulary = {
 			en: {
-				translation: {
-					"l.st": "Status",
-					"l.ge": "General",
-					"l.ne": "Ethernet",
-					"l.zi": "Z2M/ZHA",
-					"l.se": "Security",
-					"l.mq": "MQTT",
-					"l.vp": "WireGuard",
-					"l.to": "Tools",
-					"l.ab": "About",
-					"l.lo": "Logout"
-				}
+				"l.st": "Status",
+				"l.ge": "General",
+				"l.ne": "Ethernet",
+				"l.zi": "Z2M/ZHA",
+				"l.se": "Security",
+				"l.mq": "MQTT",
+				"l.vp": "WireGuard",
+				"l.to": "Tools",
+				"l.ab": "About",
+				"l.lo": "Logout"
 			}
-		}
-	},
-	function (err, t) {
-		if (err) {
-			console.error("i18next initialization error:", err);
-			return;
-		}
-		i18nReady = true;
+		};
 	}
-);
 
-// Language detection and initialization
-document.addEventListener("DOMContentLoaded", function () {
-	const savedLang = localStorage.getItem("selected-lang");
-	const browserLang = navigator.language ? navigator.language.substring(0, 2) : navigator.userLanguage;
-	let preferredLang = savedLang || (languages.some((lang) => lang.value === browserLang) ? browserLang : "en");
-	
-	changeLanguage(preferredLang);
-	
-	// Initialize language selector
-	$(document).ready(() => {
-		const $dropdown = $("#langSel");
-		$dropdown.empty();
-		
-		languages.forEach(({ text, value }) =>
-			$dropdown.append(new Option(text, value))
-		);
-		
-		$dropdown.val(preferredLang);
-		
-		$dropdown.on("change", function () {
-			let selectedLang = $(this).val();
-			localStorage.setItem("selected-lang", selectedLang);
-			changeLanguage(selectedLang);
+	t(key, vars = {}) {
+		let text = (this.vocabulary[this.locale] && this.vocabulary[this.locale][key]) || key;
+		Object.keys(vars).forEach((v) => {
+			text = text.replace(`\${${v}}`, vars[v]);
 		});
-	});
-});
+		return text;
+	}
+
+	setLanguage(lng) {
+		if (languages.some((l) => l.value === lng)) {
+			this.locale = lng;
+		}
+	}
+}
+
+let microI18n;
+
+function initLanguage() {
+	const savedLang = localStorage.getItem("selected-lang");
+	const browserLang = (navigator.language || navigator.userLanguage || "").substring(0, 2);
+	const preferredLang = savedLang || (languages.some((l) => l.value === browserLang) ? browserLang : "en");
+	microI18n = new MicroI18n(preferredLang);
+
+	const sel = document.getElementById("langSel");
+	if (sel) {
+		languages.forEach(({ text, value }) => {
+			const opt = document.createElement("option");
+			opt.value = value;
+			opt.textContent = text;
+			sel.appendChild(opt);
+		});
+		sel.value = preferredLang;
+		sel.addEventListener("change", function () {
+			localStorage.setItem("selected-lang", this.value);
+			changeLanguage(this.value);
+		});
+	}
+
+	updateLocalizedContent();
+}
 
 // Localize all elements
 function localize() {
-	if (!i18nReady) return;
+	if (!microI18n) return;
 	const elements = document.querySelectorAll("[data-i18n]");
-	
+
 	elements.forEach((element) => {
 		const keys = element.getAttribute("data-i18n").split(";");
-		
+
 		keys.forEach((key) => {
 			if (key.trim()) {
 				if (key.includes("[")) {
-					// Attribute binding: key[attribute]
 					const parts = key.split("[");
 					const attr = parts[1].slice(0, -1);
-					element.setAttribute(attr, i18next.t(parts[0]));
+					element.setAttribute(attr, microI18n.t(parts[0]));
 				} else {
-					// Text content binding
 					const inputChild = element.querySelector("input");
 					if (inputChild) {
-						// Remove all nodes before the input
 						while (element.firstChild !== inputChild) {
 							element.removeChild(element.firstChild);
 						}
-						// Insert text node before input
-						const textNode = document.createTextNode(i18next.t(key));
+						const textNode = document.createTextNode(microI18n.t(key));
 						element.insertBefore(textNode, inputChild);
 					} else {
-						// Set text content directly
-						element.textContent = i18next.t(key);
+						element.textContent = microI18n.t(key);
 					}
 				}
 			}
@@ -1849,12 +1845,14 @@ function localize() {
 
 // Localize page title
 function localizeTitle(pathname) {
+	if (!microI18n) return;
 	for (let key in pages) {
 		if (pages[key].str === pathname) {
 			const titleKey = pages[key].titleKey;
 			if (titleKey) {
-				document.title = i18next.t(titleKey);
-				$("#pagenamePC").text(i18next.t(titleKey));
+				document.title = microI18n.t(titleKey);
+				const pn = document.getElementById("pagenamePC");
+				if (pn) pn.textContent = microI18n.t(titleKey);
 			}
 			break;
 		}
@@ -1869,7 +1867,8 @@ function updateLocalizedContent() {
 
 // Switch language
 function changeLanguage(lng) {
-	i18next.changeLanguage(lng, () => {
-		updateLocalizedContent();
-	});
+	microI18n.setLanguage(lng);
+	updateLocalizedContent();
 }
+
+document.addEventListener("DOMContentLoaded", initLanguage);
