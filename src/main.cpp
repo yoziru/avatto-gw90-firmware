@@ -92,12 +92,15 @@ void initLan()
     Serial.print(F("[LAN] Static Mask=")); Serial.println(ConfigSettings.ipMask);
   }
 
-  // Hardware reset LAN8720 PHY via GPIO5 to ensure clean state after ESP.restart()
+  // Hardware reset LAN8720 PHY via GPIO5 to ensure clean state after ESP.restart().
+  // CRITICAL: PHY reset must be released immediately before ETH.begin() so the
+  // 50MHz EMAC clock is already running when the PHY comes out of reset.
+  // A clockless PHY (current code had 300ms gap) enters an undefined state.
   pinMode(ETH_POWER_PIN_ALTERNATIVE_1, OUTPUT);
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, LOW);
-  delay(50);
+  delay(200);
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, HIGH);
-  delay(300);
+  // No delay here — ETH.begin() starts the EMAC clock immediately
 
   if (ETH.begin(ETH_ADDR_1, ETH_POWER_PIN_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_TYPE_1, ETH_CLK_MODE_1, ETH_POWER_PIN_ALTERNATIVE_1))
   {
@@ -1155,6 +1158,10 @@ void setupCoordinatorMode()
 
 void setup()
 {
+  // PHY warm-restart workaround: ESP.restart() doesn't drop the 3.3V rail (esp. PoE),
+  // so LAN8720 POR never fires. A 350ms delay at startup lets strapping pins settle.
+  delay(350);
+
   Serial.begin(115200); // todo ifdef DEBUG
   delay(500);
   Serial.println("\n\n========== DEVICE STARTING ==========");
@@ -1628,12 +1635,12 @@ void factory_initLan()
   Serial.print(F(" PWR_ALT=")); Serial.println(ETH_POWER_PIN_ALTERNATIVE_1);
   Serial.print(F("[LAN] DHCP=")); Serial.println(ConfigSettings.dhcp);
 
-  // Hardware reset LAN8720 PHY via GPIO5 to ensure clean state after ESP.restart()
+  // Hardware reset LAN8720 PHY via GPIO5 (same fix as initLan())
   pinMode(ETH_POWER_PIN_ALTERNATIVE_1, OUTPUT);
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, LOW);
-  delay(50);
+  delay(200);
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, HIGH);
-  delay(300);
+  // No delay — EMAC clock starts inside ETH.begin()
 
   if (ETH.begin(ETH_ADDR_1, ETH_POWER_PIN_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_TYPE_1, ETH_CLK_MODE_1, ETH_POWER_PIN_ALTERNATIVE_1))
   {
