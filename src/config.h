@@ -7,20 +7,20 @@
 
 // #define DEBUG
 // ESP32 PINS TO CONTROL LAN8720
-#define ETH_CLK_MODE_1                ETH_CLOCK_GPIO17_OUT       // 8720时钟引脚：GPIO17输出时钟
-#define ETH_POWER_PIN_ALTERNATIVE_1   5                          // 8720复位引脚
-#define ETH_POWER_PIN_1               -1                         // 未用
-#define ETH_TYPE_1                    ETH_PHY_LAN8720            // 8720 PHY类型
-#define ETH_ADDR_1                    0                          // 8720 PHY地址：悬空，内部弱下拉
-#define ETH_MDC_PIN_1                 23                         // 8720 MDC引脚：GPIO23
-#define ETH_MDIO_PIN_1                18                         // 8720 MDO引脚：GPIO18
+#define ETH_CLK_MODE_1                ETH_CLOCK_GPIO17_OUT       // 8720 clock pin: GPIO17 outputs clock
+#define ETH_POWER_PIN_ALTERNATIVE_1   5                          // 8720 reset pin
+#define ETH_POWER_PIN_1               -1                         // Not used
+#define ETH_TYPE_1                    ETH_PHY_LAN8720            // 8720 PHY type
+#define ETH_ADDR_1                    0                          // 8720 PHY address: floating, internal weak pull-down
+#define ETH_MDC_PIN_1                 23                         // 8720 MDC pin: GPIO23
+#define ETH_MDIO_PIN_1                18                         // 8720 MDIO pin: GPIO18
 // ESP32 PINS TO CONTROL CC2652P
-#define CC2652P_RST                   16                         // CC2652P 复位引脚
-#define CC2652P_FLASH                 32                         // CC2652P 片选引脚
-#define CC2652P_RXD                   36                         // CC2652P 串口接收引脚
-#define CC2652P_TXD                   4                          // CC2652P 串口发送引脚
-#define BTN                           35                         // BTN 按键
-#define MODE_SWITCH                   33                         // MODE SWITCH 按键
+#define CC2652P_RST                   16                         // CC2652P reset pin
+#define CC2652P_FLASH                 32                         // CC2652P chip select pin
+#define CC2652P_RXD                   36                         // CC2652P serial RX pin
+#define CC2652P_TXD                   4                          // CC2652P serial TX pin
+#define BTN                           35                         // BTN button
+#define MODE_SWITCH                   33                         // MODE SWITCH button
 
 
 #define DEBOUNCE_TIME 70
@@ -30,7 +30,7 @@
 
 // CC2652 settings (FOR BSL VALIDATION!)
 #define NEED_BSL_PIN 15  // CC2652 pin number (FOR BSL VALIDATION!)
-#define NEED_BSL_LEVEL 0 // 0-LOW 1-HIGH
+#define NEED_BSL_LEVEL 0 // 0 = LOW, 1 = HIGH
 
 const int16_t overseerInterval = 5 * 1000; // check lan or wifi connection every 5sec
 const uint8_t overseerMaxRetry = 4;       // 5x4 = 20sec for PHY stability
@@ -40,9 +40,9 @@ const uint8_t MAX_SOCKET_CLIENTS = 5;
 
 enum COORDINATOR_MODE_t : uint8_t
 {
-  COORDINATOR_MODE_LAN,                // LAN模式
-  COORDINATOR_MODE_WIFI,               // WIFI模式
-  COORDINATOR_MODE_USB                 // USB模式
+  COORDINATOR_MODE_LAN,                // LAN mode
+  COORDINATOR_MODE_WIFI,               // WiFi mode
+  COORDINATOR_MODE_USB                 // USB mode
 };
 
 extern const char *coordMode;// coordMode node name

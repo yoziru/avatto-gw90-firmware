@@ -300,7 +300,7 @@ bool IntelHex::_munchLine(void (*parseCallback)(uint32_t address, uint8_t len, u
         return true; // Continue parsing
     }
 
-    // === 第一步：校验行完整性 ===
+    // === Step 1: Validate line integrity ===
     uint8_t sum = 0;
     for (int i = 1; i < line.length(); i += 2)
     {
@@ -312,7 +312,7 @@ bool IntelHex::_munchLine(void (*parseCallback)(uint32_t address, uint8_t len, u
         return false;
     }
 
-    // === 第二步：处理文件结束符 ===
+    // === Step 2: Handle end-of-file marker ===
     if (line == ":00000001FF")
     {
         DEBUG_PRINTLN("File last line found");
@@ -320,53 +320,53 @@ bool IntelHex::_munchLine(void (*parseCallback)(uint32_t address, uint8_t len, u
         return true;
     }
 
-    // === 第三步：统一解析记录 ===
+    // === Step 3: Parse record uniformly ===
     uint8_t dataLen = strtol(line.substring(1, 3).c_str(), nullptr, 16);
     uint16_t addressLow = strtol(line.substring(3, 7).c_str(), nullptr, 16);
     uint8_t recordType = strtol(line.substring(7, 9).c_str(), nullptr, 16);
 
-    // 初始化当前记录的完整地址
+    // Initialize full address for this record
     uint32_t fullAddress = addressLow;
 
-    // 根据记录类型更新全局偏移量 [_offset_high](file://e:\Project\PROE\GitCode\PREGW90\lib\IntelHex\src\IntelHex.h#L36-L36)
-    if (recordType == 4) // 扩展线性地址记录
+    // Update global offset based on record type
+    if (recordType == 4) // Extended linear address record
     {
         _offset_high = ((uint32_t)strtol(line.substring(9, 13).c_str(), nullptr, 16)) << 16;
     }
-    else if (recordType == 2) // 扩展段地址记录
+    else if (recordType == 2) // Extended segment address record
     {
         _offset_high = ((uint32_t)strtol(line.substring(9, 13).c_str(), nullptr, 16)) << 4;
     }
 
-    // 应用全局偏移量得到最终地址
+    // Apply global offset to get final address
     fullAddress += _offset_high;
 
-    // === 第四步：为 BIN 大小计算同步更新状态 ===
-    // 使用独立的状态变量 _bin_extended_addr
-    if (recordType == 0x02) { // 扩展段地址记录
+    // === Step 4: Update BIN size calculation state ===
+    // Uses independent state variable _bin_extended_addr
+    if (recordType == 0x02) { // Extended segment address record
         _bin_extended_addr = ((uint32_t)strtol(line.substring(9, 13).c_str(), nullptr, 16)) << 4;
-    } else if (recordType == 0x04) { // 扩展线性地址记录
+    } else if (recordType == 0x04) { // Extended linear address record
         _bin_extended_addr = ((uint32_t)strtol(line.substring(9, 13).c_str(), nullptr, 16)) << 16;
     }
 
-    if (recordType == 0x00) { // 数据记录
+    if (recordType == 0x00) { // Data record
         uint32_t binFullAddress = _bin_extended_addr + addressLow;
         uint32_t endAddress = binFullAddress + dataLen;
         if (endAddress > _bin_max_address) {
             _bin_max_address = endAddress;
         }
     }
-    // 注意: 对于 0x02 和 0x04 记录，[_offset_high](file://e:\Project\PROE\GitCode\PREGW90\lib\IntelHex\src\IntelHex.h#L36-L36) 已经在上面更新，
-    // 因此 [_bin_extended_addr](file://e:\Project\PROE\GitCode\PREGW90\lib\IntelHex\src\IntelHex.h#L46-L46) 的逻辑被 [_offset_high](file://e:\Project\PROE\GitCode\PREGW90\lib\IntelHex\src\IntelHex.h#L36-L36) 完全替代，无需额外处理。
+    // Note: For 0x02 and 0x04 records, _offset_high is already updated above,
+    // so _bin_extended_addr logic is fully replaced by _offset_high, no extra handling needed.
 
-    // === 第五步：提取数据并执行回调 ===
+    // === Step 5: Extract data and invoke callback ===
     uint8_t data[100] = {0};
     for (uint8_t i = 0; i < dataLen && i < sizeof(data); i++)
     {
         data[i] = strtol(line.substring(9 + i * 2, 11 + i * 2).c_str(), nullptr, 16);
     }
 
-    // 检查 BSL 配置 (使用统一的 `fullAddress`)
+    // Check BSL config (using unified `fullAddress`)
     for (int i = 0; i < ELEMENTCOUNT(CCFG_ADDRESS); i++)
     {
         if (fullAddress <= CCFG_ADDRESS[i] && fullAddress + dataLen > CCFG_ADDRESS[i] + 4)
@@ -378,7 +378,7 @@ bool IntelHex::_munchLine(void (*parseCallback)(uint32_t address, uint8_t len, u
         }
     }
 
-    // 调用用户回调 (使用统一的 `fullAddress`)
+    // Invoke user callback (using unified `fullAddress`)
     size_t currentPosition = _file.position();
     parseCallback(fullAddress, dataLen, data, currentPosition, _totalSize);
 

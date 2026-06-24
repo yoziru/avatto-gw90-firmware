@@ -410,11 +410,11 @@ function apiGetPage(page, doneCall) {
 								$(this).text(valueToSet);
 							}
 							
-							// 处理设备温度，动态更新进度条
+							// Handle device temperature, dynamically update progress bar
 							if (property === 'deviceTemp') {
 								const tempValue = parseFloat(valueToSet);
 								if (!isNaN(tempValue)) {
-									// 计算百分比（最高温度60°C）
+									// Calculate percentage (max temperature 90°C)
 									const percentage = Math.min((tempValue / 90) * 100, 100);
 									$('#prgTemp').css('width', percentage + '%');
 								}
@@ -442,7 +442,7 @@ function apiGetPage(page, doneCall) {
 				}
 			}
 
-			// 根据 operationalMode 动态切换设备运行模式图片
+			// Dynamically switch device operation mode image based on operationalMode
 			if (values.operationalMode) {
 				const mode = values.operationalMode.toLowerCase();
 				// let imgSrc = "device_operating_lan.png";
@@ -543,17 +543,17 @@ function espFlashGitWait() {
 }
 
 function zbFlashGitWait() {
-	// ✅ 检查是否有固件信息
+	// ✅ Check if firmware info is available
 	if (!latestZbFirmware) {
 		return;
 	}
 	console.log("Starting Zigbee update from Git... Please wait patiently!");
-	// ✅ 直接开始升级（使用轮询模式，不依赖 EventSource）
+	// ✅ Start upgrade directly (using polling mode, not relying on EventSource)
 	startZbFlashFromGit();
 }
 
 
-// ✅ 全局变量追踪
+// ✅ Global variable tracking
 let zbEventSource = null;
 let zbEventConnectTimeout = null;
 let originalRefreshInterval = null;
@@ -578,16 +578,16 @@ function startZbFlashFromGit() {
 		$("#bar_zb").css("width", "0%");
 		$("#updButton_zb").prop("disabled", true);
 		
-		// ✅ 先建立 EventSource 连接
+		// ✅ First establish EventSource connection
 		ZBfwStartEvents();
 		
-		// ✅ 等待网络连接完全释放
+		// ✅ Wait for network connection to fully release
 		setTimeout(function() {
-			// ✅ 直接使用原始固件 URL
+			// ✅ Use original firmware URL directly
 			let firmwareUrl = latestZbFirmware.link;
 			console.log("📦 Firmware URL:", firmwareUrl);
 			
-			// ✅ 检查 URL 是否为空
+			// ✅ Check if URL is empty
 			if (!firmwareUrl) {
 				console.error("❌ Firmware URL is empty!");
 				$("#prg_zb").html('<span style="color:red">❌ Invalid firmware link</span>');
@@ -595,7 +595,7 @@ function startZbFlashFromGit() {
 				return;
 			}
 			
-			// ✅ 直接开始烧录（使用原始 URL）
+			// ✅ Start flashing directly (using original URL)
 			startFlashProcess(firmwareUrl);
 			
 		}, 2000);
@@ -642,7 +642,7 @@ function ESPfwStartEvents() {
 	espEventSource.addEventListener('ESP_FW_prgs', function (e) {
 
 		const val = e.data + "%";
-        console.log("[ESP_FW_prgs] " + val); // 加个前缀方便识别
+        console.log("[ESP_FW_prgs] " + val); // Add prefix for easy identification
 
 		$('#prg').html('progress: ' + Math.round(e.data) + '%');
 		$('#bar').css('width', Math.round(e.data) + '%');
@@ -667,7 +667,7 @@ function ESPfwStartEvents() {
 
 
 function ZBfwStartEvents() {
-    // 关闭旧的连接
+    // Close old connection
     if (zbEventSource) {
         zbEventSource.close();
         zbEventSource = null;
@@ -679,7 +679,7 @@ function ZBfwStartEvents() {
     
     zbEventSource = new EventSource('/events');
     console.log("Events try");
-    //15S超时
+    // 15s timeout
     zbEventConnectTimeout = setTimeout(function() {
         console.log("⏰ EventSource connection timeout");
         $("#prg_zb").html('<span style="color:orange">⚠️ EventSource timeout</span>');
@@ -714,7 +714,7 @@ function ZBfwStartEvents() {
         }
     }, false);
 
-    // ← 下载进度事件
+    // ← Download progress event
     zbEventSource.addEventListener('ZB_FW_downloading', function (e) {
 		const percentage = parseInt(e.data);
 		console.log(`📥 Downloaded: ${percentage}%`); 
@@ -728,7 +728,7 @@ function ZBfwStartEvents() {
 		}
 	}, false);
 
-    // ← 烧录进度事件
+    // ← Flash progress event
     zbEventSource.addEventListener('ZB_FW_flashing', function (e) {
 		const percentage = Math.min(parseInt(e.data), 100);
 		console.log("⚡ Flashing progress:", percentage + "%");
@@ -752,18 +752,18 @@ function ZBfwStartEvents() {
 		}
 	}, false);
 
-    // ← 信息事件 - 关键修改：收到 Validating 立即切换
+    // ← Info event - key change: switch immediately when Validating is received
     zbEventSource.addEventListener('ZB_FW_info', function (e) {
         console.log("ℹ️ Info:", e.data);
         
-        // ← 收到"Validating firmware"时，立即切换到烧录阶段
+        // ← When "Validating firmware" is received, immediately switch to flashing phase
         if (e.data.includes("Validating")) {
             $('#prg_zb').html('⚡ Validating and flashing...');
             $('#bar_zb').css('width', '0%');
         }
     }, false);
 
-    // ← 错误事件
+    // ← Error event
     zbEventSource.addEventListener('ZB_FW_err', function (e) {
         console.error("❌ Error:", e.data);
         $('#prg_zb').html('<span style="color:red">❌ ' + e.data + '</span>');
@@ -882,13 +882,13 @@ function modalConstructor(type, params) {
 					click: function () {
 						let fwUrl = coordinatorFw.link;
 						
-						// ← 确保是 raw 链接
+						// ← Ensure it's a raw link
 						if (fwUrl.includes("github.com")) {
 							fwUrl = fwUrl.replace("github.com", "raw.githubusercontent.com")
 										.replace("/blob/", "/");
 						}
 						
-						// ← URL 编码（处理特殊字符）
+						// ← URL encoding (handle special characters)
 						fwUrl = encodeURIComponent(fwUrl);
 						
 						console.log("🚀 Flash URL:", decodeURIComponent(fwUrl));
@@ -1011,7 +1011,7 @@ function modalConstructor(type, params) {
 				}
 			}).appendTo(modalBtns);
 			break;
-		//选择zigbee固件类型
+		// Select zigbee firmware type
 		case "zbFirmwareSelect":
 			$(headerText).text("Select Zigbee Firmware Type");
 			$(modalBody).html("");
@@ -1051,7 +1051,7 @@ function modalConstructor(type, params) {
 				}
 			}).appendTo("#zbFirmwareSelectRow");
 			break;
-		//显示zigbee固件信息
+		// Display zigbee firmware info
 		case "zbVersionInfo":
 			$(headerText).text("Latest Zigbee Firmware");
 			$(modalBody).html(params.chglog);
@@ -1060,7 +1060,7 @@ function modalConstructor(type, params) {
 				html: params.text
 			}).prependTo(modalBody);
 			
-			// ✅ 添加空值检查
+			// ✅ Add null check
 			if (latestZbFirmware) {
 				const localVer = latestZbFirmware.localVersion || "unknown";
 				const remoteVer = latestZbFirmware.version || "unknown";
@@ -1263,24 +1263,24 @@ function updateProgress(targetValue) {
     const root = document.documentElement;
     const textEl = document.querySelector(".percent-num");
 
-    // 1. 立即修改 CSS 变量，触发圆环和波浪的 CSS Transition 动画
+    // 1. Immediately modify CSS variable to trigger ring and wave CSS transition animation
     root.style.setProperty("--percent", targetValue);
 
-    // 2. 根据进度值显示相应的文案而不是百分比
-    const duration = 2000; // 动画持续时间，需与 CSS 中的 transition 时间对应
+    // 2. Show status text instead of percentage based on progress value
+    const duration = 2000; // Animation duration, must correspond to CSS transition time
     const startTime = performance.now();
 
     function animate(currentTime) {
       const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1); // 进度 0-1
+      const progress = Math.min(elapsed / duration, 1); // Progress 0-1
 
-      // 显示状态文案而不是百分比
+      // Show status text instead of percentage
       if (targetValue === 0) {
-        textEl.innerText = "扫描中";
+        textEl.innerText = "Scanning";
       } else if (targetValue === 100) {
-        textEl.innerText = "完成";
+        textEl.innerText = "Done";
       } else {
-        textEl.innerText = "扫描中";
+        textEl.innerText = "Scanning";
       }
 
       if (progress < 1) {
@@ -1292,12 +1292,12 @@ function updateProgress(targetValue) {
 }
 
 function getWifiList() {
-	// 扫描开始：进度为0，显示'扫描中'
+	// Scan start: progress at 0, show 'Scanning'
 	updateProgress(0);
-	// 禁用扫描按钮，防止重复点击
+	// Disable scan button to prevent repeated clicks
 	$("#wifiScanBtn").prop("disabled", true);
 	var timerId = setInterval(() => {
-		// 在扫描过程中持续显示'扫描中'并循环动画
+		// Continuously show 'Scanning' and loop animation during scan
 		updateProgress(50);
 	}, 500);
 	$("#collapseWifiPass").collapse("hide");
@@ -1311,12 +1311,12 @@ function getWifiList() {
 					alert("WiFi networks not found");
 					clearInterval(timerId);
 					clearInterval(tmrUpdWifi);  //  
-					// WiFi未找到时也要启用按钮
+					// Enable button even when WiFi not found
 					$("#wifiScanBtn").prop("disabled", false);
 				} else {
 					if (data.wifi.length > 0) {
 						clearInterval(timerId);
-						// 扫描完成：进度为100，显示'完成'
+						// Scan complete: progress at 100, show 'Done'
 						updateProgress(100);
 						$("#wifiTable").empty();
 						data.wifi.forEach((elem) => {
@@ -1359,7 +1359,7 @@ function getWifiList() {
 						});
 						$("#wifiScanPreloader").addClass(classHide);
 						clearInterval(tmrUpdWifi);
-						// 扫描完成：重新启用扫描按钮
+						// Scan complete: re-enable scan button
 						$("#wifiScanBtn").prop("disabled", false);
 						$(".ssidSelector").click(function (elem) {
 							$("#WIFIssid").val(elem.currentTarget.id);
@@ -1369,7 +1369,7 @@ function getWifiList() {
 					} else {
 						$("#wifiScanPreloader").addClass(classHide);
 						$("#wifiScanButton").removeClass(classHide);
-						// 无WiFi时也要启用按钮
+						// Enable button even when no WiFi found
 						$("#wifiScanBtn").prop("disabled", false);
 					}
 				}
@@ -1464,7 +1464,7 @@ function readfile(file) {
 }
 
 function logRefresh(ms) {
-    // ← 烧录期间暂停日志刷新
+    // ← Pause log refresh during firmware update
     if ($("#prg_zb").length && $("#bar_zb").css("width") !== "0%") {
         console.log("⏸️ Pausing log refresh during firmware update");
         return;
@@ -1482,7 +1482,7 @@ function logRefresh(ms) {
 }
 
 async function fetchData(url, isJson = true) {
-    // 为 JSON 请求添加时间戳，防止缓存
+    // Add timestamp to JSON requests to prevent caching
     if (isJson) {
         const separator = url.includes('?') ? '&' : '?';
         url = url + separator + '_t=' + Date.now();
@@ -1553,8 +1553,8 @@ function checkLatestESPrelease() {
 }
 
 
-// ========== Zigbee 版本信息获取函数 ==========
-// 简化后：只使用主 URL
+// ========== Zigbee Version Info Functions ==========
+// Simplified: use only the main URL
 async function processResponsesZB() {
     try {
         let [fwData, localVerData] = await Promise.all([
@@ -1578,9 +1578,9 @@ async function processResponsesZB() {
 
 async function processResponsesZB_GitInfo() {
 	try {
-		// 获取 Zigbee 固件 JSON 数据（单个对象，不是数组）
+		// Get Zigbee firmware JSON data (single object, not array)
 		let jsonUrl = zbFwInfoUrl;
-		// 获取 Zigbee 本地版本
+		// Get Zigbee local version
 		let textUrl = '/api?action=1&param=zbRev';
 
 		let [fwData, localVerData] = await Promise.all([
@@ -1588,15 +1588,15 @@ async function processResponsesZB_GitInfo() {
 			fetchData(textUrl, false)
 		]);
 
-		// fwData 是单个对象，直接使用
+		// fwData is a single object, use directly
 		let coordinatorFw = fwData;
 		
-		// 兼容处理：如果是数组，取第一个
+		// Compatibility: if it's an array, take the first one
 		if (Array.isArray(fwData)) {
 			coordinatorFw = fwData[0];
 		}
 
-		// 构造与 GitHub Releases API 相同的格式
+		// Construct format matching GitHub Releases API
 		let jsonData = {
 			tag_name: coordinatorFw ? coordinatorFw.version : "unknown",
 			body: coordinatorFw ? (coordinatorFw.firmwareDesc || "No changelog available") : "No firmware information available",
@@ -1615,12 +1615,12 @@ async function processResponsesZB_GitInfo() {
 	}
 }
 
-// ✅ 添加全局标志，防止重复请求
+// ✅ Add global flag to prevent duplicate requests
 let isZbVersionLoading = false;
 let latestZbFirmware = null;
 
 async function showZigbeeVersionInfo(firmwareType) {
-	// ✅ 防止重复点击
+	// ✅ Prevent duplicate clicks
 	if (isZbVersionLoading) {
 		console.log("Already loading, ignore...");
 		return;
@@ -1628,7 +1628,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 	isZbVersionLoading = true;
 	
 	try {
-		// ✅ 只显示一次模态框（加载状态）
+		// ✅ Show modal only once (loading state)
 		modalConstructor("zbVersionInfo", { 
 			text: "Loading firmware information...", 
 			chglog: "<div class='spinner-border text-primary' role='status'></div> Loading..." 
@@ -1654,7 +1654,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 		console.log('🔢 Zigbee localVerData:', localVerData);
 		console.log('🎯 Selected firmwareType:', firmwareType);
 
-		// ✅ 检查数据是否为空
+		// ✅ Check if data is empty
 		if (!fwData || (Array.isArray(fwData) && fwData.length === 0)) {
 			$(modalBody).html(
 				"<div class='alert alert-warning'>" +
@@ -1666,14 +1666,14 @@ async function showZigbeeVersionInfo(firmwareType) {
 			return;
 		}
 
-		// 过滤固件：匹配 coordinator 或 router
-		// 第一个匹配项
+		// Filter firmware: match coordinator or router
+		// First match
 		let selectedFw = Array.isArray(fwData) ? fwData.find(fw => {
 			const name = fw.name ? fw.name.toLowerCase() : "";
 			const fwType = fw.firmwareType ? fw.firmwareType.toLowerCase() : "";
 			
 			if (firmwareType === "coordinator") {
-				// 匹配名称含 "coordinator" 或类型为 "zigbee"（且非 router）
+				// Match name containing "coordinator" or type "zigbee" (and not router)
 				return name.includes("coordinator") && (fwType === "zigbee");
 			} else if (firmwareType === "router") {
 				return name.includes("router") && (fwType === "zigbee");
@@ -1699,14 +1699,14 @@ async function showZigbeeVersionInfo(firmwareType) {
 			return;
 		}
 
-		// ✅ 保存固件信息到全局变量
+		// ✅ Save firmware info to global variable
 		latestZbFirmware = {
 			...selectedFw,
 			localVersion: localVerData ? localVerData.trim() : "unknown"
 		};
 		console.log('💾 Saved firmware info:', latestZbFirmware);
 
-		// 构造显示内容
+		// Build display content
 		const text = "Local version v" + latestZbFirmware.localVersion + 
 			". GitHub version " + latestZbFirmware.version + 
 			", File: " + latestZbFirmware.name + 
@@ -1722,7 +1722,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 				<li><strong>Dongle Type:</strong> ${latestZbFirmware.dongleType || "N/A"}</li>
 			</ul>`;
 
-		// ✅ 直接更新 DOM
+		// ✅ Update DOM directly
 		$(modalBody).html(chglog);
 		$('<div>', {
 			"class": "alert alert-info",
@@ -1739,20 +1739,20 @@ async function showZigbeeVersionInfo(firmwareType) {
 			"</div>"
 		);
 	} finally {
-		// ✅ 重置加载标志
+		// ✅ Reset loading flag
 		isZbVersionLoading = false;
 	}
 }
 
 
-// ========== 多语言支持 i18next ==========
+// ========== i18next Multi-language Support ==========
 const languages = [
 	{ value: "en", text: "🇬🇧 English" },
 	{ value: "zh", text: "🇨🇳 中文" },
 	{ value: "de", text: "🇩🇪 Deutsch" }
 ];
 
-// i18next 初始化
+// i18next initialization
 i18next.use(i18nextHttpBackend).init(
 	{
 		lng: "en",
@@ -1768,7 +1768,7 @@ i18next.use(i18nextHttpBackend).init(
 	}
 );
 
-// 语言检测和初始化
+// Language detection and initialization
 document.addEventListener("DOMContentLoaded", function () {
 	const savedLang = localStorage.getItem("selected-lang");
 	const browserLang = navigator.language ? navigator.language.substring(0, 2) : navigator.userLanguage;
@@ -1776,7 +1776,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	
 	changeLanguage(preferredLang);
 	
-	// 初始化语言选择器
+	// Initialize language selector
 	$(document).ready(() => {
 		const $dropdown = $("#langSel");
 		$dropdown.empty();
@@ -1795,7 +1795,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 });
 
-// 本地化所有元素
+// Localize all elements
 function localize() {
 	const elements = document.querySelectorAll("[data-i18n]");
 	
@@ -1805,23 +1805,23 @@ function localize() {
 		keys.forEach((key) => {
 			if (key.trim()) {
 				if (key.includes("[")) {
-					// 属性绑定：key[attribute]
+					// Attribute binding: key[attribute]
 					const parts = key.split("[");
 					const attr = parts[1].slice(0, -1);
 					element.setAttribute(attr, i18next.t(parts[0]));
 				} else {
-					// 文本内容绑定
+					// Text content binding
 					const inputChild = element.querySelector("input");
 					if (inputChild) {
-						// 移除 input 之前的所有节点
+						// Remove all nodes before the input
 						while (element.firstChild !== inputChild) {
 							element.removeChild(element.firstChild);
 						}
-						// 在 input 前插入文本节点
+						// Insert text node before input
 						const textNode = document.createTextNode(i18next.t(key));
 						element.insertBefore(textNode, inputChild);
 					} else {
-						// 直接设置文本内容
+						// Set text content directly
 						element.textContent = i18next.t(key);
 					}
 				}
@@ -1830,7 +1830,7 @@ function localize() {
 	});
 }
 
-// 本地化页面标题
+// Localize page title
 function localizeTitle(pathname) {
 	for (let key in pages) {
 		if (pages[key].str === pathname) {
@@ -1844,13 +1844,13 @@ function localizeTitle(pathname) {
 	}
 }
 
-// 更新所有本地化内容
+// Update all localized content
 function updateLocalizedContent() {
 	localizeTitle(window.location.pathname);
 	localize();
 }
 
-// 切换语言
+// Switch language
 function changeLanguage(lng) {
 	i18next.changeLanguage(lng, () => {
 		updateLocalizedContent();

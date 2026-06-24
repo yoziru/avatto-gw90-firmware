@@ -1,15 +1,15 @@
 /*
- * AVATTO GW90-TI 产测固件
- * ========================
+ * AVATTO GW90-TI Factory Test Firmware
+ * =====================================
  * 
- * 功能: ESP32-SOLO1 + CC2652P + LAN8720 全硬件测试
+ * Description: ESP32-SOLO1 + CC2652P + LAN8720 full hardware test
  * 
- * 串口协议 (115200, 8N1):
- *   上位机发送命令 → 设备回复 JSON 结果
- *   命令格式: "CMD:xxx\n"
- *   回复格式: "RSP:{json}\n"
+ * Serial protocol (115200, 8N1):
+ *   Host sends command → Device replies with JSON result
+ *   Command format: "CMD:xxx\n"
+ *   Reply format: "RSP:{json}\n"
  * 
- * 该文件作为独立产测固件, 不依赖原项目 web/mqtt 模块
+ * This file is a standalone factory test firmware, independent of the original project's web/mqtt modules
  */
 
 #include <Arduino.h>
@@ -21,8 +21,8 @@
 #include <CCTools.h>
 #include <esp_wifi.h>
 
-// ============ 引脚定义 (与正式固件一致) ============
-// --- LAN8720 以太网 PHY ---
+// ============ Pin Definitions (consistent with production firmware) ============
+// --- LAN8720 Ethernet PHY ---
 #define ETH_CLK_MODE_1          ETH_CLOCK_GPIO17_OUT
 #define ETH_POWER_PIN_ALT       5
 #define ETH_POWER_PIN_1         -1
@@ -37,19 +37,19 @@
 #define CC2652P_RXD             36
 #define CC2652P_TXD             4
 
-// --- 用户接口 ---
+// --- User Interface ---
 #define BTN                     35
 #define MODE_SWITCH             33
-#define LED_USB                 12    // 红色 LED
-#define LED_PWR                 14    // 蓝色 LED
+#define LED_USB                 12    // Red LED
+#define LED_PWR                 14    // Blue LED
 
-// --- 测试参数 ---
+// --- Test Parameters ---
 #define TEST_TIMEOUT_MS         30000
 #define SERIAL_BAUD             115200
 #define LITTLEFS_MOUNT_POINT    "/lfs2"
 #define FACTORY_MARK_FILE       "/config/factory_test.json"
 
-// ============ 测试结果结构 ============
+// ============ Test Result Structure ============
 struct TestResult {
     bool passed;
     String detail;
@@ -78,19 +78,19 @@ struct AllTestResults {
 
 AllTestResults results;
 
-// ============ 以太网状态 ============
+// ============ Ethernet State ============
 volatile bool ethConnected = false;
 volatile bool ethGotIP = false;
 String ethIPAddr = "";
 
-// ============ ZNP 命令常量 ============
+// ============ ZNP Command Constants ============
 const byte zigLed1On[]  = {0xFE, 0x02, 0x27, 0x0A, 0x01, 0x01, 0x2F};
 const byte zigLed1Off[] = {0xFE, 0x02, 0x27, 0x0A, 0x01, 0x00, 0x2E};
 const byte cmdSysVersion[] = {0xFE, 0x00, 0x21, 0x02, 0x23};
 
 CCTools CCTool(Serial2, CC2652P_RST, CC2652P_FLASH);
 
-// ============ 工具函数 ============
+// ============ Utility Functions ============
 
 void sendResponse(const char* testName, bool passed, const String& detail) {
     DynamicJsonDocument doc(512);
@@ -113,7 +113,7 @@ void sendSummary() {
     
     JsonArray failures = doc.createNestedArray("failures");
     
-    // 列出失败项
+    // List failed items
     struct { const char* name; TestResult* r; } items[] = {
         {"esp32_boot", &results.esp32_boot},
         {"flash_rw", &results.flash_rw},
@@ -149,7 +149,7 @@ void updateCount(TestResult& r) {
     else results.total_fail++;
 }
 
-// ============ 以太网事件处理 ============
+// ============ Ethernet Event Handler ============
 
 void ethEvent(WiFiEvent_t event) {
     switch (event) {
@@ -169,9 +169,9 @@ void ethEvent(WiFiEvent_t event) {
     }
 }
 
-// ============ 各测试项实现 ============
+// ============ Test Item Implementations ============
 
-// 测试 1: ESP32 基本启动
+// Test 1: ESP32 Basic Boot
 TestResult test_esp32_boot() {
     TestResult r;
     uint32_t chipId = ESP.getChipModel() ? 1 : 0;
@@ -186,7 +186,7 @@ TestResult test_esp32_boot() {
     return r;
 }
 
-// 测试 2: Flash 读写 (LittleFS)
+// Test 2: Flash Read/Write (LittleFS)
 TestResult test_flash_rw() {
     TestResult r;
     
@@ -196,11 +196,11 @@ TestResult test_flash_rw() {
         return r;
     }
     
-    // 写入测试数据
+    // Write test data
     const char* testFile = "/config/factory_rw_test.tmp";
     const char* testData = "AVATTO_GW90_FACTORY_TEST_20260225";
     
-    // 确保目录存在
+    // Ensure directory exists
     LittleFS.mkdir("/config");
     
     File wf = LittleFS.open(testFile, FILE_WRITE);
@@ -212,7 +212,7 @@ TestResult test_flash_rw() {
     wf.print(testData);
     wf.close();
     
-    // 读回验证
+    // Read back and verify
     File rf = LittleFS.open(testFile, FILE_READ);
     if (!rf) {
         r.passed = false;
@@ -222,10 +222,10 @@ TestResult test_flash_rw() {
     String readBack = rf.readString();
     rf.close();
     
-    // 清理
+    // Cleanup
     LittleFS.remove(testFile);
     
-    // 获取文件系统信息
+    // Get filesystem info
     size_t totalBytes = LittleFS.totalBytes();
     size_t usedBytes = LittleFS.usedBytes();
     
@@ -236,7 +236,7 @@ TestResult test_flash_rw() {
     return r;
 }
 
-// 测试 3: MAC 地址
+// Test 3: MAC Address
 TestResult test_mac_addr() {
     TestResult r;
     uint64_t mac = ESP.getEfuseMac();
@@ -254,7 +254,7 @@ TestResult test_mac_addr() {
             macBytes[0], macBytes[1], macBytes[2],
             macBytes[3], macBytes[4], macBytes[5]);
     
-    // 检查 MAC 不是全0或全F
+    // Check MAC is not all-0 or all-F
     bool allZero = (mac == 0);
     bool allFF = (mac == 0xFFFFFFFFFFFF);
     
@@ -263,16 +263,16 @@ TestResult test_mac_addr() {
     return r;
 }
 
-// 测试 4: CPU 温度
+// Test 4: CPU Temperature
 TestResult test_cpu_temp() {
     TestResult r;
     
-    // ESP32 温度传感器需要 WiFi 开启
+    // ESP32 temperature sensor requires WiFi to be enabled
     if (WiFi.getMode() == WIFI_MODE_NULL || WiFi.getMode() == WIFI_OFF) {
         WiFi.mode(WIFI_STA);
     }
     
-    // 使用内部温度传感器
+    // Use internal temperature sensor
     #ifdef __cplusplus
     extern "C" {
     #endif
@@ -288,7 +288,7 @@ TestResult test_cpu_temp() {
     return r;
 }
 
-// 测试 5: WiFi 扫描
+// Test 5: WiFi Scan
 TestResult test_wifi_scan() {
     TestResult r;
     
@@ -296,7 +296,7 @@ TestResult test_wifi_scan() {
     WiFi.disconnect();
     delay(100);
     
-    int n = WiFi.scanNetworks(false, false, false, 3000); // 3秒超时
+    int n = WiFi.scanNetworks(false, false, false, 3000); // 3s timeout
     
     if (n > 0) {
         r.passed = true;
@@ -311,7 +311,7 @@ TestResult test_wifi_scan() {
     return r;
 }
 
-// 测试 6: 以太网 (LAN8720)
+// Test 6: Ethernet (LAN8720)
 TestResult test_ethernet() {
     TestResult r;
     
@@ -321,7 +321,7 @@ TestResult test_ethernet() {
     
     WiFi.onEvent(ethEvent);
     
-    // 硬件复位 LAN8720 PHY
+    // Hardware reset LAN8720 PHY
     pinMode(ETH_POWER_PIN_ALT, OUTPUT);
     digitalWrite(ETH_POWER_PIN_ALT, LOW);
     delay(50);
@@ -336,21 +336,21 @@ TestResult test_ethernet() {
         return r;
     }
     
-    // 等待连接 (最多 8 秒)
+    // Wait for connection (max 8 seconds)
     unsigned long start = millis();
     while (!ethConnected && (millis() - start < 8000)) {
         delay(100);
     }
     
     if (!ethConnected) {
-        // 即使没插网线, PHY 初始化成功也算部分通过
-        // 产测治具应连接网线
+        // Even without cable, PHY init success is a partial pass
+        // Test fixture should connect Ethernet cable
         r.passed = false;
         r.detail = "PHY init OK but no link (check cable)";
         return r;
     }
     
-    // 等待 DHCP (再等 3 秒)
+    // Wait for DHCP (another 3 seconds)
     start = millis();
     while (!ethGotIP && (millis() - start < 3000)) {
         delay(100);
@@ -363,8 +363,8 @@ TestResult test_ethernet() {
                    " Duplex:" + (ETH.fullDuplex() ? "Full" : "Half") +
                    " MAC:" + ETH.macAddress();
     } else {
-        // Link up 但无 DHCP — 可能产线没有 DHCP 服务
-        // PHY 工作正常也可判定通过
+        // Link up but no DHCP — production line may lack DHCP server
+        // PHY working normally can still be considered a pass
         r.passed = true;
         r.detail = "Link:UP DHCP:timeout MAC:" + ETH.macAddress();
     }
@@ -372,23 +372,23 @@ TestResult test_ethernet() {
     return r;
 }
 
-// 测试 7: CC2652P 通讯 (版本读取)
+// Test 7: CC2652P Communication (version read)
 TestResult test_cc2652p_comm() {
     TestResult r;
     
-    // 确保 MODE_SWITCH 为低(串口模式)
+    // Ensure MODE_SWITCH is low (UART mode)
     digitalWrite(MODE_SWITCH, LOW);
     delay(100);
     
-    // 清空缓冲区
+    // Clear buffer
     while (Serial2.available()) Serial2.read();
     
-    // 发送 SYS_VERSION 命令
+    // Send SYS_VERSION command
     Serial2.write(cmdSysVersion, sizeof(cmdSysVersion));
     Serial2.flush();
     delay(200);
     
-    // 尝试多次
+    // Retry multiple times
     uint32_t zbRev = 0;
     uint8_t majorrel = 0, minorrel = 0, maintrel = 0;
     
@@ -396,7 +396,7 @@ TestResult test_cc2652p_comm() {
         if (Serial2.available() >= 5) {
             if (Serial2.read() == 0xFE && Serial2.read() == 0x0A && 
                 Serial2.read() == 0x61 && Serial2.read() == 0x02) {
-                // 成功接收响应头
+                // Response header received successfully
                 byte buf[11];
                 for (int i = 0; i < 11; i++) {
                     buf[i] = Serial2.read();
@@ -408,7 +408,7 @@ TestResult test_cc2652p_comm() {
                 break;
             }
         }
-        // 重试
+        // Retry
         while (Serial2.available()) Serial2.read();
         Serial2.write(cmdSysVersion, sizeof(cmdSysVersion));
         Serial2.flush();
@@ -428,7 +428,7 @@ TestResult test_cc2652p_comm() {
     return r;
 }
 
-// 测试 8: CC2652P 芯片识别
+// Test 8: CC2652P Chip Identification
 TestResult test_cc2652p_chip() {
     TestResult r;
     
@@ -447,11 +447,11 @@ TestResult test_cc2652p_chip() {
     return r;
 }
 
-// 测试 9: 蓝色 LED (PWR)
+// Test 9: Blue LED (PWR)
 TestResult test_led_blue() {
     TestResult r;
     
-    // 亮 → 暗 → 亮 循环测试
+    // On → Off → On cycle test
     digitalWrite(LED_PWR, HIGH);
     delay(500);
     int stateHigh = digitalRead(LED_PWR);
@@ -460,17 +460,17 @@ TestResult test_led_blue() {
     delay(500);
     int stateLow = digitalRead(LED_PWR);
     
-    // 恢复
+    // Restore
     digitalWrite(LED_PWR, LOW);
     
-    // 如果有光敏传感器接在治具上, 可以在此读取 ADC
-    // 此处仅验证 GPIO 可控
+    // If a photoresistor is connected to the fixture, read ADC here
+    // Here we only verify GPIO control works
     r.passed = (stateHigh == HIGH && stateLow == LOW);
     r.detail = "GPIO14 H:" + String(stateHigh) + " L:" + String(stateLow);
     return r;
 }
 
-// 测试 10: 红色 LED (USB)
+// Test 10: Red LED (USB)
 TestResult test_led_red() {
     TestResult r;
     
@@ -489,19 +489,19 @@ TestResult test_led_red() {
     return r;
 }
 
-// 测试 11: 按键检测
-// 需要产测治具配合: 治具通过继电器/FET 模拟按键按下
-// 或上位机提示操作员手动按下
+// Test 11: Button Detection
+// Requires test fixture: fixture simulates button press via relay/FET
+// Or host prompts operator to press manually
 TestResult test_button() {
     TestResult r;
     
-    // 方案A: 自动化 — 通知上位机触发治具按键
+    // Option A: Automated — notify host to trigger fixture button
     Serial.println("RSP:{\"test\":\"btn_test\",\"action\":\"PRESS_BTN_NOW\"}");
     
-    // 读取当前状态(应为 HIGH = 未按)
+    // Read current state (should be HIGH = not pressed)
     int initState = digitalRead(BTN);
     
-    // 等待按键按下 (最多 5 秒)
+    // Wait for button press (max 5 seconds)
     unsigned long start = millis();
     bool pressed = false;
     while (millis() - start < 5000) {
@@ -513,7 +513,7 @@ TestResult test_button() {
     }
     
     if (pressed) {
-        // 等待释放
+        // Wait for release
         start = millis();
         bool released = false;
         while (millis() - start < 3000) {
@@ -533,42 +533,42 @@ TestResult test_button() {
     return r;
 }
 
-// 测试 12: MODE_SWITCH
+// Test 12: MODE_SWITCH
 TestResult test_mode_switch() {
     TestResult r;
     
     digitalWrite(MODE_SWITCH, LOW);
     delay(50);
-    // 注意: GPIO33 是输出引脚, 无法直接回读, 仅验证无异常
-    // 如果治具上有回读电路, 可在此添加 ADC/GPIO 读取
+    // Note: GPIO33 is output-only, cannot read back, only verify no error
+    // If fixture has readback circuit, add ADC/GPIO read here
     
     digitalWrite(MODE_SWITCH, HIGH);
     delay(50);
     
-    digitalWrite(MODE_SWITCH, LOW); // 恢复到串口模式
+    digitalWrite(MODE_SWITCH, LOW); // Restore to UART mode
     delay(50);
     
-    r.passed = true; // 无异常即通过
+    r.passed = true; // No error means pass
     r.detail = "GPIO33 toggle OK (output only)";
     return r;
 }
 
-// 测试 13: Zigbee LED 控制 (通过 ZNP 命令)
+// Test 13: Zigbee LED Control (via ZNP command)
 TestResult test_zb_led() {
     TestResult r;
     
-    // 确保在串口模式
+    // Ensure UART mode
     digitalWrite(MODE_SWITCH, LOW);
     delay(100);
     
     while (Serial2.available()) Serial2.read();
     
-    // 发送 LED ON 命令
+    // Send LED ON command
     Serial2.write(zigLed1On, sizeof(zigLed1On));
     Serial2.flush();
     delay(400);
     
-    // 检查响应: FE 01 67 0A 00 6C
+    // Check response: FE 01 67 0A 00 6C
     bool respOk = false;
     const byte expectedResp[] = {0xFE, 0x01, 0x67, 0x0A, 0x00, 0x6C};
     
@@ -593,7 +593,7 @@ TestResult test_zb_led() {
         delay(400);
     }
     
-    // 关闭 LED
+    // Turn off LED
     while (Serial2.available()) Serial2.read();
     Serial2.write(zigLed1Off, sizeof(zigLed1Off));
     Serial2.flush();
@@ -605,19 +605,19 @@ TestResult test_zb_led() {
     return r;
 }
 
-// 测试 14: 串口透传 (Serial2 回环, 需治具将 TX/RX 短接, 或与 CC2652P echo 配合)
-// 注意: 此测试在正常产品上无法做回环, 因为 TX/RX 连着 CC2652P
-// 替代方案: 已在 test 7/8/13 中验证了 Serial2 通讯能力
+// Test 14: Serial Passthrough (Serial2 loopback, requires fixture to short TX/RX, or with CC2652P echo)
+// Note: This test cannot do loopback on a normal product because TX/RX are connected to CC2652P
+// Alternative: tests 7/8/13 already verify Serial2 communication capability
 TestResult test_serial_loopback() {
     TestResult r;
     
-    // 利用已通过的 CC2652P 通讯测试作为 Serial2 验证
-    // 如果 test_cc2652p_comm 和 test_zb_led 都通过, 说明 Serial2 双向通讯正常
-    // 这里做一个简单的发送+接收计数验证
+    // Use the already-passed CC2652P comm test as Serial2 verification
+    // If test_cc2652p_comm and test_zb_led both pass, Serial2 bidirectional communication works
+    // Do a simple send+receive count verification
     
     while (Serial2.available()) Serial2.read();
     
-    // 发 SYS_PING: FE 00 21 01 20
+    // Send SYS_PING: FE 00 21 01 20
     const byte cmdPing[] = {0xFE, 0x00, 0x21, 0x01, 0x20};
     Serial2.write(cmdPing, sizeof(cmdPing));
     Serial2.flush();
@@ -631,7 +631,7 @@ TestResult test_serial_loopback() {
     return r;
 }
 
-// 测试 15: 写入产测标记
+// Test 15: Write Factory Mark
 TestResult test_factory_mark() {
     TestResult r;
     
@@ -651,7 +651,7 @@ TestResult test_factory_mark() {
         serializeJson(doc, f);
         f.close();
         
-        // 读回验证
+        // Read back and verify
         File rf = LittleFS.open(FACTORY_MARK_FILE, FILE_READ);
         if (rf) {
             DynamicJsonDocument verify(256);
@@ -672,7 +672,7 @@ TestResult test_factory_mark() {
     return r;
 }
 
-// ============ 运行全部测试 ============
+// ============ Run All Tests ============
 
 void runAllTests() {
     memset(&results, 0, sizeof(results));
@@ -683,101 +683,101 @@ void runAllTests() {
     Serial.println("  AVATTO GW90-TI Factory Test Start");
     Serial.println("========================================\n");
     
-    // --- 测试 1: ESP32 启动 ---
+    // --- Test 1: ESP32 Boot ---
     Serial.println("[1/15] ESP32 Boot...");
     results.esp32_boot = test_esp32_boot();
     updateCount(results.esp32_boot);
     sendResponse("esp32_boot", results.esp32_boot.passed, results.esp32_boot.detail);
     
-    // --- 测试 2: Flash 读写 ---
+    // --- Test 2: Flash R/W ---
     Serial.println("[2/15] Flash R/W...");
     results.flash_rw = test_flash_rw();
     updateCount(results.flash_rw);
     sendResponse("flash_rw", results.flash_rw.passed, results.flash_rw.detail);
     
-    // --- 测试 3: MAC 地址 ---
+    // --- Test 3: MAC Address ---
     Serial.println("[3/15] MAC Address...");
     results.mac_addr = test_mac_addr();
     updateCount(results.mac_addr);
     sendResponse("mac_addr", results.mac_addr.passed, results.mac_addr.detail);
     
-    // --- 测试 4: CPU 温度 ---
+    // --- Test 4: CPU Temperature ---
     Serial.println("[4/15] CPU Temperature...");
     results.cpu_temp = test_cpu_temp();
     updateCount(results.cpu_temp);
     sendResponse("cpu_temp", results.cpu_temp.passed, results.cpu_temp.detail);
     
-    // --- 测试 5: WiFi 扫描 ---
+    // --- Test 5: WiFi Scan ---
     Serial.println("[5/15] WiFi Scan...");
     results.wifi_scan = test_wifi_scan();
     updateCount(results.wifi_scan);
     sendResponse("wifi_scan", results.wifi_scan.passed, results.wifi_scan.detail);
     
-    // --- 测试 6: 以太网 ---
+    // --- Test 6: Ethernet ---
     Serial.println("[6/15] Ethernet (LAN8720)...");
     results.ethernet = test_ethernet();
     updateCount(results.ethernet);
     sendResponse("ethernet", results.ethernet.passed, results.ethernet.detail);
     
-    // --- 测试 7: CC2652P 通讯 ---
+    // --- Test 7: CC2652P Comm ---
     Serial.println("[7/15] CC2652P Comm...");
     results.cc2652p_comm = test_cc2652p_comm();
     updateCount(results.cc2652p_comm);
     sendResponse("cc2652p_comm", results.cc2652p_comm.passed, results.cc2652p_comm.detail);
     
-    // --- 测试 8: CC2652P 芯片 ID ---
+    // --- Test 8: CC2652P Chip ID ---
     Serial.println("[8/15] CC2652P Chip ID...");
     results.cc2652p_chip = test_cc2652p_chip();
     updateCount(results.cc2652p_chip);
     sendResponse("cc2652p_chip", results.cc2652p_chip.passed, results.cc2652p_chip.detail);
     
-    // --- 测试 9: 蓝色 LED ---
+    // --- Test 9: Blue LED ---
     Serial.println("[9/15] Blue LED (PWR)...");
     results.led_blue = test_led_blue();
     updateCount(results.led_blue);
     sendResponse("led_blue", results.led_blue.passed, results.led_blue.detail);
     
-    // --- 测试 10: 红色 LED ---
+    // --- Test 10: Red LED ---
     Serial.println("[10/15] Red LED (USB)...");
     results.led_red = test_led_red();
     updateCount(results.led_red);
     sendResponse("led_red", results.led_red.passed, results.led_red.detail);
     
-    // --- 测试 11: 按键 ---
+    // --- Test 11: Button ---
     Serial.println("[11/15] Button (waiting for press)...");
     results.btn_test = test_button();
     updateCount(results.btn_test);
     sendResponse("btn_test", results.btn_test.passed, results.btn_test.detail);
     
-    // --- 测试 12: MODE_SWITCH ---
+    // --- Test 12: Mode Switch ---
     Serial.println("[12/15] Mode Switch...");
     results.mode_switch = test_mode_switch();
     updateCount(results.mode_switch);
     sendResponse("mode_switch", results.mode_switch.passed, results.mode_switch.detail);
     
-    // --- 测试 13: Zigbee LED ---
+    // --- Test 13: Zigbee LED ---
     Serial.println("[13/15] Zigbee LED...");
-    // 需从 BSL 模式恢复, 先重启 CC2652P
-    delay(1000); // 等待 CC2652P 重启完成
+    // Need to recover from BSL mode, restart CC2652P first
+    delay(1000); // Wait for CC2652P restart to complete
     Serial2.begin(115200, SERIAL_8N1, CC2652P_RXD, CC2652P_TXD);
-    delay(2000); // CC2652P 启动需要时间
+    delay(2000); // CC2652P needs time to start
     results.zb_led = test_zb_led();
     updateCount(results.zb_led);
     sendResponse("zb_led", results.zb_led.passed, results.zb_led.detail);
     
-    // --- 测试 14: 串口透传 ---
+    // --- Test 14: Serial Loopback ---
     Serial.println("[14/15] Serial Loopback...");
     results.serial_loopback = test_serial_loopback();
     updateCount(results.serial_loopback);
     sendResponse("serial_loopback", results.serial_loopback.passed, results.serial_loopback.detail);
     
-    // --- 测试 15: 产测标记 ---
+    // --- Test 15: Factory Mark ---
     Serial.println("[15/15] Factory Mark...");
     results.factory_mark = test_factory_mark();
     updateCount(results.factory_mark);
     sendResponse("factory_mark", results.factory_mark.passed, results.factory_mark.detail);
     
-    // ============ 汇总 ============
+    // ============ Summary ============
     unsigned long totalTime = millis() - totalStart;
     
     Serial.println("\n========================================");
@@ -789,23 +789,23 @@ void runAllTests() {
     
     sendSummary();
     
-    // 最终 LED 指示
+    // Final LED indication
     if (results.total_fail == 0) {
-        // 全部通过: 蓝灯常亮
+        // All passed: blue LED solid on
         digitalWrite(LED_PWR, HIGH);
         digitalWrite(LED_USB, LOW);
     } else {
-        // 有失败: 红灯快闪
+        // Has failures: red LED fast blink
         for (int i = 0; i < 20; i++) {
             digitalWrite(LED_USB, !digitalRead(LED_USB));
             delay(200);
         }
-        digitalWrite(LED_USB, HIGH); // 红灯常亮表示失败
+        digitalWrite(LED_USB, HIGH); // Red LED solid on indicates failure
         digitalWrite(LED_PWR, LOW);
     }
 }
 
-// ============ 主程序 ============
+// ============ Main Program ============
 
 void setup() {
     Serial.begin(SERIAL_BAUD);
@@ -816,7 +816,7 @@ void setup() {
     Serial.println("  Version: 1.0.0");
     Serial.println("========================================\n");
     
-    // GPIO 初始化
+    // GPIO Initialization
     pinMode(CC2652P_RST, OUTPUT);
     pinMode(CC2652P_FLASH, OUTPUT);
     digitalWrite(CC2652P_RST, HIGH);
@@ -827,14 +827,14 @@ void setup() {
     pinMode(BTN, INPUT);
     pinMode(MODE_SWITCH, OUTPUT);
     
-    digitalWrite(MODE_SWITCH, LOW); // 默认串口模式
+    digitalWrite(MODE_SWITCH, LOW); // Default UART mode
     digitalWrite(LED_PWR, LOW);
     digitalWrite(LED_USB, LOW);
     
-    // 初始化 Serial2 (与 CC2652P 通讯)
+    // Initialize Serial2 (communicate with CC2652P)
     Serial2.begin(115200, SERIAL_8N1, CC2652P_RXD, CC2652P_TXD);
     
-    // 等待上位机指令或自动开始
+    // Wait for host command or auto-start
     Serial.println("Send 'CMD:START' to begin tests, or waiting 3s for auto-start...");
     
     unsigned long waitStart = millis();
@@ -856,14 +856,14 @@ void setup() {
 }
 
 void loop() {
-    // 测试完成后等待指令
+    // Wait for command after test completion
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
         cmd.trim();
         
         if (cmd == "CMD:RETEST") {
             Serial.println("Re-running all tests...");
-            // 重置 CC2652P
+            // Reset CC2652P
             digitalWrite(CC2652P_RST, LOW);
             delay(100);
             digitalWrite(CC2652P_RST, HIGH);

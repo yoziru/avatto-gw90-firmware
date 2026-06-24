@@ -1,8 +1,8 @@
 /**
- * 调试功能 - 处理页面切换和交互
+ * Debug functions — handles page switching and interaction
  */
 
-// 页面内容映射
+// Page content mapping
 const pageContents = {
     root: '../src/websrc/html/PAGE_ROOT.html',
     general: '../src/websrc/html/PAGE_GENERAL.html',
@@ -17,7 +17,7 @@ const pageContents = {
 };
 
 /**
- * 加载页面内容
+ * Load page content
  */
 function loadPage(pageName) {
     const pageUrl = pageContents[pageName];
@@ -27,15 +27,15 @@ function loadPage(pageName) {
         return;
     }
     
-    // 加载 HTML 内容
+    // Load HTML content
     $.get(pageUrl, function(data) {
         $('#content-area').html(data);
         
-        // 填充模拟数据
+        // Fill mock data
         populateData(pageName);
         
-        // 初始化 Masonry（如果页面使用）
-        // 注意：对于标签页内的 Masonry，会在标签页切换时单独初始化
+        // Initialize Masonry (if page uses it)
+        // Note: for Masonry inside tabs, initialized separately on tab switch
         if (pageName !== 'systools' && $('.masonry').length > 0) {
             setTimeout(function() {
                 $('.masonry').masonry({
@@ -45,34 +45,34 @@ function loadPage(pageName) {
             }, 100);
         }
         
-        // 添加表单提交拦截（避免实际提交）
+        // Intercept form submission (prevent actual submit)
         $('form').on('submit', function(e) {
             e.preventDefault();
             const formData = $(this).serializeArray();
             console.log('Form submitted (mock):', formData);
-            alert('表单数据已记录到控制台\n\n在实际环境中，这些数据会被保存到设备。');
+            alert('Form data logged to console\n\nIn production, this data would be saved to the device.');
         });
         
-        // 添加按钮点击拦截
+        // Intercept button clicks
         $('button[data-cmd]').on('click', function() {
             const cmd = $(this).attr('data-cmd');
             console.log('Command triggered:', cmd);
-            alert('命令 ' + cmd + ' 已触发\n\n在实际环境中，这会控制设备的 LED 或其他功能。');
+            alert('Command ' + cmd + ' triggered\n\nIn production, this would control the device\'s LED or other functions.');
         });
         
-        // 初始化配置生成器（Serial 页面）
+        // Initialize config generator (Serial page)
         if (pageName === 'serial') {
             setTimeout(() => {
                 if (typeof generateConfig === 'function') {
-                    generateConfig('z2m'); // 默认生成 Z2M 配置
+                    generateConfig('z2m'); // default to Z2M config
                 }
             }, 200);
         }
         
-        // 初始化 System Tools 标签页功能
+        // Initialize System Tools tab functionality
         if (pageName === 'systools') {
             setTimeout(() => {
-                // 确保 Bootstrap 标签页功能正常工作
+                // Ensure Bootstrap tabs work correctly
                 initSystemToolsTabs();
             }, 200);
         }
@@ -84,14 +84,14 @@ function loadPage(pageName) {
 }
 
 /**
- * 更新导航活动状态
+ * Update navigation active state
  */
 function updateNavigation(pageName) {
     $('.nav-link').removeClass('active');
     $('.nav-link[data-page="' + pageName + '"]').addClass('active');
     $('#pageSelect').val(pageName);
     
-    // 更新页面标题
+    // Update page title
     const pageTitles = {
         root: 'Dashboard',
         general: 'General Settings',
@@ -109,22 +109,22 @@ function updateNavigation(pageName) {
 }
 
 /**
- * 初始化
+ * Initialize
  */
 $(document).ready(function() {
     console.log('Debug UI initialized');
     
-    // 默认加载 Dashboard
+    // Load Dashboard by default
     loadPage('root');
     
-    // 下拉选择器切换页面
+    // Dropdown selector switches page
     $('#pageSelect').on('change', function() {
         const pageName = $(this).val();
         loadPage(pageName);
         updateNavigation(pageName);
     });
     
-    // 侧边栏导航点击
+    // Sidebar navigation click
     $('.nav-link').on('click', function(e) {
         e.preventDefault();
         const pageName = $(this).attr('data-page');
@@ -132,9 +132,9 @@ $(document).ready(function() {
         updateNavigation(pageName);
     });
     
-    // 添加一些调试快捷键
+    // Debug keyboard shortcuts
     $(document).on('keydown', function(e) {
-        // Ctrl + R: 重新加载当前页面
+        // Ctrl + R: reload current page
         if (e.ctrlKey && e.key === 'r') {
             e.preventDefault();
             const currentPage = $('#pageSelect').val();
@@ -142,7 +142,7 @@ $(document).ready(function() {
             loadPage(currentPage);
         }
         
-        // Ctrl + D: 打开浏览器开发者工具提示
+        // Ctrl + D: open browser devtools hint
         if (e.ctrlKey && e.key === 'd') {
             e.preventDefault();
             console.log('=== Debug Info ===');
@@ -152,27 +152,27 @@ $(document).ready(function() {
         }
     });
     
-    console.log('提示：');
-    console.log('- 使用顶部的下拉菜单或侧边栏切换页面');
-    console.log('- 按 Ctrl+R 重新加载当前页面');
-    console.log('- 按 Ctrl+D 查看调试信息');
-    console.log('- 修改 mock-data.js 来改变显示的数据');
-    console.log('- 在 index.html 的 <style> 标签中测试新样式');
+    console.log('Tips:');
+    console.log('- Use the top dropdown or sidebar to switch pages');
+    console.log('- Press Ctrl+R to reload current page');
+    console.log('- Press Ctrl+D to view debug info');
+    console.log('- Edit mock-data.js to change displayed data');
+    console.log('- Test new styles in index.html\'s <style> tag');
 });
 
 /**
- * 初始化 System Tools 页面的标签页功能
+ * Initialize System Tools page tab functionality
  */
 function initSystemToolsTabs() {
     console.log('Initializing System Tools tabs...');
     
-    // 确保标签页按钮可以切换
+    // Ensure tab buttons are clickable
     const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
     tabButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // 移除所有活动状态
+            // Remove all active states
             tabButtons.forEach(btn => {
                 btn.classList.remove('active');
                 btn.setAttribute('aria-selected', 'false');
@@ -182,34 +182,34 @@ function initSystemToolsTabs() {
                 pane.classList.remove('show', 'active');
             });
             
-            // 激活当前标签
+            // Activate current tab
             this.classList.add('active');
             this.setAttribute('aria-selected', 'true');
             
-            // 显示对应内容
+            // Show corresponding content
             const target = this.getAttribute('data-bs-target');
             const targetPane = document.querySelector(target);
             if (targetPane) {
                 targetPane.classList.add('show', 'active');
                 
-                // 重新初始化 Masonry 布局（延迟以确保内容已显示）
+                // Re-initialize Masonry layout (delay to ensure content is shown)
                 setTimeout(() => {
                     const $masonry = $(targetPane).find('.masonry');
                     if ($masonry.length > 0) {
                         console.log('Re-initializing Masonry for:', target);
                         
-                        // 销毁现有的 Masonry 实例
+                        // Destroy existing Masonry instance
                         if ($masonry.data('masonry')) {
                             $masonry.masonry('destroy');
                         }
                         
-                        // 重新创建 Masonry 实例
+                        // Re-create Masonry instance
                         $masonry.masonry({
                             percentPosition: true,
                             itemSelector: '.col-sm-12, .col-md-6'
                         });
                         
-                        // 强制重新布局
+                        // Force re-layout
                         $masonry.masonry('layout');
                     }
                 }, 150);
@@ -219,7 +219,7 @@ function initSystemToolsTabs() {
         });
     });
     
-    // 初始化第一个标签页的 Masonry
+    // Initialize first tab's Masonry
     setTimeout(() => {
         const activePane = document.querySelector('.tab-pane.active');
         if (activePane) {
@@ -233,9 +233,9 @@ function initSystemToolsTabs() {
         }
     }, 200);
     
-    // 初始化文件浏览器数据
+    // Initialize file browser data
     initFileBrowser();
     
-    // 初始化控制台
+    // Initialize console
     initDebugConsole();
 }

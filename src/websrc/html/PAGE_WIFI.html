@@ -10,10 +10,10 @@
           <div class="row">
             <div class="mb-2 col-sm-12 col-md-6">
               <div class="gauge-wrapper">
-                <!-- 外层光晕 -->
+                <!-- Outer glow -->
                 <div class="outer-glow"></div>
 
-                <!-- 外部进度圆环 -->
+                <!-- Outer progress ring -->
                 <svg class="progress-ring" width="220" height="220">
                   <defs>
                     <linearGradient
@@ -27,7 +27,7 @@
                       <stop offset="100%" stop-color="#ff9800" />
                     </linearGradient>
                   </defs>
-                  <!-- 背景灰色环 -->
+                  <!-- Background gray ring -->
                   <circle
                     class="progress-ring__bg"
                     stroke-width="12"
@@ -36,7 +36,7 @@
                     cx="110"
                     cy="110"
                   />
-                  <!-- 动态进度环 -->
+                  <!-- Dynamic progress ring -->
                   <circle
                     class="progress-ring__circle"
                     stroke="url(#ringGradient)"
@@ -48,7 +48,7 @@
                   />
                 </svg>
 
-                <!-- 内部球体 -->
+                <!-- Inner ball -->
                 <div class="inner-ball">
                   <div class="wave-layer"></div>
                   <div class="percent-num"></div>
@@ -211,8 +211,8 @@
 <style>
   :root {
     --primary-color: #ffb131;
-    --percent: 0; /* 目标百分数 */
-    /* 圆周长计算：2 * Math.PI * 90(半径) = 565.48 */
+    --percent: 0; /* Target percentage */
+    /* Circumference calculation: 2 * Math.PI * 90(radius) = 565.48 */
     --circumference: 565.48;
   }
 
@@ -225,7 +225,7 @@
     align-items: center;
   }
 
-  /* 外层装饰光晕 - 增加呼吸感 */
+  /* Outer decorative glow - adds breathing effect */
   .outer-glow {
     position: absolute;
     width: 250px;
@@ -239,28 +239,28 @@
     animation: pulse 3s infinite ease-in-out;
   }
 
-  /* SVG 容器旋转 - 让渐变色流动起来 */
+  /* SVG container rotation - makes gradient flow */
   .progress-ring {
     transform: rotate(-90deg);
     filter: drop-shadow(0 0 8px rgba(255, 177, 49, 0.3));
   }
 
-  /* 底色圆环 */
+  /* Background color ring */
   .progress-ring__bg {
     stroke: #fff1dc;
   }
 
-  /* 进度圆环动画 */
+  /* Progress ring animation */
   .progress-ring__circle {
     stroke-dasharray: var(--circumference);
-    stroke-dashoffset: var(--circumference); /* 初始全空 */
+    stroke-dashoffset: var(--circumference); /* Initially empty */
     stroke-linecap: round;
     transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1);
-    /* 赋予流光效果动画 */
+    /* Flow light effect animation */
     animation: drawIn 2s forwards ease-out;
   }
 
-  /* 内部球体容器 */
+  /* Inner ball container */
   .inner-ball {
     position: absolute;
     width: 150px;
@@ -274,7 +274,7 @@
     z-index: 5;
   }
 
-  /* 波浪层 */
+  /* Wave layer */
   .wave-layer {
     position: absolute;
     bottom: 0;
@@ -284,7 +284,7 @@
     background: linear-gradient(to top, #ff9800, #ffb131);
   }
 
-  /* 波浪核心动画（原理：旋转异形遮罩） */
+  /* Wave core animation (principle: rotating irregular mask) */
   .wave-layer::before,
   .wave-layer::after {
     content: "";
@@ -293,7 +293,7 @@
     height: 280px;
     left: 50%;
     background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 43%; /* 关键：不规则圆形 */
+    border-radius: 43%; /* Key: irregular circle */
   }
 
   .wave-layer::before {
@@ -324,19 +324,19 @@
     z-index: 10;
   }
 
-  /* --- 动画定义 --- */
+  /* --- Animation definitions --- */
 
-  /* 1. 外环画入动画 */
+  /* 1. Outer ring draw-in animation */
   @keyframes drawIn {
     to {
-      /* 计算公式: 周长 - (百分比 * 周长 / 100) */
+      /* Formula: circumference - (percentage * circumference / 100) */
       stroke-dashoffset: calc(
         var(--circumference) - (var(--percent) * var(--circumference) / 100)
       );
     }
   }
 
-  /* 2. 波浪旋转动画 */
+  /* 2. Wave rotation animation */
   @keyframes rotateWave {
     from {
       transform: translate(-50%, 0) rotate(0deg);
@@ -346,7 +346,7 @@
     }
   }
 
-  /* 3. 整体呼吸脉冲动画 */
+  /* 3. Overall breathing pulse animation */
   @keyframes pulse {
     0%,
     100% {
@@ -358,19 +358,19 @@
       opacity: 0.8;
     }
   }
-  /* 进度环的过渡效果 */
+  /* Progress ring transition effect */
   .progress-ring__circle {
-    /* ... 之前的代码 ... */
+    /* ... previous code ... */
     transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* 内部波浪高度的过渡效果 */
+  /* Inner wave height transition effect */
   .wave-layer {
-    /* ... 之前的代码 ... */
+    /* ... previous code ... */
     transition: height 2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* WiFi 表格移动设备适配 - 支持换行 */
+  /* WiFi table mobile device adaptation - supports line wrapping */
   #wifiTable td {
     word-break: break-word;
     overflow-wrap: break-word;
@@ -378,7 +378,7 @@
     max-width: 150px;
   }
 
-  /* 针对手机屏幕的进一步优化 */
+  /* Further optimization for mobile screens */
   @media (max-width: 768px) {
     #wifiTable td {
       max-width: 80px;

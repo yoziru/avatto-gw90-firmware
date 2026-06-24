@@ -1,6 +1,6 @@
 /**
- * 模拟数据 - 用于调试 UI
- * 可以根据需要修改这些数据来测试不同的显示状态
+ * Mock data — used for debugging the UI
+ * Modify these values to test different display states
  */
 
 const mockData = {
@@ -82,7 +82,7 @@ const mockData = {
     },
     
     serial: {
-        '115200': 'selected',  // Serial speed selection
+        '115200': 'selected',  // Baud rate selection
         socketPort: '9999',
         generatedFile: `# Zigbee2MQTT configuration example
 serial:
@@ -149,12 +149,12 @@ advanced:
 };
 
 /**
- * 替换页面中的数据占位符
+ * Replace data placeholders in the page
  */
 function populateData(page) {
     const data = mockData[page] || {};
     
-    // 替换 data-replace 属性的元素
+    // Replace elements with data-replace attribute
     $('[data-replace]').each(function() {
         const key = $(this).attr('data-replace');
         
@@ -166,9 +166,9 @@ function populateData(page) {
             } else if ($(this).is('input')) {
                 $(this).val(data[key]);
             } else if ($(this).is('select')) {
-                // 处理下拉选择器
+                // Handle dropdown selectors
                 if (key === 'timeZones' && Array.isArray(data[key])) {
-                    // 特殊处理时区选择器
+                    // Special handling for timezone selector
                     $(this).empty();
                     data[key].forEach(tz => {
                         $(this).append($('<option></option>')
@@ -179,7 +179,7 @@ function populateData(page) {
                     $(this).val(data[key]);
                 }
             } else if ($(this).is('option')) {
-                // 处理选项选择状态
+                // Handle option selection state
                 if (data[key] === 'selected') {
                     $(this).prop('selected', true);
                 }
@@ -193,7 +193,7 @@ function populateData(page) {
 }
 
 /**
- * 用于模拟函数（避免报错）
+ * Mock functions (to avoid errors)
  */
 function checkLatestESPrelease() {
     console.log('Mock: Checking latest ESP release...');
@@ -217,7 +217,7 @@ function modalConstructor(topic, data) {
     };
     
     const title = modalTitles[topic] || 'Information';
-    const content = modalContents[topic] || `这是关于 "${topic}" 的信息。\n\n在实际环境中会显示详细的帮助信息。`;
+    const content = modalContents[topic] || `Information about "${topic}".\n\nIn production, detailed help would be displayed here.`;
     
     alert(`📋 ${title}\n\n${content}`);
 }
@@ -228,7 +228,7 @@ function KeepWebDsbl(disabled) {
 }
 
 /**
- * 模拟配置生成器
+ * Mock config generator
  */
 function generateConfig(type) {
     console.log('Mock: Generating config for:', type);
@@ -275,26 +275,26 @@ serial:
 }
 
 /**
- * 复制代码到剪贴板（模拟）
+ * Copy code to clipboard (mock)
  */
 function copyCode() {
     const code = $('#generatedFile').val();
     
-    // 尝试使用 Clipboard API
+    // Try Clipboard API
     if (navigator.clipboard) {
         navigator.clipboard.writeText(code).then(() => {
-            alert('✅ 配置已复制到剪贴板！');
+            alert('✅ Config copied to clipboard!');
         }).catch(() => {
-            alert('⚠️ 复制失败，请手动选择文本复制');
+            alert('⚠️ Copy failed — please select and copy manually');
         });
     } else {
-        // 备用方案
+        // Fallback
         $('#generatedFile').select();
         try {
             document.execCommand('copy');
-            alert('✅ 配置已复制到剪贴板！');
+            alert('✅ Config copied to clipboard!');
         } catch (err) {
-            alert('⚠️ 复制失败，请手动选择文本复制');
+            alert('⚠️ Copy failed — please select and copy manually');
         }
     }
     
@@ -302,7 +302,7 @@ function copyCode() {
 }
 
 /**
- * 初始化文件浏览器（模拟）
+ * Initialize file browser (mock)
  */
 function initFileBrowser() {
     console.log('Mock: Initializing file browser...');
@@ -340,7 +340,7 @@ function initFileBrowser() {
 }
 
 /**
- * 加载模拟文件内容
+ * Load mock file content
  */
 function loadMockFile(filename) {
     console.log('Mock: Loading file:', filename);
@@ -368,11 +368,11 @@ function loadMockFile(filename) {
     $('#title').text(filename);
     $('#config_file').val(content);
     
-    alert(`📄 已加载文件: ${filename}\n\n在实际环境中，您可以编辑并保存此文件。`);
+    alert(`📄 Loaded file: ${filename}\n\nIn production, you can edit and save this file.`);
 }
 
 /**
- * 初始化调试控制台（模拟）
+ * Initialize debug console (mock)
  */
 function initDebugConsole() {
     console.log('Mock: Initializing debug console...');
@@ -387,7 +387,7 @@ function initDebugConsole() {
     
     $('#console').val(mockConsoleData);
     
-    // 模拟实时日志更新
+    // Simulate real-time log updates
     let logCounter = 0;
     setInterval(() => {
         if ($('#console').length) {
@@ -397,14 +397,14 @@ function initDebugConsole() {
             const currentVal = $('#console').val();
             const lines = currentVal.split('\n');
             
-            // 保持最多 20 行
+            // Keep at most 20 lines
             if (lines.length > 20) {
                 lines.shift();
             }
             
             $('#console').val(lines.join('\n') + newLog);
             
-            // 自动滚动到底部
+            // Auto-scroll to bottom
             const textarea = document.getElementById('console');
             if (textarea) {
                 textarea.scrollTop = textarea.scrollHeight;
@@ -414,7 +414,7 @@ function initDebugConsole() {
 }
 
 /**
- * 模拟 ESP32 固件更新事件
+ * Mock ESP32 firmware update events
  */
 function ESPfwStartEvents() {
     console.log('Mock: ESP32 firmware update started');
@@ -430,14 +430,14 @@ function ESPfwStartEvents() {
             clearInterval(interval);
             $('#prg').html('✅ Update completed! Rebooting...');
             setTimeout(() => {
-                alert('ESP32 固件更新完成！\n\n在实际环境中，设备会重启。');
+                alert('ESP32 firmware update complete!\n\nIn production, the device would reboot.');
             }, 1000);
         }
     }, 500);
 }
 
 /**
- * 模拟 Zigbee 固件更新事件
+ * Mock Zigbee firmware update events
  */
 function ZBfwStartEvents() {
     console.log('Mock: Zigbee firmware update started');
@@ -445,7 +445,7 @@ function ZBfwStartEvents() {
 }
 
 /**
- * 模拟等待固件刷写
+ * Mock waiting for firmware flash
  */
 function espFlashGitWait() {
     console.log('Mock: Downloading firmware from GitHub...');
@@ -468,7 +468,7 @@ function espFlashGitWait() {
 }
 
 /**
- * 处理响应（模拟）
+ * Process responses (mock)
  */
 async function processResponses() {
     return {
@@ -485,7 +485,7 @@ async function processResponses() {
 }
 
 /**
- * 模拟 ESP32 文件选择
+ * Mock ESP32 file selection
  */
 function sub(obj) {
     let fileName = obj.value.split('\\');
@@ -499,7 +499,7 @@ function sub(obj) {
 }
 
 /**
- * 模拟 Zigbee 文件选择
+ * Mock Zigbee file selection
  */
 function sub_zb(obj) {
     let fileName = obj.value.split('\\');
@@ -513,9 +513,9 @@ function sub_zb(obj) {
 }
 
 /**
- * 模拟重启等待
+ * Mock reboot wait
  */
 function rebootWait() {
     console.log('Mock: Device rebooting...');
-    alert('🔄 设备正在重启...\n\n在实际环境中，页面会在设备重启后自动刷新。');
+    alert('🔄 Device rebooting...\n\nIn production, the page would auto-refresh after reboot.');
 }
