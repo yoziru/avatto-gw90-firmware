@@ -1,0 +1,42 @@
+[tools]
+python = "3.14"
+node = "24.15"
+
+[tasks.setup]
+description = "Install project dependencies (uv sync + build group)"
+run = "uv sync --group build"
+
+[tasks.build]
+description = "Build prod-solo firmware"
+depends = ["setup"]
+run = "uv run pio run -e prod-solo"
+
+[tasks."build:debug"]
+description = "Build debug-solo firmware"
+depends = ["setup"]
+run = "uv run pio run -e debug-solo"
+
+[tasks.flash]
+description = "Flash prod-solo firmware (set UPLOAD_PORT env var)"
+depends = ["setup", "build"]
+run = "uv run pio run -e prod-solo -t upload --upload-port ${UPLOAD_PORT:-/dev/cu.usbserial-XXXX}"
+
+[tasks."flash:debug"]
+description = "Flash debug-solo firmware (set UPLOAD_PORT env var)"
+depends = ["setup", "build:debug"]
+run = "uv run pio run -e debug-solo -t upload --upload-port ${UPLOAD_PORT:-/dev/cu.usbserial-XXXX}"
+
+[tasks.monitor]
+description = "Open serial monitor (set MONITOR_PORT env var)"
+depends = ["setup"]
+run = "uv run pio device monitor -b 115200 --port ${MONITOR_PORT:-/dev/cu.usbserial-XXXX}"
+
+[tasks.clean]
+description = "Clean all build artifacts"
+depends = ["setup"]
+run = "uv run pio run --target clean"
+
+[tasks."build:all"]
+description = "Build all environments"
+depends = ["setup"]
+run = "uv run pio run"
