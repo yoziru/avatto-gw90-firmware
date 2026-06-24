@@ -31,14 +31,6 @@
 #include "webh/PAGE_SERIAL.html.gz.h"
 #include "webh/PAGE_SYSTOOLS.html.gz.h"
 #include "webh/PAGE_WIFI.html.gz.h"
-#include "webh/i18next.min.js.gz.h"
-#include "webh/commonmark.min.js.gz.h"
-#include "webh/bootstrap.min.js.gz.h"
-#include "webh/favicon.ico.gz.h"
-#include "webh/functions.js.gz.h"
-#include "webh/jquery-min.js.gz.h"
-#include "webh/masonry.js.gz.h"
-#include "webh/required.css.gz.h"
 #include "webh/PAGE_LOGOUT.html.gz.h"
 
 // #define HTTP_UPLOAD_BUFLEN 3000
