@@ -32,6 +32,7 @@
 #include "webh/PAGE_SYSTOOLS.html.gz.h"
 #include "webh/PAGE_WIFI.html.gz.h"
 #include "webh/i18next.min.js.gz.h"
+#include "webh/commonmark.min.js.gz.h"
 #include "webh/bootstrap.min.js.gz.h"
 #include "webh/favicon.ico.gz.h"
 #include "webh/functions.js.gz.h"
