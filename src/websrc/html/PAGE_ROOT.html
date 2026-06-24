@@ -9,26 +9,37 @@
           <img src="icon_operating_mode.svg" class="title_icon_style" />
           <span>Operating mode</span>
         </div>
-        <div class="card-body" style="text-align: center">
-          <div class="machine_bg">
-            <img
-              id="machineImg"
-              src="device_operating_default.png"
-              width="95%"
-              height="100%"
-            />
-            <div class="machine_info">
-              <div class="info_item">
-                <img src="wifi_connection.svg" class="small_icon_style" />
-                <span>Switch</span>
-              </div>
-              <div class="info_item active">
-                <img src="lan_connection.svg" class="small_icon_style" />
-                <span>LAN</span>
-              </div>
-              <div class="info_item">
-                <img src="usb_connection.svg" class="small_icon_style" />
-                <span>USB</span>
+        <div class="card-body" style="text-align: center; overflow: hidden;">
+          <div class="machine_bg mode-lan" id="deviceDiagram">
+            <div class="diagram-wrap">
+              <img id="machineImg" src="device_operating_default.png" />
+              <svg class="conn-svg" viewBox="0 0 500 292" preserveAspectRatio="none">
+                <polyline class="line-wifi" points="54,120 54,205 206,205 206,229" fill="none" stroke-width="2"/>
+                <polyline class="line-lan" points="230,120 230,178 255,178 255,229" fill="none" stroke-width="2"/>
+                <polyline class="line-usb" points="406,120 406,151 304,151 304,229" fill="none" stroke-width="2"/>
+              </svg>
+              <div class="machine_info">
+                <div class="info_item" data-mode="wifi">
+                  <span class="info_label">
+                    <img src="wifi_connection.svg" class="small_icon_style" />
+                    Switch
+                  </span>
+                  <span class="indicator_dot"></span>
+                </div>
+                <div class="info_item" data-mode="lan">
+                  <span class="info_label">
+                    <img src="lan_connection.svg" class="small_icon_style" />
+                    LAN
+                  </span>
+                  <span class="indicator_dot"></span>
+                </div>
+                <div class="info_item" data-mode="usb">
+                  <span class="info_label">
+                    <img src="usb_connection.svg" class="small_icon_style" />
+                    USB
+                  </span>
+                  <span class="indicator_dot"></span>
+                </div>
               </div>
             </div>
           </div>
