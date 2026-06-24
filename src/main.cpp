@@ -347,7 +347,7 @@ IPAddress parse_ip_address(const char *str)
 
   return result;
 }
-//加载系统配置
+// Load system configuration
 bool loadSystemVar()
 { // todo remove
   File configFile = LittleFS.open(configFileSystem, FILE_READ);
@@ -400,7 +400,7 @@ bool loadSystemVar()
   configFile.close();
   return true;
 }
-//加载wifi配置
+// Load WiFi configuration
 bool loadConfigWifi()
 {
  // File configFile = LittleFS.open(configFileWifi, FILE_READ);
@@ -450,7 +450,7 @@ bool loadConfigWifi()
   configFile.close();
   return true;
 }
-//加载ethernet配置
+// Load Ethernet configuration
 bool loadConfigEther()
 {
   const char *dhcp = "dhcp";
@@ -493,7 +493,7 @@ bool loadConfigEther()
   configFile.close();
   return true;
 }
-//加载通用配置
+// Load general configuration
 bool loadConfigGeneral()
 {
   const char *hostname = "hostname";
@@ -568,7 +568,7 @@ bool loadConfigGeneral()
   DEBUG_PRINTLN(F("[loadConfigGeneral] config load done"));
   return true;
 }
-//加载安全配置
+// Load security configuration
 bool loadConfigSecurity()
 {
   const char *disableWeb = "disableWeb";
@@ -653,7 +653,7 @@ bool loadConfigSerial()
   configFile.close();
   return true;
 }
-//加载mqtt配置
+// Load MQTT configuration
 bool loadConfigMqtt()
 {
   const char *enable = "enable";
@@ -709,7 +709,7 @@ bool loadConfigMqtt()
   configFile.close();
   return true;
 }
-//加载wg配置
+// Load WG configuration
 bool loadConfigWg()
 {
   const char *enable = "enable";
@@ -758,7 +758,7 @@ bool loadConfigWg()
   configFile.close();
   return true;
 }
-//打开关闭AP
+// Start or stop AP
 void startAP(const bool start)
 {
   Serial.print("[startAP] Called with start=");
@@ -1554,14 +1554,14 @@ void typecReveivePktProcess(void)
   {
     uint16_t bytes_read = 0;
     
-    // 读取 Serial 接收到的数据
+    // Read data received from Serial
     while (Serial.available() && bytes_read < 256 - 1)
     {
         typecRxBuf[bytes_read] = Serial.read();
         bytes_read++;
     }
     
-    // 将接收到的数据通过 Serial 发送出去
+    // Forward received data through Serial
     if (bytes_read > 0)
     {
         //for test
@@ -1600,14 +1600,14 @@ void zigbeeReveivePktProcess(void)
   {
     uint16_t bytes_read = 0;
     
-    // 读取 Serial 接收到的数据
+    // Read data received from Serial2
     while (Serial2.available() && bytes_read < 256 - 1)
     {
         zigbeeRxBuf[bytes_read] = Serial2.read();
         bytes_read++;
     }
     
-    // 将接收到的数据通过 Serial 发送出去
+    // Forward received data through Serial
     if (bytes_read > 0)
     {
         //for test
@@ -1652,16 +1652,16 @@ void testTaskFunction(void *pvParameters)
 {
   Serial.println("[TEST TASK] Test task started!");
 
-  // ========== 连接 WiFi AP ==========
+  // ========== Connecting to WiFi AP ==========
   Serial.println("\n[TEST TASK] ========== Connecting to WiFi AP ==========");
   
   const char* testSSID = "ezsmart_factory_test";
-  const char* testPASS = "ezsmart@2026";  // 如果 AP 有密码，在这里设置
-  //关指示灯
+  const char* testPASS = "ezsmart@2026";  // Set AP password here if needed
+  // Turn off indicator LEDs
   digitalWrite(LED_PWR, 0);
   digitalWrite(LED_USB, 1);
 
-  // 设置 WiFi 模式为 STA
+  // Set WiFi mode to STA
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
@@ -1671,7 +1671,7 @@ void testTaskFunction(void *pvParameters)
   
   WiFi.begin(testSSID, testPASS);
   
-  // 等待连接，最多尝试 20 次
+  // Wait for connection, try up to 20 times
   uint8_t connectAttempts = 0;
   bool wifiConnected = false;
   
@@ -1689,13 +1689,13 @@ void testTaskFunction(void *pvParameters)
       Serial.print("[WIFI CONNECT] Local IP: ");
       Serial.println(WiFi.localIP());
       
-      // 获取连接后的实时 RSSI 值
+      // Get real-time RSSI after connection
       int32_t currentRSSI = WiFi.RSSI();
       Serial.print("[WIFI CONNECT] RSSI: ");
       Serial.print(currentRSSI);
       Serial.println(" dBm");
       
-      // 根据信号强度判断连接质量
+      // Assess connection quality based on signal strength
       if (currentRSSI >= -50)
       {
         Serial.println("[TEST TASK] Signal: EXCELLENT");
@@ -1731,14 +1731,14 @@ void testTaskFunction(void *pvParameters)
     Serial.println(WiFi.status());
   }
   
-  // ========== WiFi 网络测试 ==========
+  // ========== WiFi network test ==========
   Serial.println("\n[TEST TASK] ========== WIFI NETWORK TEST START ==========");
   
   uint32_t wifiTestCounter = 0;
   uint32_t wifiSuccessCount = 0;
   uint32_t wifiFailCount = 0;
   
-  // 先进行 10 次 WiFi 测试（约 50 秒）
+  // Run 10 WiFi tests (~50 seconds)
   while (wifiTestCounter < 3)
   {
     wifiTestCounter++;
@@ -1751,7 +1751,7 @@ void testTaskFunction(void *pvParameters)
     
     bool wifiTestConnected = false;
     
-    // 1. 检测 WiFi 连接状态
+    // 1. Check WiFi connection status
     if (WiFi.status() == WL_CONNECTED)
     {
       Serial.println("[WIFI TEST] WiFi Status: CONNECTED");
@@ -1766,7 +1766,7 @@ void testTaskFunction(void *pvParameters)
       Serial.print("[WIFI TEST] DNS Server: ");
       Serial.println(WiFi.dnsIP());
       
-      // 获取实时 RSSI 值
+      // Get real-time RSSI value
       int32_t rssi = WiFi.RSSI();
       Serial.print("[WIFI TEST] Signal Strength (RSSI): ");
       Serial.print(rssi);
@@ -1781,7 +1781,7 @@ void testTaskFunction(void *pvParameters)
       Serial.print(WiFi.status());
       Serial.println(")");
       
-      // 尝试重新连接
+      // Attempt to reconnect
       Serial.println("[WIFI TEST] Attempting to reconnect...");
       WiFi.reconnect();
       delay(2000);
@@ -1802,7 +1802,7 @@ void testTaskFunction(void *pvParameters)
       }
     }
     
-    // 2. WiFi 网络连通性测试
+    // 2. WiFi network connectivity test
     if (wifiTestConnected)
     {
       Serial.println("[WIFI TEST] Testing WiFi network connectivity...");
@@ -1837,7 +1837,7 @@ void testTaskFunction(void *pvParameters)
       }
     }
     
-    // 统计信息
+    // Statistics
     Serial.println("\n[WIFI TEST] ========== Statistics ==========");
     Serial.print("[WIFI TEST]   Total Checks: ");
     Serial.println(wifiTestCounter);
@@ -1857,7 +1857,7 @@ void testTaskFunction(void *pvParameters)
     Serial.println("========================================\n");
   }
 
-  // ========== LAN 网络测试 ==========
+  // ========== LAN network test ==========
   Serial.println("\n[TEST TASK] ========== LAN NETWORK TEST START ==========");
   
   uint32_t lanTestCounter = 0;
@@ -1866,7 +1866,7 @@ void testTaskFunction(void *pvParameters)
   
   factory_initLan();
   delay(1000);
-  // 进行 10 次 LAN 测试（约 50 秒）
+  // Run 10 LAN tests (~50 seconds)
   while (lanTestCounter < 3)
   {
     lanTestCounter++;
@@ -1879,7 +1879,7 @@ void testTaskFunction(void *pvParameters)
     
     bool lanConnected = false;
     
-    // 1. 检测物理连接
+    // 1. Check physical connection
      if (ETH.linkUp())
     {
         Serial.println("[LAN TEST] Physical Link: UP");
@@ -1887,7 +1887,7 @@ void testTaskFunction(void *pvParameters)
         Serial.print(ETH.linkSpeed());
         Serial.println(" Mbps");
         
-        // 检查 IP 配置
+        // Check IP configuration
         if (ETH.localIP() != IPAddress(0, 0, 0, 0))
         {
             Serial.println("[LAN TEST] ETH IP Status: VALID");
@@ -1913,7 +1913,7 @@ void testTaskFunction(void *pvParameters)
         lanFailCount++;
     }
     
-    // 3. LAN 网络连通性测试
+    // 3. LAN network connectivity test
     if (lanConnected)
     {
       Serial.println("[LAN TEST] Testing LAN network connectivity...");
@@ -1948,7 +1948,7 @@ void testTaskFunction(void *pvParameters)
       }
     }
     
-    // 统计信息
+    // Statistics
     Serial.println("\n[LAN TEST] ========== Statistics ==========");
     Serial.print("[LAN TEST]   Total Checks: ");
     Serial.println(lanTestCounter);
@@ -1968,7 +1968,7 @@ void testTaskFunction(void *pvParameters)
     Serial.println("========================================\n");
   }
   
-  // ========== 最终汇总报告 ==========
+  // ========== Final summary report ==========
   Serial.println("\n########################################################");
   Serial.println("#              FACTORY TEST FINAL REPORT              #");
   Serial.println("########################################################");
@@ -2008,14 +2008,14 @@ void testTaskFunction(void *pvParameters)
   Serial.println("########################################################\n");
   
 
-  //打开ZIGBEE指示灯
-  Serial2.write(ZIGBEE_LED_ON, sizeof(ZIGBEE_LED_ON));      //D11亮
-  //打开wifi指示灯
-  if(wifiSuccessCount)digitalWrite(LED_PWR, 1);             //D9亮
-  //打开LAN指示灯
-  if(lanSuccessCount)digitalWrite(LED_USB, 0);              //D12亮 
+  // Turn on ZIGBEE indicator
+  Serial2.write(ZIGBEE_LED_ON, sizeof(ZIGBEE_LED_ON));      // D11 on
+  // Turn on WiFi indicator
+  if(wifiSuccessCount)digitalWrite(LED_PWR, 1);             // D9 on
+  // Turn on LAN indicator
+  if(lanSuccessCount)digitalWrite(LED_USB, 0);              // D12 on 
 
-  // 测试完成后进入空闲循环
+  // Enter idle loop after test completes
   while (1)
   {
     if(!digitalRead(BTN))
@@ -2031,7 +2031,7 @@ void testTaskFunction(void *pvParameters)
 
 void factory_test(void)
 {
-  // 扫描 WiFi 热点
+  // Scan WiFi networks
   Serial.println("[FACTORY] Scanning WiFi networks...");
 
   WiFi.mode(WIFI_STA);
@@ -2056,7 +2056,7 @@ void factory_test(void)
   bool foundTestAP = false;
   int32_t testAP_RSSI = -100;
     
-    // ✅ 手动过滤 SSID
+    // Manually filter SSID
   for (int i = 0; i < n; i++)
   {
       String ssid = WiFi.SSID(i);
@@ -2075,23 +2075,23 @@ void factory_test(void)
           foundTestAP = true;
           if (rssi > testAP_RSSI)
           {
-              testAP_RSSI = rssi;  // 选择信号最好的
+              testAP_RSSI = rssi;  // Pick the one with best signal
           }
           Serial.println("[FACTORY] >>> Found target AP!");
       }
   }
 
-  // 释放扫描结果内存
+  // Free scan result memory
   WiFi.scanDelete();
 
   if (foundTestAP)
   {
-    // 将 RSSI 值作为参数传递给任务（通过指针转换）
+    // Pass RSSI value as parameter to task (via pointer cast)
     xTaskCreate(
         testTaskFunction,
         "TestTask",
         4096,
-        (void *)(intptr_t)testAP_RSSI,  // 传递 RSSI 值
+        (void *)(intptr_t)testAP_RSSI,  // Pass RSSI value
         5,
         &xTestTaskHandle
     );

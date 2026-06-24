@@ -85,7 +85,7 @@ label.swFx {
     padding: 0 10px;
   }
 
-  /* PAGE_ROOT 手机适配 */
+  /* PAGE_ROOT mobile adaptation */
   .machine_bg {
     height: 280px;
     width: 100%;
@@ -121,7 +121,7 @@ label.swFx {
     position: relative !important;
   }
 
-  /* 禁用 masonry 布局，使用标准网格 */
+  /* Disable masonry layout, use standard grid */
   .masonry {
     padding: 0;
     display: flex !important;
@@ -134,17 +134,17 @@ label.swFx {
     width: 100% !important;
   }
 
-  /* 针对所有卡片列确保间隔 */
+  /* Ensure spacing for all card columns */
   .col-sm-12 {
     margin-bottom: 15px !important;
   }
 
-  /* item-box 后的卡片添加上边距，防止与 item-box 重叠 */
+  /* Add top margin to cards after item-box to prevent overlap */
   .item-box + .col-sm-12 {
     margin-top: 20px !important;
   }
 
-  /* 手机端菜单图标显示 */
+  /* Mobile menu icon display */
   .nav-link svg {
     width: 25px !important;
     height: 25px !important;
@@ -169,7 +169,7 @@ label.swFx {
     color: #fff;
   }
 
-  /* PAGE_GENERAL 手机端单选框显示 */
+  /* PAGE_GENERAL mobile radiobox display */
   .form-check-input[type="checkbox"] {
     width: 1.25rem !important;
     height: 1.25rem !important;
@@ -182,7 +182,7 @@ label.swFx {
     margin-top: 0.25rem !important;
   }
 
-  /* 卡片头部在手机上的布局 */
+  /* Card header layout on mobile */
   .card-header {
     flex-wrap: wrap !important;
   }
@@ -251,7 +251,7 @@ label.swFx {
   padding-top: 0px;
 }
 
-/* 响应式右侧内容区域 */
+/* Responsive right content area */
 .col.py-3 {
   overflow-x: hidden;
   word-wrap: break-word;
@@ -370,9 +370,9 @@ div#main {
   margin-right: auto;
 }
 
-/* ===== 工作模式和实时控制样式 ===== */
+/* ===== Work Mode and Real-time Control Styles ===== */
 
-/* 工作模式选择卡片和实时控制卡片 */
+/* Work mode selection card and real-time control card */
 .card {
   border: none !important;
   border-radius: 12px !important;
@@ -385,7 +385,7 @@ div#main {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* 工作模式选项样式 */
+/* Work mode option styles */
 .mode-option {
   background-color: #f2f2f2 !important;
   border: 1px solid transparent !important;
@@ -399,13 +399,13 @@ div#main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* 工作模式选项 - 选中状态 */
+/* Work mode option - selected state */
 .mode-option input[type="radio"]:checked+.mode-icon+.flex-grow-1,
 .mode-option input[type="radio"]:checked~.flex-grow-1 {
   color: #f7a623;
 }
 
-/* 更准确的选中样式 - 当 radio 被选中时 */
+/* More precise selected style - when radio is checked */
 .form-check input[type="radio"]:checked {
   background-color: #f7a623 !important;
   border-color: #f7a623 !important;
@@ -416,13 +416,13 @@ div#main {
   box-shadow: 0 0 0 0.25rem rgba(247, 166, 35, 0.25) !important;
 }
 
-/* 父容器 mode-option 在 radio 被选中时的样式 */
+/* Parent container mode-option style when radio is checked */
 .form-check input[type="radio"]:checked~.mode-icon,
 .form-check input[type="radio"]:checked+.form-check-label {
   color: #f7a623;
 }
 
-/* 使用 :has 伪类实现父元素选中样式（现代浏览器支持） */
+/* Use :has pseudo-class for parent selected style (modern browser support) */
 .mode-option:has(input[type="radio"]:checked) {
   background-color: #fff7f0 !important;
   border-color: rgba(247, 166, 35, 0.4) !important;
@@ -438,7 +438,7 @@ div#main {
   filter: brightness(0) saturate(100%) invert(65%) sepia(85%) saturate(250%) hue-rotate(5deg) brightness(105%);
 }
 
-/* Keep Network & Web 容器样式 */
+/* Keep Network & Web container styles */
 .mode-option .p-3.bg-light {
   background-color: #f2f2f2 !important;
   border-radius: 12px;
@@ -446,7 +446,7 @@ div#main {
   transition: all 0.3s ease;
 }
 
-/* Keep Network & Web - Checkbox 选中样式 */
+/* Keep Network & Web - Checkbox checked style */
 .form-check-inline .form-check-input[type="checkbox"]:checked {
   background-color: #f7a623 !important;
   border-color: #f7a623 !important;
@@ -457,7 +457,7 @@ div#main {
   box-shadow: 0 0 0 0.25rem rgba(247, 166, 35, 0.1) !important;
 }
 
-/* 提示按钮样式 */
+/* Tip button styles */
 .form-check-inline .btn-outline-primary {
   color: #f7a623 !important;
   border-color: #f7a623 !important;
@@ -475,7 +475,7 @@ div#main {
   box-shadow: 0 0 0 0.25rem rgba(247, 166, 35, 0.25) !important;
 }
 
-/* LED控制按钮样式 */
+/* LED control button styles */
 .d-flex.justify-content-center .btn-info,
 .d-flex.justify-content-center .btn-danger,
 .d-flex.justify-content-center .btn-warning {
@@ -510,7 +510,7 @@ div#main {
   box-shadow: 0 0 0 0.25rem rgba(247, 166, 35, 0.25) !important;
 }
 
-/* ===== 实时控制部分样式 ===== */
+/* ===== Real-time Control Section Styles ===== */
 
 .device-diagram-container {
   background-color: #f2f2f2 !important;
@@ -518,7 +518,7 @@ div#main {
   padding: 2rem !important;
 }
 
-/* Form Switch 开关样式 */
+/* Form Switch toggle styles */
 .form-check-input[type="checkbox"][role="switch"] {
   background-color: #f2f2f2 !important;
   border-color: #f2f2f2 !important;
@@ -541,12 +541,12 @@ div#main {
   box-shadow: 0 0 0 0.25rem rgba(247, 166, 35, 0.25) !important;
 }
 
-/* LED开关容器背景颜色 */
+/* LED switch container background color */
 .p-3.bg-light.rounded {
   background-color: #f2f2f2 !important;
 }
 
-/* 保存按钮样式 */
+/* Save button styles */
 .btn.btn-primary.btn-lg {
   background-color: transparent !important;
   color: #f7a623 !important;

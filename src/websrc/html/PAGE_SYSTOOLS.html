@@ -56,8 +56,8 @@
     #file-input_zb, #file-input {
     display: block;
     width: 280px;
-    height: 38px;           /* ← 固定高度 */
-    padding: 0 0.75rem;     /* ← 只保留左右 padding */
+    height: 38px;           /* ← Fixed height */
+    padding: 0 0.75rem;     /* ← Keep only left/right padding */
     margin-bottom: 0.5rem;
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
@@ -67,8 +67,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
-    text-align: center;  /* ← 文字居中 */
-    line-height: 36px;    /* ← 行高 */
+    text-align: center;  /* ← Centered text */
+    line-height: 36px;    /* ← Line height */
   }
   
   #file-input_zb:hover, #file-input:hover {
@@ -645,14 +645,14 @@
           success: function (d, s) {
             console.log("ESP32 firmware upload and flash completed!");
 
-            // ✅ 直接显示成功状态（假设后端已同步完成烧录）
+            // ✅ Display success status directly (assuming backend has completed flashing)
             $('#prg').html('Update completed!<br>Rebooting!');
             $('#bar').css('width', '100%');
 
-            // ✅ 触发重启等待逻辑
+            // ✅ Trigger reboot wait logic
             rebootWait();
 
-            // ✅ 可选：禁用按钮防止重复操作
+            // ✅ Optional: disable button to prevent repeated operations
             $("#updButton").prop("disabled", true);
           },
           error: function (xhr, status, error) {
@@ -670,7 +670,7 @@
 
         $("#updButton_zb").prop("disabled", true);
         
-        // ← 新增：重置进度显示
+        // ← New: reset progress display
         $("#prg_zb").html("Uploading firmware...");
         $("#bar_zb").css("width", "0%");
 
@@ -702,16 +702,16 @@
             );
             $("#bar_zb").css("width", "0%");
             ZBfwStartEvents();
-            // 可选：保留超时保护（但注意变量名）
+            // Optional: keep timeout protection (but note variable name)
             setTimeout(function() {
-              // 注意：ZBfwStartEvents 内部使用的是 zbEventSource，不是 flashPollingInterval
+              // Note: ZBfwStartEvents internally uses zbEventSource, not flashPollingInterval
               if (typeof zbEventSource !== 'undefined' && zbEventSource && 
                   zbEventSource.readyState !== EventSource.CLOSED) {
                 zbEventSource.close();
                 $("#prg_zb").html('<span style="color:orange">⚠️ Operation timed out. Please check device status.</span>');
                 $("#updButton_zb").prop("disabled", false);
               }
-            }, 300000); // 5分钟超时
+            }, 300000); // 5 minute timeout
           },
 
           error: function (xhr, status, error) {
@@ -727,7 +727,7 @@
         localStorage.setItem("update_notify", 0);
         espFlashGitWait();
       });
-      // // Zigbee Git Update 按钮
+      // // Zigbee Git Update button
       // $("button#upd_zb_git").click(function () {
       //   console.log("Starting Zigbee update from Git... Please wait patiently!");
       //   zbFlashGitWait();
@@ -759,9 +759,9 @@
           modalConstructor("espFlashGitInfo", { text, chglog });
         });
       });
-      // Zigbee 版本信息按钮
+      // Zigbee version info button
       $("button#info_zb_git").click(function () {
-        // 直接弹出选择对话框
+        // Directly open the selection dialog
         modalConstructor("zbFirmwareSelect");
       });
     </script>

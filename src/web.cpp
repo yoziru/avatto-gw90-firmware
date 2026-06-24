@@ -166,10 +166,10 @@ void checkFwHexTask(void *param)
     const char *tempFile = static_cast<const char *>(param);
     Serial.println("\n[ZB_FW_TASK] Starting firmware validation task...");
     
-    // ← 发送验证开始事件
+    // Send validation start event
     sendEvent("ZB_FW_info", sizeof("ZB_FW_info"), "Validating firmware...");
 
-    // ← 喂看门狗
+    // Feed watchdog
     esp_task_wdt_reset();  
     
     if (0 == checkFwHex(tempFile)) {
@@ -627,8 +627,8 @@ void handleApi()
             const char *fwurlArg = "fwurl";
             const char *tagZB_FW_info = "ZB_FW_info";
             const char *tagZB_FW_err = "ZB_FW_err";
-            const char *tagZB_FW_download = "ZB_FW_downloading";  // 下载阶段
-            const char *tagZB_FW_flash = "ZB_FW_flashing";        // 烧录阶段
+            const char *tagZB_FW_download = "ZB_FW_downloading";  // Download phase
+            const char *tagZB_FW_flash = "ZB_FW_flashing";        // Flashing phase
             
             if (serverWeb.hasArg(fwurlArg))
             {
@@ -747,7 +747,7 @@ void handleApi()
                             fwFile.write(buff, bytesRead);
                             downloaded += bytesRead;
                             
-                            // 进度更新
+                            // Progress update
                             unsigned long now = millis();
                             if ((now - lastProgressTime > 500) || (downloaded % 10240 == 0)) {
                                 percent = ((float)downloaded / fwSize) * 100;
@@ -1940,19 +1940,19 @@ void handleAbout()
     String result;
     DynamicJsonDocument doc(512);
 
-    // 从 version.h 获取版本和构建日期
-    // 假设 VERSION 和 BUILD_DATE 是在 version.h 中定义的宏
+    // Get version and build date from version.h
+    // Assumes VERSION and BUILD_DATE are macros defined in version.h
     doc["firmwareVersion"] = String(VERSION);
     String buildTimestamp = String(BUILD_TIMESTAMP);
     String buildDate = "Unknown";
 
-    // 查找第一个空格的位置，以分离日期和时间
+    // Find first space to separate date and time
     int spaceIndex = buildTimestamp.indexOf(' ');
     if (spaceIndex != -1) {
-        // 提取日期部分 "YYYY-MM-DD"
+        // Extract date part "YYYY-MM-DD"
         String datePart = buildTimestamp.substring(0, spaceIndex);
         
-        // 将 "-" 替换为 "/"
+        // Replace "-" with "/"
         datePart.replace('-', '/');
         
         buildDate = datePart;

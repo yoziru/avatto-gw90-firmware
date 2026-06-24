@@ -56,8 +56,8 @@ void clearS2Buffer()
 }
 
 
-//协议版本   产品ID       版本        20250321
-//  02        01      02 07 01     D1 FE 34 01   00     74(校验)
+// Protocol version | Product ID | Version | 20250321
+//   02        01      02 07 01     D1 FE 34 01   00     74(checksum)
 void getZbVer()
 {
     zbVer.zbRev = 0;
@@ -273,21 +273,21 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
 
     size_t packetCount = 0;
 
-    // 缓冲区，存储 240 字节数据
+    // Buffer for 240 bytes of data
     byte dataBuffer[240] = {0};
     size_t totalBytes = 0;
     uint8_t lineCount = 0;
     
-    // 地址跟踪变量
+    // Address tracking variables
     uint32_t extendedAddr = 0;
-    uint32_t currentWriteAddr = 0;  // 当前缓冲区中的写入地址
-    uint32_t nextExpectAddr = 0;    // 下一条记录期望的地址
+    uint32_t currentWriteAddr = 0;  // Current write address in buffer
+    uint32_t nextExpectAddr = 0;    // Expected address for next record
     bool firstRecord = true;
     uint8_t i=0;
 
-    // 进度跟踪变量
+    // Progress tracking variables
     size_t lastProgressSize = 0;
-    const size_t progressInterval = zbFlashTotalSize / 100;  // 每 12500 字节上报一次进度
+    const size_t progressInterval = zbFlashTotalSize / 100;  // Report progress every ~1%
 
     Serial.printf("fw flash size: %ld\n",zbFlashTotalSize);
     while (fwFile.available())
@@ -297,37 +297,37 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
         
         if (line.length() > 0 && line[0] == ':')
         {
-            // 跳过结束记录
+            // Skip end-of-file record
             if (line == ":00000001FF")
             {
                 DEBUG_PRINTLN("HEX file end record found");
                 break;
             }
             
-            // 解析记录类型
+            // Parse record type
             uint8_t recordType = strtol(line.substring(7, 9).c_str(), nullptr, 16);
-            // 处理扩展线性地址记录 (0x04)
+            // Handle extended linear address record (0x04)
             if (recordType == 0x04)
             {
                 extendedAddr = strtol(line.substring(9, 13).c_str(), nullptr, 16) << 16;
                 continue;
             }
-            // 处理扩展段地址记录 (0x02)
+            // Handle extended segment address record (0x02)
             if (recordType == 0x02)
             {
                 extendedAddr = strtol(line.substring(9, 13).c_str(), nullptr, 16) << 4;
                 continue;
             }
-            // 只处理数据记录（类型 00）
+            // Only process data records (type 00)
             if (recordType != 0x00)
             {
                 continue;
             }
-            // 解析当前行的地址和数据长度
+            // Parse current line address and data length
             uint16_t lineAddr = strtol(line.substring(3, 7).c_str(), nullptr, 16);
             uint8_t lineDataLen = strtol(line.substring(1, 3).c_str(), nullptr, 16);
             uint32_t fullAddr = extendedAddr + lineAddr;
-            // 第一条记录初始化
+            // Initialize on first record
             if (firstRecord)
             {
                 currentWriteAddr = fullAddr;
@@ -335,10 +335,10 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                 firstRecord = false;
                 DEBUG_PRINTLN(String("[HEX] Start address: 0x") + String(fullAddr, HEX));
             }
-            // 检查地址是否连续，如果不连续需要填充空白
+            // Check if address is contiguous, fill gaps if not
             if (fullAddr != nextExpectAddr)
             {
-                // 计算地址间隙大小
+                // Calculate gap size
                 uint32_t gapSize = fullAddr - nextExpectAddr;
                 
                 DEBUG_PRINT(String("[HEX] Gap detected: 0x") + String(nextExpectAddr, HEX));
@@ -347,13 +347,13 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                 
                 while (gapSize > 0)
                 {
-                    // 计算本次可以填充的数量（缓冲区剩余空间）
+                    // Calculate fill size for this iteration (remaining buffer space)
                     uint32_t fillSize = gapSize;
                     if (fillSize > (240 - totalBytes))
                     {
                         fillSize = 240 - totalBytes;
                     }
-                    // 填充 0xFF
+                    // Fill with 0xFF
                     for (uint32_t i = 0; i < fillSize; i++)
                     {
                         dataBuffer[totalBytes + i] = 0xFF;
@@ -362,7 +362,7 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                     gapSize -= fillSize;
                     nextExpectAddr += fillSize;
                     
-                    // 如果缓冲区满了，发送当前数据
+                    // If buffer is full, send current data
                     if (totalBytes >= 240)
                     {
                         packetCount++;
@@ -398,10 +398,10 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                 }
             }
             
-            // 检查缓冲区是否能容纳当前行数据
+            // Check if buffer can hold current line data
             if (totalBytes + lineDataLen > 240)
             {
-                // 缓冲区满了，先发送当前数据
+                // Buffer is full, send current data first
                 packetCount++;
                 zbFlashTotalSent += totalBytes;
                 
@@ -423,7 +423,7 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                 }
                 zbSendCommand(0x24, dataBuffer, totalBytes, 3);
                 
-                // 清空缓冲区，更新起始地址
+                // Clear buffer, update start address
                 memset(dataBuffer, 0, sizeof(dataBuffer));
                 totalBytes = 0;
                 lineCount = 0;
@@ -439,7 +439,7 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                 }
             }
             
-            // 解析当前行数据并写入缓冲区
+            // Parse current line data and write to buffer
             for (uint8_t i = 0; i < lineDataLen; i++)
             {
                 char hexByte[3] = {0};
@@ -450,11 +450,11 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
             
             totalBytes += lineDataLen;
             lineCount++;
-            nextExpectAddr = fullAddr + lineDataLen; // 更新期望的下一个地址
+            nextExpectAddr = fullAddr + lineDataLen; // Update expected next address
         }
     }
     
-    // 发送最后一帧剩余数据
+    // Send remaining data in last frame
     if (totalBytes > 0)
     {
         packetCount++;
@@ -478,10 +478,10 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
         }
         zbSendCommand(0x24, dataBuffer, totalBytes, 3);
 
-        // 【新增】上报最后进度
+        // Report final progress
         zbFlashTotalSent = zbFlashTotalSize;
 
-        // ← 添加：发送烧录完成事件
+        // Send flash complete event
         sendEvent("ZB_FW_flashing", sizeof("ZB_FW_flashing"), "100");
     }
     i=0;              
@@ -493,7 +493,7 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
 flash_quit:
     fwFile.close();
     Serial2.updateBaudRate(ConfigSettings.serialSpeed); 
-    CCTool.restart();         //重启
+    CCTool.restart();         // Restart
     DEBUG_PRINTLN(F("fw.hex data send complete"));
     Serial.printf("total send: %ld",zbFlashTotalSent);
     printLogMsg(String("[ZB_FLASH] fw.hex data send complete | Total: ") + String(zbFlashTotalSent) + " bytes");
@@ -768,7 +768,7 @@ bool zbCheckLastCmd(void)
     buf[7] = (uint8_t)(size >> 0);
 
     Serial.printf("update baud\n");
-    Serial2.updateBaudRate(1000000);         //提高波特率
+    Serial2.updateBaudRate(1000000);         // Increase baud rate
     Serial.printf("erase flash\n");
     zbEraseFlash(0,size);
 
@@ -817,7 +817,7 @@ size_t getHexBinSize(File hexFile)
         return 0;
     }
 
-    //return 360448;   //2652芯片固定bin大小
+    //return 360448;   // CC2652 fixed BIN size
 
     uint32_t maxAddress = 0;
     uint32_t extendedAddr = 0;
@@ -829,16 +829,16 @@ size_t getHexBinSize(File hexFile)
         
         if (line.length() > 0 && line[0] == ':')
         {
-            // 跳过结束记录
+            // Skip end-of-file record
             if (line == ":00000001FF")
             {
                 break;
             }
             
-            // 解析记录类型
+            // Parse record type
             uint8_t recordType = strtol(line.substring(7, 9).c_str(), nullptr, 16);
             
-            if (recordType == 0x00) // 数据记录
+            if (recordType == 0x00) // Data record
             {
                 uint16_t address = strtol(line.substring(3, 7).c_str(), nullptr, 16);
                 uint8_t dataLen = strtol(line.substring(1, 3).c_str(), nullptr, 16);
@@ -850,11 +850,11 @@ size_t getHexBinSize(File hexFile)
                     maxAddress = endAddress;
                 }
             }
-            else if (recordType == 0x02) // 扩展段地址记录
+            else if (recordType == 0x02) // Extended segment address record
             {
                 extendedAddr = strtol(line.substring(9, 13).c_str(), nullptr, 16) << 4;
             }
-            else if (recordType == 0x04) // 扩展线性地址记录
+            else if (recordType == 0x04) // Extended linear address record
             {
                 extendedAddr = strtol(line.substring(9, 13).c_str(), nullptr, 16) << 16;
             }
