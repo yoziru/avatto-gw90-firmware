@@ -3,11 +3,10 @@ from subprocess import call
 Import("env")
 import shutil
 import os
-import time
 from glob import glob
 
 def after_build(source, target, env):
-    time.sleep(2)
+    os.makedirs('bin', exist_ok=True)
     shutil.copy(firmware_source, 'bin/firmware.bin')
     for f in glob ('bin/AVATTO-GW90-Ti*.bin'):
         os.unlink (f)
