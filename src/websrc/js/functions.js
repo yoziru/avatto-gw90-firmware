@@ -374,8 +374,8 @@ function apiGetPage(page, doneCall) {
 			for (const property in values) {
 				if (property === "timeZoneName") {
 					selectedTimeZone = values[property];
-					console.error(selectedTimeZone);
-					console.error("timeZoneName");
+					console.debug(selectedTimeZone);
+					console.debug("timeZoneName");
 					continue;
 				}
 				$("[data-replace='" + property + "']").map(function () {
@@ -1752,19 +1752,35 @@ const languages = [
 	{ value: "de", text: "🇩🇪 Deutsch" }
 ];
 
-// i18next initialization
-i18next.use(i18nextHttpBackend).init(
+// i18next 初始化
+let i18nReady = false;
+i18next.init(
 	{
 		lng: "en",
 		fallbackLng: "en",
-		backend: {
-			loadPath: "/lg/{{lng}}.json"
+		resources: {
+			en: {
+				translation: {
+					"l.st": "Status",
+					"l.ge": "General",
+					"l.ne": "Ethernet",
+					"l.zi": "Z2M/ZHA",
+					"l.se": "Security",
+					"l.mq": "MQTT",
+					"l.vp": "WireGuard",
+					"l.to": "Tools",
+					"l.ab": "About",
+					"l.lo": "Logout"
+				}
+			}
 		}
 	},
 	function (err, t) {
 		if (err) {
 			console.error("i18next initialization error:", err);
+			return;
 		}
+		i18nReady = true;
 	}
 );
 
@@ -1797,6 +1813,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Localize all elements
 function localize() {
+	if (!i18nReady) return;
 	const elements = document.querySelectorAll("[data-i18n]");
 	
 	elements.forEach((element) => {
