@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WebServer.h>
 #include <FS.h>
+#include "encoding.h"
 
 extern WebServer serverWeb;
 extern WiFiClient eventsClient;
@@ -38,7 +39,6 @@ void initWebServer();
 void webServerHandleClient();
 void sendEvent(const char *event, const uint8_t evsz, const String data);
 void sendGzip(const char *contentType, const uint8_t content[], uint16_t contentLen);
-void hex2bin(uint8_t *out, const char *in);
 String urlDecode(String input);
 bool checkAuth();
 void printLogTime();

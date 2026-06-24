@@ -52,3 +52,6 @@ jobs:
 
       - name: Build prod-solo firmware
         run: pio run -e prod-solo
+
+      - name: Run unit tests
+        run: pio test -e native
