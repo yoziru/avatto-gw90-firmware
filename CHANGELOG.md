@@ -9,6 +9,7 @@
 - Translation: all Chinese → English (61 files). (#4)
 - Web: embed i18n, remove CDN deps, fix console logging. (#1)
 - Routes: auto-generate from webh/ directory. (#2)
+- CSS: replace Bootstrap with Water.css + minimal custom stylesheet (65KB→10KB gzipped). (#18)
 
 ## v1.0.7
 
