@@ -446,16 +446,12 @@ function apiGetPage(page, doneCall) {
 			if (values.operationalMode) {
 				const mode = values.operationalMode.toLowerCase();
 				$("#deviceDiagram").removeClass("mode-lan mode-wifi mode-usb");
-				$(".machine_info .info_item").removeClass("active");
 				if (mode.includes("wifi")) {
 					$("#deviceDiagram").addClass("mode-wifi");
-					$(".machine_info .info_item:nth-child(1)").addClass("active");
 				} else if (mode.includes("usb")) {
 					$("#deviceDiagram").addClass("mode-usb");
-					$(".machine_info .info_item:nth-child(3)").addClass("active");
 				} else {
 					$("#deviceDiagram").addClass("mode-lan");
-					$(".machine_info .info_item:nth-child(2)").addClass("active");
 				}
 			}
 
