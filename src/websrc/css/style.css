@@ -45,6 +45,18 @@ label.swFx {
   pointer-events: none;
 }
 
+nav.navbar {
+  display: flex !important;
+  z-index: 99;
+}
+
+@media (min-width: 768px) {
+  nav.navbar .navbar-brand,
+  nav.navbar h2[data-replace="pageName"] {
+    display: none;
+  }
+}
+
 @media (min-width: 576px) {
   .nav {
     padding-left: 8px;
@@ -63,7 +75,6 @@ label.swFx {
   }
 
   nav.navbar {
-    display: flex !important;
     z-index: 99;
   }
 

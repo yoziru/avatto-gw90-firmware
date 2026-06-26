@@ -154,8 +154,6 @@ void initWebServer()
                  { sendGzip(contTypeTextJs, functions_js_gz, functions_js_gz_len); });
     serverWeb.on("/js/jquery-min.js", []()
                  { sendGzip(contTypeTextJs, jquery_min_js_gz, jquery_min_js_gz_len); });
-    serverWeb.on("/js/i18next.min.js", []()
-                 { sendGzip(contTypeTextJs, i18next_min_js_gz, i18next_min_js_gz_len); });
     serverWeb.on("/js/commonmark.min.js", []()
                  { sendGzip(contTypeTextJs, commonmark_min_js_gz, commonmark_min_js_gz_len); });
     serverWeb.on("/css/required.css", []()
