@@ -28,7 +28,7 @@ def get_route_info(orig_filename):
     if ext == '.js':
         return f"/js/{orig_filename}", "contTypeTextJs"
     elif ext == '.css':
-        return f"/css/{orig_filename}", "contTypeTextJs"
+        return f"/css/{orig_filename}", "contTypeTextCss"
     elif ext == '.svg':
         return f"/{orig_filename}", '"image/svg+xml"'
     elif ext == '.png':
