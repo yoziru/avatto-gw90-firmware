@@ -442,21 +442,17 @@ function apiGetPage(page, doneCall) {
 				}
 			}
 
-			// Dynamically switch device operation mode image based on operationalMode
+			// Update device diagram mode indicators
 			if (values.operationalMode) {
 				const mode = values.operationalMode.toLowerCase();
-				// let imgSrc = "device_operating_lan.png";
-				let imgSrc = "device_operating_default.png";
+				$("#deviceDiagram").removeClass("mode-lan mode-wifi mode-usb");
 				if (mode.includes("wifi")) {
-					// imgSrc = "device_operating_wifi.png";
-                    let imgSrc = "device_operating_default.png";
+					$("#deviceDiagram").addClass("mode-wifi");
 				} else if (mode.includes("usb")) {
-					// imgSrc = "device_operating_usb.png";
-					let imgSrc = "device_operating_default.png";
+					$("#deviceDiagram").addClass("mode-usb");
+				} else {
+					$("#deviceDiagram").addClass("mode-lan");
 				}
-				// else default is LAN
-				
-				$("#machineImg").attr("src", imgSrc);
 			}
 
 			if (typeof (locCall) == "function") locCall();//callback
