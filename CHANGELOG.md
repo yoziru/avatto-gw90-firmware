@@ -9,6 +9,7 @@
 - Translation: all Chinese → English (61 files). (#4)
 - Web: embed i18n, remove CDN deps, fix console logging. (#1)
 - Routes: auto-generate from webh/ directory. (#2)
+- Test: expand native unit tests (log buffer, API dispatch). (#16)
 
 ## v1.0.7
 
