@@ -9,12 +9,12 @@ run = "uv sync --group build"
 [tasks.build]
 description = "Build prod-solo firmware"
 depends = ["setup"]
-run = "uv run pio run -e prod-solo"
+run = "uv run pio run -e prod-solo -t clean && uv run pio run -e prod-solo"
 
 [tasks."build:debug"]
 description = "Build debug-solo firmware"
 depends = ["setup"]
-run = "uv run pio run -e debug-solo"
+run = "uv run pio run -e debug-solo -t clean && uv run pio run -e debug-solo"
 
 [tasks.flash]
 description = "Flash prod-solo firmware (set UPLOAD_PORT env var)"
