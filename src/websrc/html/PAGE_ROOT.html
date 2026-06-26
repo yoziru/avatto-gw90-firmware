@@ -12,7 +12,18 @@
         <div class="card-body" style="text-align: center; overflow: hidden;">
           <div class="machine_bg mode-lan" id="deviceDiagram">
             <div class="diagram-wrap">
-              <img id="machineImg" src="device_operating_default.png" />
+              <svg id="machineImg" viewBox="0 0 500 292" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <rect x="20" y="8" width="460" height="112" rx="14" ry="14" fill="#f5f5f5" stroke="#d5d5d5" stroke-width="2"/>
+                <circle cx="55" cy="32" r="5" fill="#66bb6a" opacity="0.75"/>
+                <circle cx="75" cy="32" r="5" fill="#42a5f5" opacity="0.75"/>
+                <rect x="140" y="50" width="220" height="42" rx="6" fill="#ececec" stroke="#e0e0e0" stroke-width="1"/>
+                <text x="250" y="68" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="bold" fill="#bbb">AVATTO GW90</text>
+                <text x="250" y="84" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#ccc">Zigbee Gateway</text>
+                <rect x="170" y="220" width="160" height="14" rx="3" fill="#eaeaea" stroke="#ddd" stroke-width="1"/>
+                <rect x="200" y="223" width="12" height="8" rx="2" fill="#c0c0c0"/>
+                <rect x="249" y="223" width="12" height="8" rx="2" fill="#c0c0c0"/>
+                <rect x="298" y="223" width="12" height="8" rx="2" fill="#c0c0c0"/>
+              </svg>
               <svg class="conn-svg" viewBox="0 0 500 292" preserveAspectRatio="none">
                 <polyline class="line-wifi" points="54,120 54,205 206,205 206,229" fill="none" stroke-width="2"/>
                 <polyline class="line-lan" points="230,120 230,178 255,178 255,229" fill="none" stroke-width="2"/>

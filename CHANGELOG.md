@@ -9,6 +9,12 @@
 - Translation: all Chinese → English (61 files). (#4)
 - Web: embed i18n, remove CDN deps, fix console logging. (#1)
 - Routes: auto-generate from webh/ directory. (#2)
+- Web: replace i18next with custom MicroI18n. (#10)
+- Web: replace device PNGs with inline SVG diagram. (#12)
+- Test: add unit test infrastructure with Unity. (#13)
+- Refactor: split web.cpp into modular files under src/web/. (#11)
+- Fix: LAN8720 PHY init failure after ESP.restart() on PoE. (#9)
+- Web: remove remaining device PNGs, replace with inline SVG. (#15)
 
 ## v1.0.7
 
