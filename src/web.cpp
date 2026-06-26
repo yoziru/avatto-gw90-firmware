@@ -192,12 +192,6 @@ void initWebServer()
     serverWeb.on("/Time.svg", []()
                  { sendGzip("image/svg+xml", Time_svg_gz, Time_svg_gz_len); });
 
-    serverWeb.on("/device_operating_wifi.png", []()
-                 { sendGzip("image/png", device_operating_wifi_png_gz, device_operating_wifi_png_gz_len); });
-    serverWeb.on("/device_operating_usb.png", []()
-                 { sendGzip("image/png", device_operating_usb_png_gz, device_operating_usb_png_gz_len); });
-    serverWeb.on("/device_operating_lan.png", []()
-                 { sendGzip("image/png", device_operating_lan_png_gz, device_operating_lan_png_gz_len); });
 
     serverWeb.on("/icon_header_wifi.svg", []()
                  { sendGzip("image/svg+xml", icon_header_wifi_svg_gz, icon_header_wifi_svg_gz_len); });
@@ -208,8 +202,7 @@ void initWebServer()
     serverWeb.on("/icon_header_hardware.svg", []()
                  { sendGzip("image/svg+xml", icon_header_hardware_svg_gz, icon_header_hardware_svg_gz_len); });
 
-    serverWeb.on("/device_about_info.png", []()
-                 { sendGzip("image/png", device_about_info_png_gz, device_about_info_png_gz_len); });
+
     serverWeb.on("/icon_brand_info.svg", []()
                  { sendGzip("image/svg+xml", icon_brand_info_svg_gz, icon_brand_info_svg_gz_len); });
     serverWeb.on("/icon_hardware_info.svg", []()
@@ -228,8 +221,7 @@ void initWebServer()
                  { sendGzip("image/svg+xml", icon_purchase_info_svg_gz, icon_purchase_info_svg_gz_len); });
     serverWeb.on("/icon_service_info.svg", []()
                  { sendGzip("image/svg+xml", icon_service_info_svg_gz, icon_service_info_svg_gz_len); });
-    serverWeb.on("/device_operating_default.png", []()
-                 { sendGzip("image/png", device_operating_default_png_gz, device_operating_default_png_gz_len); });
+
     serverWeb.on("/icon_left_zigbee.svg", []()
                  { sendGzip("image/svg+xml", icon_left_zigbee_svg_gz, icon_left_zigbee_svg_gz_len); });
     serverWeb.on("/icon_left_security.svg", []()
