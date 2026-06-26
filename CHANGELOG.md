@@ -10,6 +10,7 @@
 - Web: embed i18n, remove CDN deps, fix console logging. (#1)
 - Routes: auto-generate from webh/ directory. (#2)
 - Refactor: finish web.cpp split — events.cpp, common.cpp, delete web.cpp, fix CSS MIME. (#17)
+- Test: expand native unit tests (log buffer, API dispatch). (#16)
 
 ## v1.0.7
 
