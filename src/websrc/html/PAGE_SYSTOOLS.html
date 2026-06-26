@@ -101,7 +101,6 @@
         role="tab"
         aria-controls="profile"
         aria-selected="false"
-        onclick="$('.masonry').masonry()"
       >
         <img src="realTime_control.svg" class="title_icon_style" />
         <span>System Tools</span>
@@ -117,7 +116,6 @@
         role="tab"
         aria-controls="fw"
         aria-selected="false"
-        onclick="$('.masonry').masonry()"
       >
         <img src="icon_firmware_update.svg" class="title_icon_style" />
         <span>Firmware Update</span>
@@ -582,188 +580,120 @@
       </div>
     </div>
 
-    <script src="/js/masonry.js"></script>
     <script>
-      $(".flsh_zb").click(function () {
-        //http://192.168.0.105/api?action=10&fwurl=https://raw.githubusercontent.com/Tarik2142/devHost/main/coordinator_20220219.bin
-        //alert("Feature under development");
-        modalConstructor("flashZB"); //
-        //apiLink + api.actions.API_FLASH_ZB + "&fwurl=" + "https://raw.githubusercontent.com/Tarik2142/devHost/main/" + this.id + ".bin"
-      });
+      document.querySelectorAll(".flsh_zb").forEach(function(btn) { btn.addEventListener("click", function() { modalConstructor("flashZB"); }); });
       function sub(obj) {
         let fileName = obj.value.split("\\\\");
         if (fileName != "") {
           localStorage.setItem("beta_feedback", 0);
-          if (!(localStorage.getItem('flash_warning') == 1)) {
-            modalConstructor("flashWarning");
-          } else {
-            $("#updButton").removeAttr("disabled");
-          }
-        } else {
-          $("#updButton").prop("disabled", true);
-        }
-        document.getElementById("file-input").innerHTML =
-          "   " + fileName[fileName.length - 1];
+          if (!(localStorage.getItem('flash_warning') == 1)) { modalConstructor("flashWarning"); }
+          else { getEl("updButton").removeAttribute("disabled"); }
+        } else { getEl("updButton").disabled = true; }
+        getEl("file-input").innerHTML = "   " + fileName[fileName.length - 1];
       }
       function sub_zb(obj) {
         let fileName = obj.value.split("\\\\");
-        if (fileName != "") {
-          $("#updButton_zb").removeAttr("disabled");
-        } else {
-          $("#updButton_zb").prop("disabled", true);
-        }
-        document.getElementById("file-input_zb").innerHTML =
-          "   " + fileName[fileName.length - 1];
+        if (fileName != "") { getEl("updButton_zb").removeAttribute("disabled"); }
+        else { getEl("updButton_zb").disabled = true; }
+        getEl("file-input_zb").innerHTML = "   " + fileName[fileName.length - 1];
       }
-      $("form#upload_form").submit(function (e) {
+      getQ("form#upload_form").addEventListener("submit", function(e) {
         e.preventDefault();
-        var form = $("#upload_form")[0];
-        var data = new FormData(form);
-
-        $("#updButton").prop("disabled", true);
-        $('#prg').html('Uploading firmware...');
-        $('#bar').css('width', '0%');
-
-        $.ajax({
-          url: "/update",
-          type: "POST",
-          data: data,
-          contentType: false,
-          processData: false,
-          xhr: function () {
-            var xhr = new window.XMLHttpRequest();
-            xhr.upload.addEventListener('progress', function (evt) {
-              if (evt.lengthComputable) {
-                var per = evt.loaded / evt.total;
-                $('#prg').html('Uploading: ' + Math.round(per * 100) + '%');
-                $('#bar').css('width', Math.round(per * 100) + '%');
-              }
-            }, false);
-
-            return xhr;
-          },
-          success: function (d, s) {
+        var data = new FormData(this);
+        getEl("updButton").disabled = true;
+        getEl("prg").innerHTML = "Uploading firmware...";
+        getEl("bar").style.width = "0%";
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", function(evt) {
+          if (evt.lengthComputable) {
+            var per = evt.loaded / evt.total;
+            getEl("prg").innerHTML = "Uploading: " + Math.round(per * 100) + "%";
+            getEl("bar").style.width = Math.round(per * 100) + "%";
+          }
+        }, false);
+        xhr.open("POST", "/update", true);
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
             console.log("ESP32 firmware upload and flash completed!");
-
-            // ✅ Display success status directly (assuming backend has completed flashing)
-            $('#prg').html('Update completed!<br>Rebooting!');
-            $('#bar').css('width', '100%');
-
-            // ✅ Trigger reboot wait logic
+            getEl("prg").innerHTML = "Update completed!<br>Rebooting!";
+            getEl("bar").style.width = "100%";
             rebootWait();
-
-            // ✅ Optional: disable button to prevent repeated operations
-            $("#updButton").prop("disabled", true);
-          },
-          error: function (xhr, status, error) {
-            console.log("ESP32 update error: " + status + " - " + error);
-            $('#prg').html('<span style="color:red">Firmware upload failed!</span><br>' + (error || 'Please check network connection and retry'));
-            $('#bar').css('width', '0%');
-            $("#updButton").removeAttr("disabled");
-          },
-        });
+            getEl("updButton").disabled = true;
+          } else {
+            console.log("ESP32 update error: " + xhr.status + " - " + xhr.statusText);
+            getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
+            getEl("bar").style.width = "0%";
+            getEl("updButton").removeAttribute("disabled");
+          }
+        };
+        xhr.onerror = function() {
+          getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
+          getEl("bar").style.width = "0%";
+          getEl("updButton").removeAttribute("disabled");
+        };
+        xhr.send(data);
       });
-      $("form#upload_form_zb").submit(function (e) {
+      getQ("form#upload_form_zb").addEventListener("submit", function(e) {
         e.preventDefault();
-        var form = $("#upload_form_zb")[0];
-        var data = new FormData(form);
-
-        $("#updButton_zb").prop("disabled", true);
-        
-        // ← New: reset progress display
-        $("#prg_zb").html("Uploading firmware...");
-        $("#bar_zb").css("width", "0%");
-
-        $.ajax({
-          url: "/updateZB",
-          type: "POST",
-          data: data,
-          contentType: false,
-          processData: false,
-          xhr: function () {
-            var xhr = new window.XMLHttpRequest();
-            xhr.upload.addEventListener(
-              "progress",
-              function (evt) {
-                if (evt.lengthComputable) {
-                  var per = evt.loaded / evt.total;
-                  $("#prg_zb").html("upload: " + Math.round(per * 100) + "%");
-                  $("#bar_zb").css("width", Math.round(per * 100) + "%");
-                }
-              },
-              false,
-            );
-            return xhr;
-          },
-          success: function (d, s) {
+        var data = new FormData(this);
+        getEl("updButton_zb").disabled = true;
+        getEl("prg_zb").innerHTML = "Uploading firmware...";
+        getEl("bar_zb").style.width = "0%";
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", function(evt) {
+          if (evt.lengthComputable) {
+            var per = evt.loaded / evt.total;
+            getEl("prg_zb").innerHTML = "upload: " + Math.round(per * 100) + "%";
+            getEl("bar_zb").style.width = Math.round(per * 100) + "%";
+          }
+        }, false);
+        xhr.open("POST", "/updateZB", true);
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
             console.log("Success!");
-            $("#prg_zb").html(
-              "Upload complete! <br>Start verifing & flashing...",
-            );
-            $("#bar_zb").css("width", "0%");
+            getEl("prg_zb").innerHTML = "Upload complete! <br>Start verifing & flashing...";
+            getEl("bar_zb").style.width = "0%";
             ZBfwStartEvents();
-            // Optional: keep timeout protection (but note variable name)
             setTimeout(function() {
-              // Note: ZBfwStartEvents internally uses zbEventSource, not flashPollingInterval
-              if (typeof zbEventSource !== 'undefined' && zbEventSource && 
-                  zbEventSource.readyState !== EventSource.CLOSED) {
+              if (typeof zbEventSource !== "undefined" && zbEventSource && zbEventSource.readyState !== EventSource.CLOSED) {
                 zbEventSource.close();
-                $("#prg_zb").html('<span style="color:orange">⚠️ Operation timed out. Please check device status.</span>');
-                $("#updButton_zb").prop("disabled", false);
+                getEl("prg_zb").innerHTML = '<span style="color:orange">Operation timed out. Please check device status.</span>';
+                getEl("updButton_zb").disabled = false;
               }
-            }, 300000); // 5 minute timeout
-          },
-
-          error: function (xhr, status, error) {
-            console.log("Zigbee update error: " + status + " - " + error);
-            $('#prg_zb').html('<span style="color:red">Firmware upload failed!</span><br>' + (error || 'Please check network connection and retry'));
-            $('#bar_zb').css('width', '0%');
-          },
-        });
+            }, 300000);
+          } else {
+            console.log("Zigbee update error: " + xhr.status + " - " + xhr.statusText);
+            getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
+            getEl("bar_zb").style.width = "0%";
+          }
+        };
+        xhr.onerror = function() {
+          getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
+          getEl("bar_zb").style.width = "0%";
+        };
+        xhr.send(data);
       });
-
-      $("button#upd_esp_git").click(function () {
+      getQ("button#upd_esp_git").addEventListener("click", function() {
         console.log("Starting update from Git... Please wait patiently!");
         localStorage.setItem("update_notify", 0);
         espFlashGitWait();
       });
-      // // Zigbee Git Update button
-      // $("button#upd_zb_git").click(function () {
-      //   console.log("Starting Zigbee update from Git... Please wait patiently!");
-      //   zbFlashGitWait();
-      // });
     </script>
     <script src="/js/commonmark.min.js"></script>
     <script>
-      $("button#info_esp_git").click(function () {
+      getQ("button#info_esp_git").addEventListener("click", function() {
         processResponses().then((combinedData) => {
-          var asset = combinedData.jsonData.assets[0];
           var downloadCount = 0;
-          for (var i = 0; i < combinedData.jsonData.assets.length; i++) {
-            downloadCount += combinedData.jsonData.assets[i].download_count;
-          }
-          var text =
-            "Local version v" +
-            combinedData.textData +
-            ". GitHub version " +
-            combinedData.jsonData.tag_name +
-            ", downloaded " +
-            downloadCount.toLocaleString() +
-            " ";
-
+          for (var i = 0; i < combinedData.jsonData.assets.length; i++) { downloadCount += combinedData.jsonData.assets[i].download_count; }
+          var text = "Local version v" + combinedData.textData + ". GitHub version " + combinedData.jsonData.tag_name + ", downloaded " + downloadCount.toLocaleString() + " ";
           var reader = new commonmark.Parser();
           var writer = new commonmark.HtmlRenderer();
           var parsed = reader.parse(combinedData.jsonData.body);
           var chglog = writer.render(parsed);
-
           modalConstructor("espFlashGitInfo", { text, chglog });
         });
       });
-      // Zigbee version info button
-      $("button#info_zb_git").click(function () {
-        // Directly open the selection dialog
-        modalConstructor("zbFirmwareSelect");
-      });
+      getQ("button#info_zb_git").addEventListener("click", function() { modalConstructor("zbFirmwareSelect"); });
     </script>
   </div>
 </div>
