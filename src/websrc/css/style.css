@@ -605,3 +605,76 @@ div#main { margin-left: auto; margin-right: auto; }
   .card-header { flex-wrap: wrap; }
   .card-header .form-check.form-switch { width: 100%; margin-top: 10px; margin-left: 0; }
 }
+
+/* ===== Water.css Fixes ===== */
+body { max-width: none; }
+.card-footer { padding: 0.75rem 1rem; background-color: var(--bg-card); border-top: 1px solid var(--border-color); }
+
+/* Ensure form elements inherit font in case water.css overrides */
+button, input, select, textarea { font-family: inherit; }
+
+/* ===== Dark Mode ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-body: #1a1a2e;
+    --bg-card: #232340;
+    --bg-input: #2a2a4a;
+    --bg-muted: #2a2a4a;
+    --text-main: #e0e0e0;
+    --text-muted: #a0a0b0;
+    --text-light: #808090;
+    --border-color: #3a3a5a;
+    --border-light: #3a3a5a;
+    --accent-light: #2a2a1e;
+    --accent-border: rgba(245, 166, 35, 0.4);
+    --accent-shadow: rgba(245, 166, 35, 0.15);
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  .modal-content { background-color: var(--bg-card); border-color: var(--border-color); }
+  .toast { background-color: rgba(35, 35, 64, 0.95); border-color: var(--border-color); }
+  .toast-header { background-color: rgba(35, 35, 64, 0.95); border-color: var(--border-color); }
+  .progress { background-color: #3a3a5a; }
+  .progress-bar { color: #000; }
+  .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.04); }
+  .alert-info { color: #cff4fc; background-color: #0a3a4a; border-color: #0a4a5a; }
+  .alert-success { color: #d1e7dd; background-color: #0a3a2a; border-color: #0a4a3a; }
+  .alert-warning { color: #fff3cd; background-color: #3a3a0a; border-color: #4a4a0a; }
+  .alert-danger { color: #f8d7da; background-color: #3a0a0a; border-color: #4a0a0a; }
+  .alert-secondary { color: #e2e3e5; background-color: #2a2a3a; border-color: #3a3a4a; }
+  form#upload_form, form#upload_form_zb { background: var(--bg-card); }
+  #file-input, #file-input_zb { border-color: var(--border-color); }
+  .mode-option { background-color: var(--bg-muted); }
+  .mode-option:has(input[type="radio"]:checked) { background-color: rgba(245,166,35,0.08); }
+  .nav-item a { border-bottom-color: rgba(255,255,255,0.1); }
+  .device-diagram-container { background-color: var(--bg-muted); }
+  .machine_info .info_item { color: var(--text-muted); }
+  .mode-wifi .info_item[data-mode="wifi"] { color: var(--text-main); }
+  .mode-lan .info_item[data-mode="lan"] { color: var(--text-main); }
+  .mode-usb .info_item[data-mode="usb"] { color: var(--text-main); }
+  .mode-option:hover { background-color: #33335a; }
+  .item-box .small-card .card { background-color: var(--bg-card); }
+
+  .form-check-input { background-color: #3a3a5a; border-color: #5a5a7a; }
+  .form-control, .form-select { background-color: var(--bg-input); color: var(--text-main); border-color: var(--border-color); }
+  .form-switch .form-check-input { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%28255, 255, 255, 0.4%29'/%3e%3c/svg%3e"); }
+  .form-check-input[type="checkbox"][role="switch"] { background-color: #3a3a5a; border-color: #3a3a5a; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%28255, 255, 255, 0.4%29'/%3e%3c/svg%3e"); }
+  .form-check-input[type="checkbox"][role="switch"]:checked { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e"); }
+  .active { color: var(--text-main); }
+  .badge { color: #000; }
+  .btn-close { opacity: 0.7; filter: invert(1); }
+  .btn-close:hover { opacity: 1; }
+  .text-primary { color: var(--text-main); }
+  .text-dark { color: var(--text-main); }
+  nav.navbar .navbar-toggler-icon { filter: invert(1); }
+  .mode-option .p-3.bg-light { background-color: var(--bg-muted); border-color: var(--border-light); }
+  .p-3.bg-light.rounded { background-color: var(--bg-muted); }
+  .d-flex.justify-content-center .btn-info,
+  .d-flex.justify-content-center .btn-danger,
+  .d-flex.justify-content-center .btn-warning { background-color: transparent; }
+  .lang_select { background-color: var(--bg-input); color: var(--text-main); }
+  label.swFx { color: var(--text-main); }
+  #prgbar, #prgbar_zb { background-color: #3a3a5a; }
+  .table { color: var(--text-main); }
+}
