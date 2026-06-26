@@ -1763,12 +1763,38 @@ class MicroI18n {
 				"l.to": "Tools",
 				"l.ab": "About",
 				"l.lo": "Logout"
+			},
+			zh: {
+				"l.st": "状态",
+				"l.ge": "通用",
+				"l.ne": "以太网",
+				"l.zi": "Z2M/ZHA",
+				"l.se": "安全",
+				"l.mq": "MQTT",
+				"l.vp": "WireGuard",
+				"l.to": "工具",
+				"l.ab": "关于",
+				"l.lo": "退出"
+			},
+			de: {
+				"l.st": "Status",
+				"l.ge": "Allgemein",
+				"l.ne": "Ethernet",
+				"l.zi": "Z2M/ZHA",
+				"l.se": "Sicherheit",
+				"l.mq": "MQTT",
+				"l.vp": "WireGuard",
+				"l.to": "Werkzeuge",
+				"l.ab": "Über",
+				"l.lo": "Abmelden"
 			}
 		};
 	}
 
 	t(key, vars = {}) {
-		let text = (this.vocabulary[this.locale] && this.vocabulary[this.locale][key]) || key;
+		let text = (this.vocabulary[this.locale] && this.vocabulary[this.locale][key])
+			|| this.vocabulary.en[key]
+			|| key;
 		Object.keys(vars).forEach((v) => {
 			text = text.replace(`\${${v}}`, vars[v]);
 		});
