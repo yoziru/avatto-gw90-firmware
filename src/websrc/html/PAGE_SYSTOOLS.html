@@ -1,79 +1,29 @@
 <div id="main">
   <style>
-    .nav-tabs {
-      display: flex;
-      flex-wrap: nowrap;
-      border-bottom: 1px solid #dee2e6;
-    }
-    .nav-tabs .nav-link {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      border: 1px solid transparent;
-      border-radius: 0.25rem 0.25rem 0 0;
-      padding: 0.5rem 0.5rem;
-      text-decoration: none;
-      background-color: transparent;
-      cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .nav-tabs .nav-link img,
-    .nav-tabs .nav-link svg {
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
-    }
-    .nav-tabs .nav-link span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    
-    @media (max-width: 768px) {
-      .nav-tabs {
-        flex-wrap: wrap;
-      }
-      .nav-tabs .nav-item {
-        flex: 1 1 33.333%;
-      }
-      .nav-tabs .nav-link {
-        font-size: 0.875rem;
-        padding: 0.5rem 0.25rem;
-        flex-direction: column;
-      }
-      .nav-tabs .nav-link img,
-      .nav-tabs .nav-link svg {
-        width: 14px;
-        height: 14px;
-      }
-      .nav-tabs .nav-link span {
-        font-size: 0.75rem;
-      }
-    }
     #file-input_zb, #file-input {
-    display: block;
-    width: 280px;
-    height: 38px;           /* ← Fixed height */
-    padding: 0 0.75rem;     /* ← Keep only left/right padding */
-    margin-bottom: 0.5rem;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
-    text-align: center;  /* ← Centered text */
-    line-height: 36px;    /* ← Line height */
-  }
-  
-  #file-input_zb:hover, #file-input:hover {
-    background-color: #e9ecef;
-  }
+      display: block;
+      width: 280px;
+      height: 38px;
+      padding: 0 0.75rem;
+      margin-bottom: 0.5rem;
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      text-align: center;
+      line-height: 36px;
+    }
+    #file-input_zb:hover, #file-input:hover {
+      background-color: #e9ecef;
+    }
+    @media (prefers-color-scheme: dark) {
+      #file-input_zb, #file-input { background-color: var(--bg-input); border-color: var(--border-color); color: var(--text-muted); }
+      #file-input_zb:hover, #file-input:hover { background-color: #3a3a5a; }
+    }
   </style>
   <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
     <li class="nav-item" role="presentation">

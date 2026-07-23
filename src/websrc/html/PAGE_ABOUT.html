@@ -258,6 +258,22 @@
             flex: 1;
         }
 
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: var(--bg-body);
+                --card-bg: var(--bg-card);
+                --text-main: var(--text-main);
+                --text-muted: var(--text-muted);
+                --border-color: var(--border-color);
+            }
+            .spec-value { background: var(--bg-muted); border-color: var(--border-color); color: var(--text-main); }
+            .action-card { background: var(--bg-card); }
+            .action-card a { color: var(--text-muted); }
+            .dot { border-color: var(--border-color); }
+            .product-img-placeholder { background: var(--bg-muted); color: var(--text-muted); }
+            .version-badge { border-color: var(--accent); color: var(--accent); }
+            .mqtt-box { color: #333; }
+        }
     </style>
 </head>
 <body>
