@@ -148,6 +148,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	initLanguage();
+	initDarkModeToggle();
 	initBsHandlers();
 });
 
@@ -308,6 +309,7 @@ function loadPage(url) {
 	if (url != api.pages.API_PAGE_WIFI.str && toast && toast.classList.contains("show")) {
 		if (getEl("toastBody").textContent.indexOf("Wi-Fi mode") > 0) showToast(false);
 	}
+	if (isMobile()) sidenavAutoclose(true);
 }
 
 function espReboot() {
@@ -518,6 +520,33 @@ function toastConstructor(params) {
 	showToast(true);
 }
 
+function applyTheme(dark) {
+	if (dark) document.documentElement.setAttribute("data-theme", "dark");
+	else document.documentElement.removeAttribute("data-theme");
+	localStorage.setItem("theme", dark ? "dark" : "light");
+	const sidebarToggle = document.getElementById("darkModeToggle");
+	if (sidebarToggle) sidebarToggle.checked = dark;
+}
+
+function toggleDarkModeMobile() {
+	applyTheme(document.documentElement.getAttribute("data-theme") !== "dark");
+}
+
+function initDarkModeToggle() {
+	const saved = localStorage.getItem("theme");
+	const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+	const isDark = saved !== null ? saved === "dark" : prefersDark;
+	if (isDark) document.documentElement.setAttribute("data-theme", "dark");
+	else document.documentElement.removeAttribute("data-theme");
+	const sidebarToggle = document.getElementById("darkModeToggle");
+	if (sidebarToggle) {
+		sidebarToggle.checked = isDark;
+		sidebarToggle.addEventListener("change", function () {
+			applyTheme(this.checked);
+		});
+	}
+}
+
 function closeModal() {
 	showModal(false);
 }
@@ -582,9 +611,11 @@ function switchTab(tabEl) {
 	tabEl.classList.add("active");
 	const target = tabEl.getAttribute("data-bs-target");
 	if (target) {
-		getQA(".tab-pane").forEach(p => p.classList.remove("active"));
+		getQA(".tab-pane").forEach(p => {
+			p.classList.remove("active", "show");
+		});
 		const pane = getQ(target);
-		if (pane) pane.classList.add("active");
+		if (pane) pane.classList.add("active", "show");
 	}
 }
 
@@ -986,7 +1017,7 @@ function getWifiList() {
 }
 
 function isMobile() {
-	return ((window.innerWidth <= 767) && ("ontouchstart" in document.documentElement));
+	return window.innerWidth <= 767;
 }
 
 function sidenavAutoclose(now) {
@@ -1212,8 +1243,10 @@ function initLanguage() {
 	const browserLang = (navigator.language || navigator.userLanguage || "").substring(0, 2);
 	const preferredLang = savedLang || (languages.some((l) => l.value === browserLang) ? browserLang : "en");
 	microI18n = new MicroI18n(preferredLang);
-	const sel = document.getElementById("langSel");
-	if (sel) {
+	function populateSel(selId) {
+		const sel = document.getElementById(selId);
+		if (!sel) return;
+		sel.innerHTML = "";
 		languages.forEach(({ text, value }) => {
 			const opt = document.createElement("option");
 			opt.value = value;
@@ -1223,9 +1256,15 @@ function initLanguage() {
 		sel.value = preferredLang;
 		sel.addEventListener("change", function () {
 			localStorage.setItem("selected-lang", this.value);
+			["langSel", "langSelSide"].forEach(id => {
+				const s = document.getElementById(id);
+				if (s) s.value = this.value;
+			});
 			changeLanguage(this.value);
 		});
 	}
+	populateSel("langSel");
+	populateSel("langSelSide");
 	updateLocalizedContent();
 }
 

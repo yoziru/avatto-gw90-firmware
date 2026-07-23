@@ -393,11 +393,9 @@
     }
   }
 
-  @media (prefers-color-scheme: dark) {
-    .progress-ring__bg { stroke: #3a3a5a; }
-    .inner-ball { background-color: #2a2a4a; box-shadow: 0 10px 20px rgba(255,152,0,0.1); }
-    .percent-num { color: var(--text-main); }
-    .wave-layer::before { background-color: rgba(42,42,74,0.8); }
-    .wave-layer::after { background-color: rgba(42,42,74,0.4); }
-  }
+  [data-theme="dark"] .progress-ring__bg { stroke: #3a3a5a; }
+  [data-theme="dark"] .inner-ball { background-color: #2a2a4a; box-shadow: 0 10px 20px rgba(255,152,0,0.1); }
+  [data-theme="dark"] .percent-num { color: var(--text-main); }
+  [data-theme="dark"] .wave-layer::before { background-color: rgba(42,42,74,0.8); }
+  [data-theme="dark"] .wave-layer::after { background-color: rgba(42,42,74,0.4); }
 </style>

@@ -45,3 +45,26 @@ run = "uv run pio run"
 description = "Run unit tests (native)"
 depends = ["setup"]
 run = "uv run pio test -e native"
+
+[tasks."flash:ota"]
+description = "Flash over network OTA (set OTA_DEVICE_IP)"
+depends = ["setup", "build"]
+run = '''
+  BIN="bin/AVATTO-GW90-Ti.bin"
+  if [ ! -f "$BIN" ]; then echo "Firmware not found: $BIN"; exit 1; fi
+  DEVICE_IP="${OTA_DEVICE_IP:?Set OTA_DEVICE_IP env var}"
+  echo "Uploading firmware to http://$DEVICE_IP/update ..."
+  curl -v -F "firmware=@$BIN;filename=$(basename $BIN)" "http://$DEVICE_IP/update" 2>&1
+  echo ""
+  echo "OTA triggered. Waiting for device to come back..."
+  for i in $(seq 1 60); do
+    sleep 2
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://$DEVICE_IP/" 2>/dev/null)
+    if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ] || [ "$STATUS" = "401" ]; then
+      echo "Device is back online! ($((i*2))s)"
+      break
+    fi
+    echo "  waiting... ($((i*2))s)"
+  done
+  echo "Done."
+'''

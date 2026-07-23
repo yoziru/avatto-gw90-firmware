@@ -80,20 +80,22 @@
     </div>
     <nav class="navbar shadow sticky-top navbar-dark bg-dark">
       <div class="container-fluid">
-        <div class="navbar-brand">
-          <span
-            class="navbar-toggler-icon"
-            onclick="
-              document.getElementById('sidenav').classList.add('sidenav-active');
-              sidenavAutoclose();
+        <span
+          class="navbar-toggler-icon"
+          onclick="
+              document.getElementById('sidenav').classList.toggle('sidenav-active');
             "
-          ></span>
-        </div>
+        ></span>
         <h2
           data-replace="pageName"
-          class="position-absolute top-50 start-50 translate-middle text-white"
+          class="text-white"
         ></h2>
-        <select id="langSel" class="form-select form-select-sm ms-auto me-2" style="width:auto;"></select>
+        <select id="langSel" class="form-select form-select-sm ms-auto me-1 navbar-lang" style="width:auto;"></select>
+        <span id="darkModeToggleMobile" class="navbar-dark-icon" onclick="toggleDarkModeMobile()" title="Toggle dark mode">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/>
+          </svg>
+        </span>
         <a href="/logout" class="btn logoutLink nav-link visually-hidden">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -303,6 +305,13 @@
                 </a>
               </li>
             </ul>
+            <div class="mt-auto p-3 w-100 sidebar-lang">
+              <select id="langSelSide" class="form-select form-select-sm lang_select" style="width:100%;"></select>
+              <div class="form-check form-switch mt-2" style="padding-left: 2.5em;">
+                <input class="form-check-input" type="checkbox" role="switch" id="darkModeToggle" style="width:1.5em;margin-left:-2.5em;">
+                <label class="form-check-label" for="darkModeToggle" style="color:rgba(255,255,255,0.6);font-size:0.8rem;">Dark Mode</label>
+              </div>
+            </div>
           </div>
         </div>
         <div class="col py-3 col-md-9 col-xl-10">

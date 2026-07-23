@@ -1,12 +1,7 @@
 <head>
     <style scoped>
          :root {
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
             --primary-orange: #f39c12;
-            --text-main: #333;
-            --text-muted: #666;
-            --border-color: #eee;
         }
 
         .icon-box {
@@ -172,6 +167,7 @@
             margin: 0 0 10px 0;
             font-size: 20px;
             font-weight: 600;
+            color: var(--text-main);
         }
 
         .action-card a {
@@ -258,22 +254,14 @@
             flex: 1;
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: var(--bg-body);
-                --card-bg: var(--bg-card);
-                --text-main: var(--text-main);
-                --text-muted: var(--text-muted);
-                --border-color: var(--border-color);
-            }
-            .spec-value { background: var(--bg-muted); border-color: var(--border-color); color: var(--text-main); }
-            .action-card { background: var(--bg-card); }
-            .action-card a { color: var(--text-muted); }
-            .dot { border-color: var(--border-color); }
-            .product-img-placeholder { background: var(--bg-muted); color: var(--text-muted); }
-            .version-badge { border-color: var(--accent); color: var(--accent); }
-            .mqtt-box { color: #333; }
-        }
+        [data-theme="dark"] .spec-value { background: var(--bg-muted); border-color: var(--border-color); color: var(--text-main); }
+        [data-theme="dark"] .action-card { background: var(--bg-card); }
+        [data-theme="dark"] .action-card h3 { color: var(--text-main); }
+        [data-theme="dark"] .action-card a { color: var(--text-muted); }
+        [data-theme="dark"] .dot { border-color: var(--border-color); }
+        [data-theme="dark"] .product-img-placeholder { background: var(--bg-muted); color: var(--text-muted); }
+        [data-theme="dark"] .version-badge { border-color: var(--accent); color: var(--accent); }
+        [data-theme="dark"] .mqtt-box { color: #333; }
     </style>
 </head>
 <body>
