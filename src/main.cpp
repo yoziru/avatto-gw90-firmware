@@ -1347,7 +1347,7 @@ void socketClientDisconnected(int client)
 
 void printRecvSocket(size_t bytes_read, uint8_t net_buf[BUFFER_SIZE])
 {
-  char output_sprintf[2];
+  char output_sprintf[3];
   if (bytes_read > 0)
   {
     String tmpTime;
@@ -1377,7 +1377,7 @@ void printRecvSocket(size_t bytes_read, uint8_t net_buf[BUFFER_SIZE])
 
 void printSendSocket(size_t bytes_read, uint8_t serial_buf[BUFFER_SIZE])
 {
-  char output_sprintf[2];
+  char output_sprintf[3];
   String tmpTime;
   String buff = "";
   unsigned long timeLog = millis();

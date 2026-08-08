@@ -46,6 +46,16 @@ description = "Run unit tests (native)"
 depends = ["setup"]
 run = "uv run pio test -e native"
 
+[tasks.lint]
+description = "Static analysis with cppcheck (fails on high-severity defects)"
+depends = ["setup"]
+run = "uv run pio check -e prod-solo --fail-on-defect high"
+
+[tasks."lint:full"]
+description = "Static analysis with cppcheck, medium+ gate (skips platform packages)"
+depends = ["setup"]
+run = "uv run pio check -e prod-solo --fail-on-defect medium --skip-packages"
+
 [tasks."flash:ota"]
 description = "Flash over network OTA (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS for web auth)"
 depends = ["setup", "build"]
