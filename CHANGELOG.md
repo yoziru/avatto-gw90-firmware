@@ -22,6 +22,10 @@
 - JS: sync both lang selectors, fix tab pane `.show` class. (#20)
 - Build: OTA flash task, git-aware version string. (#20)
 - Build: remove Bootstrap JS (dead code), remove unused `navbar-brand` CSS. (#20)
+- Fix: remove duplicate sidebar `<li>` that broke the nav DOM. (#20)
+- Fix: restore page-fragment inline scripts (file upload, GitHub OTA buttons) by executing injected `<script>` tags. (#20)
+- Fix: apply saved dark theme before first paint to avoid light-mode flash. (#20)
+- Build: make version script git-optional, gitignore generated `src/version.h`, add OTA auth to `flash:ota`. (#20)
 
 ## v1.0.7
 

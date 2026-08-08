@@ -5,15 +5,28 @@ import subprocess
 
 Import("env")
 
-GIT_HASH = subprocess.run(
-    ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True
-).stdout.strip()
-GIT_DIRTY = (
-    subprocess.run(
-        ["git", "diff", "--quiet"], capture_output=True, text=True
-    ).returncode
-    != 0
-)
+
+def _git(*args):
+    try:
+        return subprocess.run(
+            args, capture_output=True, text=True, timeout=5
+        ).stdout.strip()
+    except Exception:
+        return ""
+
+
+GIT_HASH = _git("git", "rev-parse", "--short", "HEAD")
+GIT_DIRTY = False
+if GIT_HASH:
+    try:
+        GIT_DIRTY = (
+            subprocess.run(
+                ["git", "diff", "--quiet"], capture_output=True, text=True, timeout=5
+            ).returncode
+            != 0
+        )
+    except Exception:
+        GIT_DIRTY = False
 
 VERSION_FILE = 'tools/version'
 VERSION_HEADER = 'version.h'
@@ -35,10 +48,6 @@ if not os.path.exists("tools/.version_no_increment"):
         FILE.write(VERSION_PREFIX + str(VERSION_PATCH_NUMBER))
         print('Build number: {}'.format(VERSION_PREFIX + str(VERSION_PATCH_NUMBER)))
 
-    GIT_SUFFIX = "+g" + GIT_HASH
-    if GIT_DIRTY:
-        GIT_SUFFIX += "-dirty"
-
     VERSION_NUMBER = VERSION_PREFIX + str(VERSION_PATCH_NUMBER)
     open('tools/.version_no_increment', 'a').close()
 else:
@@ -50,9 +59,7 @@ else:
         print('No version file found or incorrect data in it!!')
         VERSION_NUMBER = "0.0.0"
 
-    GIT_SUFFIX = "+g" + GIT_HASH
-    if GIT_DIRTY:
-        GIT_SUFFIX += "-dirty"
+GIT_SUFFIX = ("+g" + GIT_HASH + ("-dirty" if GIT_DIRTY else "")) if GIT_HASH else ""
 
 HEADER_FILE = """
 // AUTO GENERATED FILE, DO NOT EDIT

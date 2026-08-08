@@ -47,14 +47,16 @@ depends = ["setup"]
 run = "uv run pio test -e native"
 
 [tasks."flash:ota"]
-description = "Flash over network OTA (set OTA_DEVICE_IP)"
+description = "Flash over network OTA (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS for web auth)"
 depends = ["setup", "build"]
 run = '''
   BIN="bin/AVATTO-GW90-Ti.bin"
   if [ ! -f "$BIN" ]; then echo "Firmware not found: $BIN"; exit 1; fi
   DEVICE_IP="${OTA_DEVICE_IP:?Set OTA_DEVICE_IP env var}"
+  CURL_AUTH=()
+  if [ -n "${OTA_USER:-}" ]; then CURL_AUTH=(-u "${OTA_USER}:${OTA_PASS:-}"); fi
   echo "Uploading firmware to http://$DEVICE_IP/update ..."
-  curl -v -F "firmware=@$BIN;filename=$(basename $BIN)" "http://$DEVICE_IP/update" 2>&1
+  curl "${CURL_AUTH[@]}" -v -F "firmware=@$BIN;filename=$(basename $BIN)" "http://$DEVICE_IP/update" 2>&1
   echo ""
   echo "OTA triggered. Waiting for device to come back..."
   for i in $(seq 1 60); do

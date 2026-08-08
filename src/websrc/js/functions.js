@@ -332,6 +332,12 @@ function apiGetPage(page, doneCall) {
 			return r.text().then(text => ({ text, authHeader, respValues, respTimeZones }));
 		}).then(({ text, authHeader, respValues, respTimeZones }) => {
 			pc.innerHTML = text;
+			pc.querySelectorAll("script").forEach(s => {
+				const ns = document.createElement("script");
+				if (s.src) ns.src = s.src;
+				else ns.textContent = s.textContent;
+				s.parentNode.replaceChild(ns, s);
+			});
 			showPreloader(false);
 			if (authHeader == "ok") getQA(".logoutLink").forEach(l => l.classList.remove(classHide));
 			pc.style.opacity = "1";

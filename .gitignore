@@ -15,6 +15,7 @@ PLAN.md
 src/webh/*.gz.h
 *.gz.h
 src/web_routes.h
+src/version.h
 
 # Firmware binaries
 bin/
