@@ -71,7 +71,7 @@ run = '''
   echo "OTA triggered. Waiting for device to come back..."
   for i in $(seq 1 60); do
     sleep 2
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://$DEVICE_IP/" 2>/dev/null)
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://$DEVICE_IP/" 2>/dev/null || true)
     if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ] || [ "$STATUS" = "401" ]; then
       echo "Device is back online! ($((i*2))s)"
       break

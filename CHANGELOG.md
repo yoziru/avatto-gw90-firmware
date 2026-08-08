@@ -26,6 +26,8 @@
 - Fix: restore page-fragment inline scripts (file upload, GitHub OTA buttons) by executing injected `<script>` tags. (#20)
 - Fix: apply saved dark theme before first paint to avoid light-mode flash. (#20)
 - Build: make version script git-optional, gitignore generated `src/version.h`, add OTA auth to `flash:ota`. (#20)
+- Build: enable `pio check` (cppcheck) with `lint`/`lint:full` mise tasks. (#20)
+- Fix: static-analysis defects — init device-ID XOR bytes, `%02x` buffer overflow (`char[2]` → `char[3]`). (#20)
 
 ## v1.0.7
 

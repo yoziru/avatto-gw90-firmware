@@ -16,10 +16,15 @@ Pin mapping in `src/config.h`, architecture docs in `ARCHITECTURE.md`.
 ## Quick Start
 
 ```bash
-mise run build       # Build prod-solo (default)
-mise run build:debug # Debug build (-DDEBUG)
+mise run setup        # Install deps (uv sync + build group)
+mise run build        # Build prod-solo (default)
+mise run build:debug  # Debug build (-DDEBUG)
+mise run test         # Run native unit tests (Unity)
+mise run lint         # Static analysis via cppcheck (fails on high-severity defects)
+mise run lint:full    # Stricter medium+ gate (skips platform packages)
 export UPLOAD_PORT=/dev/cu.usbserial-XXXX
-mise run flash       # Serial flash (first time)
+mise run flash        # Serial flash (first time)
+mise run flash:ota    # OTA over network (needs OTA_DEVICE_IP, see below)
 ```
 
 Outputs in `bin/`:
@@ -28,7 +33,14 @@ Outputs in `bin/`:
 
 ## Network Flash (OTA)
 
-Once the device is on your network at `http://<ip>`:
+```bash
+export OTA_DEVICE_IP=192.168.1.18        # IP of the gateway on your LAN
+mise run flash:ota                        # builds + uploads + waits for reboot
+# Optional: pass web-auth credentials if enabled on the device
+export OTA_USER=admin OTA_PASS=secret
+```
+
+Alternatively, once the device is on your network at `http://<ip>`:
 
 1. **Web UI**: `http://<ip>/sys-tools` → upload `AVATTO-GW90-Ti.bin`
 2. **API**: `curl "http://<ip>/api?cmd=10&url=http://your-server/AVATTO-GW90-Ti.bin"`
