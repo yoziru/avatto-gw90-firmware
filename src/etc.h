@@ -1,3 +1,5 @@
+#include <ArduinoJson.h>
+
 void getReadableTime(String &readableTime, unsigned long beginTime);
 
 #ifdef __cplusplus
@@ -28,7 +30,7 @@ void ledPowerToggle();
 void ledUSBToggle();
 
 void getDeviceID(char * arr);
-void writeDefaultConfig(const char *path, DynamicJsonDocument& doc);
+void writeDefaultConfig(const char *path, JsonDocument& doc);
 
 void resetSettings();
 

@@ -364,7 +364,7 @@ bool loadSystemVar()
 
     String StringConfig = "{\"emergencyWifi\":0,\"tempOffset\":" + tempOffset + "}";
     DEBUG_PRINTLN(StringConfig);
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     deserializeJson(doc, StringConfig);
 
     File configFile = LittleFS.open(configFileSystem, FILE_WRITE);
@@ -380,7 +380,7 @@ bool loadSystemVar()
     return true;
   }
 
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   deserializeJson(doc, configFile);
 
   ConfigSettings.tempOffset = (int)doc["tempOffset"];
@@ -417,7 +417,7 @@ bool loadConfigWifi()
   if (!LittleFS.exists(configFileWifi))
   {
     // String StringConfig = "{\"enableWiFi\":0,\"ssid\":\"\",\"pass\":\"\",\"dhcpWiFi\":1,\"ip\":\"\",\"mask\":\"\",\"gw\":\"\",\"disableEmerg\":1}";
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[enableWiFi] = 0;
     doc[ssid] = "";
     doc[pass] = "";
@@ -428,7 +428,7 @@ bool loadConfigWifi()
     writeDefaultConfig(configFileWifi, doc);
   }
   File configFile = LittleFS.open(configFileWifi, FILE_READ);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -463,7 +463,7 @@ bool loadConfigEther()
   //File configFile = LittleFS.open(configFileEther, FILE_READ);
   if (!LittleFS.exists(configFileEther))
   {
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[dhcp] = 1;
     doc[ip] = "";
     doc[mask] = "";
@@ -474,7 +474,7 @@ bool loadConfigEther()
   }
 
   File configFile = LittleFS.open(configFileEther, FILE_READ);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -515,7 +515,7 @@ bool loadConfigGeneral()
     // getDeviceID(deviceID);
     DEBUG_PRINTLN("RESET ConfigGeneral");
     // String StringConfig = "{\"hostname\":\"" + deviceID + "\",\"disableLeds\": false,\"refreshLogs\":1000,\"usbMode\":0,\"disableLedPwr\":0,\"disableLedUSB\":0,\""+ coordMode +"\":0}\""+ prevCoordMode +"\":0, \"keepWeb\": 0}";
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[hostname] = deviceModel;
     doc[disableLeds] = 0;
     doc[refreshLogs] = 1000;
@@ -530,7 +530,7 @@ bool loadConfigGeneral()
   File configFile = LittleFS.open(configFileGeneral, FILE_READ);
   DEBUG_PRINTLN(configFile.readString());
   configFile.seek(0, SeekSet);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -584,7 +584,7 @@ bool loadConfigSecurity()
   if (!LittleFS.exists(configFileSecurity))
   {
     // String StringConfig = "{\"disableWeb\":0,\"webAuth\":0,\"webUser\":"",\"webPass\":""}";
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[disableWeb] = 0;
     doc[webAuth] = 0;
     doc[webUser] = "admin";
@@ -595,7 +595,7 @@ bool loadConfigSecurity()
   }
 
   File configFile = LittleFS.open(configFileSecurity, FILE_READ);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -627,14 +627,14 @@ bool loadConfigSerial()
   if (!LittleFS.exists(configFileSerial))
   {
     // String StringConfig = "{\"baud\":115200,\"port\":6638}";
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[baud] = 115200;
     doc[port] = 6638;
     writeDefaultConfig(configFileSerial, doc);
   }
 
   File configFile = LittleFS.open(configFileSerial, FILE_READ);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -674,7 +674,7 @@ bool loadConfigMqtt()
     char deviceIdArr[20];
     getDeviceID(deviceIdArr);
 
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[enable] = 0;
     doc[server] = "";
     doc[port] = 1883;
@@ -687,7 +687,7 @@ bool loadConfigMqtt()
   }
 
   File configFile = LittleFS.open(configFileMqtt, FILE_READ);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -725,7 +725,7 @@ bool loadConfigWg()
   //File configFile = LittleFS.open(configFileWg, FILE_READ);
   if (!LittleFS.exists(configFileWg))
   {
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     doc[enable] = 0;
     doc[localAddr] = "";
     doc[localIP] = "";
@@ -736,7 +736,7 @@ bool loadConfigWg()
   }
 
   File configFile = LittleFS.open(configFileWg, FILE_READ);
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, configFile);
 
   if (error)
@@ -933,7 +933,7 @@ void setLedsDisable(bool mode, bool setup)
   {
     Serial.println("[LED] Saving LED preferences to config...");
     const char *path = configFileGeneral;
-    DynamicJsonDocument doc(300);
+    JsonDocument doc;
     File configFile = LittleFS.open(path, FILE_READ);
     deserializeJson(doc, configFile);
     configFile.close();
@@ -1062,7 +1062,7 @@ void toggleUsbMode()
   
   // Save configuration
   const char *path = configFileGeneral;
-  DynamicJsonDocument doc(300);
+  JsonDocument doc;
   File configFile = LittleFS.open(path, FILE_READ);
   deserializeJson(doc, configFile);
   configFile.close();

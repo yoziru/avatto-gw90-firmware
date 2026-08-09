@@ -19,7 +19,7 @@ extern bool loadConfigWg();
 void handleSaveParams()
 {
     String result;
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     const char *pageId = "pageId";
     const char *on = "on";
     File configFile;

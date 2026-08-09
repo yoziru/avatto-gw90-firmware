@@ -105,7 +105,7 @@ void mqttPublishState()
 {
     String topic(MqttSettings.topic);
     topic = topic + "/state";
-    DynamicJsonDocument root(1024);
+    JsonDocument root;
     String readableTime;
     getReadableTime(readableTime, 0);
     root["uptime"] = readableTime;
@@ -182,9 +182,9 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
     char jjson[length + 1];
     memcpy(jjson, payload, length);
-    jjson[length + 1] = '\0';
+    jjson[length] = '\0';
 
-    DynamicJsonDocument jsonBuffer(1024);
+    JsonDocument jsonBuffer;
 
     deserializeJson(jsonBuffer, jjson);
 
@@ -261,10 +261,10 @@ void mqttPublishDiscovery()
     String deviceName = mtopic; //ConfigSettings.hostname;
 
     String topic;
-    DynamicJsonDocument buffJson(2048);
+    JsonDocument buffJson;
     String mqttBuffer;
 
-    DynamicJsonDocument via(1024);
+    JsonDocument via;
     char deviceIdArr[20];
     getDeviceID(deviceIdArr);
     via["ids"] = String(deviceIdArr);
@@ -281,7 +281,7 @@ void mqttPublishDiscovery()
         {
             case 0:
             {
-                DynamicJsonDocument dev(1024);
+                JsonDocument dev;
                 char deviceIdArr[20];
                 getDeviceID(deviceIdArr);
                 

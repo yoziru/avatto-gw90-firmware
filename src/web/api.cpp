@@ -345,7 +345,7 @@ void handleApi()
         case API_WIFICONNECTSTAT:
         {
             String result;
-            StaticJsonDocument<70> doc;
+            JsonDocument doc;
             const char *connected = "connected";
             if (WiFi.status() == WL_CONNECTED)
             {
@@ -447,7 +447,7 @@ void handleApi()
         case API_WIFISCANSTATUS:
         {
             static uint8_t timeout = 0;
-            DynamicJsonDocument doc(1024);
+            JsonDocument doc;
             String result = "";
             int16_t scanRes = WiFi.scanComplete();
             const char *scanDone = "scanDone";
@@ -459,10 +459,10 @@ void handleApi()
             else if (scanRes > 0)
             {
                 doc[scanDone] = true;
-                JsonArray wifi = doc.createNestedArray("wifi");
+                JsonArray wifi = doc["wifi"].to<JsonArray>();
                 for (int i = 0; i < scanRes; ++i)
                 {
-                    JsonObject wifi_0 = wifi.createNestedObject();
+                    JsonObject wifi_0 = wifi.add<JsonObject>();
                     wifi_0["ssid"] = WiFi.SSID(i);
                     wifi_0["rssi"] = WiFi.RSSI(i);
                     wifi_0["channel"] = WiFi.channel(i);
@@ -541,13 +541,13 @@ void handleApi()
         case API_GET_FILELIST:
         {
             String fileList = "";
-            DynamicJsonDocument doc(512);
-            JsonArray files = doc.createNestedArray("files");
+            JsonDocument doc;
+            JsonArray files = doc["files"].to<JsonArray>();
             File root = LittleFS.open("/config");
             File file = root.openNextFile();
             while (file)
             {
-                JsonObject jsonfile = files.createNestedObject();
+                JsonObject jsonfile = files.add<JsonObject>();
                 jsonfile["filename"] = String(file.name());
                 jsonfile["size"] = file.size();
                 file = root.openNextFile();
