@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Deps: migrate ArduinoJson 6.x → 7.4.3 (`DynamicJsonDocument`/`StaticJsonDocument` → auto-sized `JsonDocument`, `createNested*` → `to<JsonArray>()`/`add<JsonObject>()`). (#24)
+- Fix: off-by-one buffer overflow in `mqttCallback` (`jjson[length+1]` → `jjson[length]`). (#24)
+- Deps: remove unused `ArduinoJson.h` includes from `zb.cpp`/`web/common.cpp`; self-contained `etc.h`. (#24)
+- Build: suppress cppcheck preprocessor errors from ArduinoJson 7 macros. (#24)
 - Deps: remove unused libs — AsyncTCP, EspSoftwareSerial, ESP32Ping (no code references; Serial2 is hardware UART). (#23)
 - Deps: pin all remaining `lib_deps` to exact versions for reproducible builds (CircularBuffer 1.4.0, Ticker 4.4.0, PubSubClient 2.8.0, CronAlarms 0.1.0, Unity 2.6.1). (#23)
 - C++: enable `-std=gnu++17` (override framework `gnu++11` via `build_unflags`). (#22)

@@ -184,7 +184,7 @@ void getDeviceID(char *arr)
 //   DEBUG_PRINTLN(F("failed open. try to write defaults"));
 //   DEBUG_PRINTLN(StringConfig);
 
-//   DynamicJsonDocument doc(1024);
+//   JsonDocument doc;
 //   deserializeJson(doc, StringConfig);
 
 //   File configFile = LittleFS.open(path, FILE_WRITE);
@@ -200,7 +200,7 @@ void getDeviceID(char *arr)
 //   configFile.close();
 // }
 
-void writeDefaultConfig(const char *path, DynamicJsonDocument &doc)
+void writeDefaultConfig(const char *path, JsonDocument &doc)
 {
   DEBUG_PRINTLN(path);
   DEBUG_PRINTLN(F("Write defaults"));

@@ -28,9 +28,9 @@ extern struct zbVerStruct zbVer;
 extern struct MqttSettingsStruct MqttSettings;
 extern struct WgSettingsStruct WgSettings;
 
-DynamicJsonDocument getRootData()
+JsonDocument getRootData()
 {
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     char verArr[48];
     const char *env = STRINGIFY(BUILD_ENV_NAME);
@@ -265,8 +265,7 @@ DynamicJsonDocument getRootData()
 void handleRoot()
 {
     String result;
-    DynamicJsonDocument doc(1024);
-    doc = getRootData();
+    JsonDocument doc = getRootData();
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);
 }
@@ -274,7 +273,7 @@ void handleRoot()
 void handleStatus()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     if (ConfigSettings.webAuth)
     {
@@ -297,7 +296,7 @@ void handleStatus()
 
 void handleGeneral()
 {
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     String result;
 
     switch (ConfigSettings.coordinator_mode)
@@ -334,7 +333,7 @@ void handleGeneral()
 void handleSecurity()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     if (ConfigSettings.disableWeb)
     {
@@ -360,7 +359,7 @@ void handleSecurity()
 void handleWifi()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     doc["ssid"] = String(ConfigSettings.ssid);
     doc["passWifi"] = String(ConfigSettings.password);
@@ -379,7 +378,7 @@ void handleWifi()
 void handleSerial()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     if (ConfigSettings.serialSpeed == 9600)
     {
@@ -414,7 +413,7 @@ void handleSerial()
 void handleEther()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     if (ConfigSettings.dhcp)
     {
@@ -431,7 +430,7 @@ void handleEther()
 void handleMqtt()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     if (MqttSettings.enable)
     {
@@ -456,7 +455,7 @@ void handleMqtt()
 void handleWg()
 {
     String result;
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
 
     if (WgSettings.enable)
     {
@@ -475,7 +474,7 @@ void handleWg()
 void handleSysTools()
 {
     String result;
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
 
     doc["hostname"] = ConfigSettings.hostname;
     doc["refreshLogs"] = ConfigSettings.refreshLogs;
@@ -486,7 +485,7 @@ void handleSysTools()
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);
 
-    DynamicJsonDocument zones(10240);
+    JsonDocument zones;
     String results;
 
     JsonArray zonesArray = zones.to<JsonArray>();
@@ -502,7 +501,7 @@ void handleSysTools()
 void handleAbout()
 {
     String result;
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
 
     doc["firmwareVersion"] = String(VERSION);
     String buildTimestamp = String(BUILD_TIMESTAMP);

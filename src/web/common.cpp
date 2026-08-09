@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <ETH.h>
 #include <LittleFS.h>
 #include <Update.h>

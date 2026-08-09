@@ -14,7 +14,7 @@ static const char *configFileMqtt = "/config/configMqtt.json";
 static const char *configFileWg = "/config/configWg.json";
 
 static void test_general_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["coordMode"] = 0;
     doc["keepWeb"] = 1;
     doc["disableLedPwr"] = 1;
@@ -23,7 +23,7 @@ static void test_general_config_schema(void) {
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_INT(0, parsed["coordMode"].as<int>());
@@ -33,7 +33,7 @@ static void test_general_config_schema(void) {
 }
 
 static void test_ethernet_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["dhcp"] = 1;
     doc["ip"] = "192.168.1.100";
     doc["mask"] = "255.255.255.0";
@@ -42,7 +42,7 @@ static void test_ethernet_config_schema(void) {
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_INT(1, parsed["dhcp"].as<int>());
@@ -52,7 +52,7 @@ static void test_ethernet_config_schema(void) {
 }
 
 static void test_mqtt_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["enable"] = 1;
     doc["discovery"] = 1;
     doc["server"] = "mqtt.example.com";
@@ -65,7 +65,7 @@ static void test_mqtt_config_schema(void) {
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_INT(1, parsed["enable"].as<int>());
@@ -75,7 +75,7 @@ static void test_mqtt_config_schema(void) {
 }
 
 static void test_wifi_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["ssid"] = "MyNetwork";
     doc["pass"] = "secret";
     doc["dhcpWiFi"] = 1;
@@ -86,7 +86,7 @@ static void test_wifi_config_schema(void) {
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_STRING("MyNetwork", parsed["ssid"].as<const char *>());
@@ -95,7 +95,7 @@ static void test_wifi_config_schema(void) {
 }
 
 static void test_security_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["disableWeb"] = 0;
     doc["webAuth"] = 1;
     doc["webUser"] = "admin";
@@ -106,7 +106,7 @@ static void test_security_config_schema(void) {
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_INT(0, parsed["disableWeb"].as<int>());
@@ -117,14 +117,14 @@ static void test_security_config_schema(void) {
 }
 
 static void test_serial_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["baud"] = 115200;
     doc["port"] = 6638;
 
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_INT(115200, parsed["baud"].as<int>());
@@ -132,7 +132,7 @@ static void test_serial_config_schema(void) {
 }
 
 static void test_wg_config_schema(void) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["enable"] = 1;
     doc["localAddr"] = "10.0.0.2";
     doc["localIP"] = "privatekey123";
@@ -143,7 +143,7 @@ static void test_wg_config_schema(void) {
     std::string output;
     serializeJson(doc, output);
 
-    StaticJsonDocument<512> parsed;
+    JsonDocument parsed;
     deserializeJson(parsed, output);
 
     TEST_ASSERT_EQUAL_INT(1, parsed["enable"].as<int>());
@@ -166,7 +166,7 @@ static void test_coordinator_mode_values(void) {
     const uint8_t COORDINATOR_MODE_WIFI = 1;
     const uint8_t COORDINATOR_MODE_USB = 2;
 
-    StaticJsonDocument<64> doc;
+    JsonDocument doc;
     doc["coordMode"] = COORDINATOR_MODE_LAN;
     TEST_ASSERT_EQUAL_INT(0, doc["coordMode"].as<int>());
 
