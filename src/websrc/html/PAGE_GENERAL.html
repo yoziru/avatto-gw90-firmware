@@ -5,137 +5,79 @@
         <!-- Work Mode Selection -->
         <div class="card mb-4">
           <div class="card-header">
-            <img
-              src="workMode_selection.svg"
-              alt=""
-              width="24"
-              height="24"
-              class="me-2"
-              style="vertical-align: middle"
-            />
+            <img src="workMode_selection.svg" class="title_icon_style" />
             <span>Work Mode</span>
           </div>
           <div class="card-body">
             <div
               class="row"
-              onclick="KeepWebDsbl(!$('#usbMode').prop('checked'))"
+              onclick="KeepWebDsbl(!document.getElementById('usbMode').checked)"
             >
-              <!-- LAN Mode -->
+              <!-- LAN Mode (recommended) -->
               <div class="col-12 mb-3">
-                <div class="mode-option p-3 border rounded position-relative">
-                  <div class="form-check d-flex align-items-start">
+                <div class="mode-option">
+                  <label class="mode-option-inner" for="lanMode">
                     <input
                       data-replace="checkedLanMode"
-                      class="form-check-input mt-1 me-3"
+                      class="form-check-input mode-radio"
                       type="radio"
                       name="coordMode"
                       id="lanMode"
                       value="0"
                     />
-                    <div class="mode-icon me-3">
-                      <img
-                        src="lan_connection.svg"
-                        alt=""
-                        width="24"
-                        height="24"
-                        class="me-2"
-                        style="vertical-align: middle"
-                      />
-                    </div>
-                    <div class="flex-grow-1">
-                      <label
-                        class="form-check-label d-block mb-1"
-                        for="lanMode"
-                      >
-                        <strong>LAN Mode:</strong>
-                        <span>Use Ethernet + WiFi Hotspot</span>
-                      </label>
-                    </div>
-                    <span
-                      class="badge bg-transparent text-dark position-absolute"
-                      style="top: 10px; right: 10px"
-                      >⭐</span
-                    >
-                  </div>
+                    <img src="lan_connection.svg" alt="" class="mode-icon" />
+                    <span class="mode-text">
+                      <span class="mode-title">
+                        <strong>LAN Mode</strong>
+                        <span class="recommended-badge">Recommended</span>
+                      </span>
+                      <span class="mode-desc">Use Ethernet + WiFi Hotspot</span>
+                    </span>
+                  </label>
                 </div>
               </div>
 
               <!-- WiFi Mode -->
               <div class="col-12 mb-3">
-                <div class="mode-option p-3 border rounded">
-                  <div class="form-check d-flex align-items-start">
+                <div class="mode-option">
+                  <label class="mode-option-inner" for="wifiMode">
                     <input
                       data-replace="checkedWifiMode"
-                      class="form-check-input mt-1 me-3"
+                      class="form-check-input mode-radio"
                       type="radio"
                       name="coordMode"
                       id="wifiMode"
                       value="1"
                     />
-                    <div class="mode-icon me-3">
-                      <img
-                        src="wifi_connection.svg"
-                        alt=""
-                        width="24"  
-                        height="24"
-                        class="me-2"
-                        style="vertical-align: middle"
-                      />
-                    </div>
-                    <div class="flex-grow-1">
-                      <label
-                        class="form-check-label d-block mb-1"
-                        for="wifiMode"
-                      >
-                        <strong>WiFi Mode:</strong>
-                        <span>Connect to router as WiFi client</span>
-                      </label>
-                    </div>
-                  </div>
+                    <img src="wifi_connection.svg" alt="" class="mode-icon" />
+                    <span class="mode-text">
+                      <span class="mode-title"><strong>WiFi Mode</strong></span>
+                      <span class="mode-desc">Connect to router as WiFi client</span>
+                    </span>
+                  </label>
                 </div>
               </div>
 
               <!-- USB Mode + Keep Network & Web -->
               <div class="col-12 mb-3">
-                <div class="mode-option p-3 border rounded">
-                  <div class="form-check d-flex align-items-start mb-3">
+                <div class="mode-option">
+                  <label class="mode-option-inner" for="usbMode">
                     <input
                       data-replace="checkedUsbMode"
-                      class="form-check-input mt-1 me-3"
+                      class="form-check-input mode-radio"
                       type="radio"
                       name="coordMode"
                       id="usbMode"
                       value="2"
                     />
-                    <div class="mode-icon me-3">
-                      <img
-                        src="usb_connection.svg"
-                        alt="USB"
-                        width="24"
-                        height="24"
-                        class="me-2"
-                        style="vertical-align: middle"
-                      />
-                    </div>
-                    <div class="flex-grow-1">
-                      <label
-                        class="form-check-label d-block mb-1"
-                        for="usbMode"
-                      >
-                        <strong>USB Mode:</strong>
-                        <span>Directly connect to computer, disable network (serial test)</span>
-                      </label>
-                    </div>
-                    <!-- <span
-                      class="badge bg-secondary position-absolute"
-                      style="top: 10px; right: 10px"
-                      >🔧 Network maintenance only
-                    </span> -->
-                  </div>
-
-                  <!-- Keep Network & Web -->
-                  <div class="ps-0">
-                    <div class="form-check form-check-inline me-1">
+                    <img src="usb_connection.svg" alt="" class="mode-icon" />
+                    <span class="mode-text">
+                      <span class="mode-title"><strong>USB Mode</strong></span>
+                      <span class="mode-desc">Directly connect to computer, disable network (serial test)</span>
+                    </span>
+                  </label>
+                  <div class="mode-option-extra">
+                    <div class="form-check form-check-inline mb-0">
                       <input
                         class="form-check-input"
                         type="checkbox"
@@ -144,18 +86,12 @@
                         data-replace="keepWeb"
                       />
                       <label class="form-check-label" for="keepWeb">
-                        Keep Network & Web
+                        Keep Network &amp; Web
                       </label>
                     </div>
-                    <div class="form-check form-check-inline ps-0">
-                      <button
-                        type="button"
-                        onclick="modalConstructor('keepWeb')"
-                        class="btn btn-outline-primary btn-sm"
-                      >
-                        ?
-                      </button>
-                    </div>
+                    <p class="mode-extra-hint">
+                      Keeps one channel active (Wi-Fi, Ethernet or Wi-Fi AP, in that order) so the web interface stays reachable.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -166,14 +102,7 @@
         <!-- Real-time Control -->
         <div class="card mb-4">
           <div class="card-header">
-            <img
-              src="realTime_control.svg"
-              alt=""
-              width="24"
-              height="24"
-              class="me-2"
-              style="vertical-align: middle"
-            />
+            <img src="realTime_control.svg" class="title_icon_style" />
             <span>Real-time Control</span>
           </div>
           <div class="card-body">
@@ -192,9 +121,6 @@
                   <button type="button" data-cmd="7" class="btn btn-danger">
                     Wi-Fi/USB Mode LED
                   </button>
-                  <!-- <button type="button" data-cmd="12" class="btn btn-warning">
-                    Ethernet indicator
-                  </button> -->
                 </div>
               </div>
 
@@ -217,7 +143,6 @@
                     />
                     <label class="form-check-label" for="disableLedPwr">
                       Disable Power LED
-                       <!-- <span style="color: #047cc3">(Blue)</span> -->
                     </label>
                   </div>
                   <div class="form-check form-switch">
@@ -231,7 +156,6 @@
                     />
                     <label class="form-check-label" for="disableLedUSB">
                         Disable USB LED
-                      <!-- <span style="color: #fc0500">(Red)</span> -->
                     </label>
                   </div>
                 </div>
@@ -241,10 +165,10 @@
         </div>
 
         <!-- Save Button -->
-        <div class="row justify-content-md-center px-3">
+        <div class="save-row">
           <button
             type="submit"
-            class="btn btn-outline-primary col-sm-12 col-md-6"
+            class="btn btn-outline-primary"
             name="save"
           >
             Save

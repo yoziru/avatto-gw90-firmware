@@ -1,12 +1,14 @@
 <div id="main">
   <div class="row">
-    <form class="saveParams" method="POST" action="saveParams">
+    <form class="saveParams col-sm-12" method="POST" action="saveParams">
       <div class="col-sm-12 cardPadding">
         <div class="card">
-          <div class="card-header fw-bold text-start text-primary">
+          <div class="card-header">
             <img src="icon_vpn_configuration.svg" class="title_icon_style" />
-            <span>WireGuard VPN</span>
-            <div class="form-check form-switch" style="margin-left: auto">
+            <span>Tunnel</span>
+          </div>
+          <div class="card-body">
+            <div class="form-check form-switch mb-3">
               <input
                 data-replace="enableWg"
                 id="WgEnable"
@@ -18,43 +20,69 @@
               />
               <label class="form-check-label" for="WgEnable">Enable</label>
             </div>
-          </div>
-          <div class="card-body">
             <div class="mb-2">
-              <label for="localAddr">Local Address</label>
+              <label for="WgLocalAddr">Local Address</label>
               <input
                 data-replace="localAddrWg"
                 class="form-control"
                 id="WgLocalAddr"
                 type="text"
                 name="WgLocalAddr"
-                placeholder="X.X.X.X"
+                placeholder="X.X.X.X/prefix"
               />
+              <small class="form-text">e.g. 10.0.0.2/24</small>
             </div>
             <div class="mb-2">
-              <label for="localIP">Local Private Key</label>
-              <input
-                data-replace="localPrivKeyWg"
-                class="form-control"
-                id="WgLocalPrivKey"
-                type="text"
-                name="WgLocalPrivKey"
-                placeholder=""
-              />
+              <label for="WgLocalPrivKey">Local Private Key</label>
+              <div class="d-flex gap-2">
+                <input
+                  data-replace="localPrivKeyWg"
+                  class="form-control"
+                  id="WgLocalPrivKey"
+                  type="password"
+                  name="WgLocalPrivKey"
+                  placeholder="Enter WireGuard private key"
+                  autocomplete="off"
+                  style="flex: 1 1 auto; min-width: 0;"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-primary"
+                  style="flex-shrink: 0; padding: 0.25rem 0.5rem;"
+                  onclick="toggleWgKeyVisibility()"
+                  title="Show / hide private key"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8a13 13 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
+                    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                  </svg>
+                </button>
+              </div>
+              <small class="form-text">44-character base64 private key</small>
             </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <img src="icon_vpn_configuration.svg" class="title_icon_style" />
+            <span>Endpoint</span>
+          </div>
+          <div class="card-body">
             <div class="mb-2">
-              <label for="endAddr">Remote Endpoint Address</label>
+              <label for="WgEndAddr">Remote Endpoint Address</label>
               <input
                 data-replace="endAddrWg"
                 class="form-control"
                 id="WgEndAddr"
                 type="text"
                 name="WgEndAddr"
-                placeholder="Domain name or IP address"
+                placeholder="Domain or IP"
               />
+              <small class="form-text">IP address or domain of the remote endpoint</small>
             </div>
             <div class="mb-2">
-              <label for="endPubKey">Remote Public Key</label>
+              <label for="WgEndPubKey">Remote Public Key</label>
               <input
                 data-replace="endPubKeyWg"
                 class="form-control"
@@ -63,30 +91,33 @@
                 name="WgEndPubKey"
                 placeholder=""
               />
+              <small class="form-text">44-character base64 public key</small>
             </div>
             <div class="mb-2">
-              <label for="endPort">Port</label>
+              <label for="WgEndPort">Port</label>
               <input
                 data-replace="endPortWg"
                 class="form-control"
                 id="WgEndPort"
                 type="number"
                 name="WgEndPort"
-                placeholder="12345"
+                placeholder="51820"
                 min="1"
                 max="65535"
               />
-            </div>
-            <div class="row justify-content-md-center">
-              <button
-                type="submit"
-                class="btn btn-outline-primary col-sm-12 col-md-6"
-                name="save"
-              >
-                Save
-              </button>
+              <small class="form-text">UDP port, 1-65535</small>
             </div>
           </div>
+        </div>
+
+        <div class="save-row">
+          <button
+            type="submit"
+            class="btn btn-outline-primary"
+            name="save"
+          >
+            Save
+          </button>
         </div>
       </div>
     </form>

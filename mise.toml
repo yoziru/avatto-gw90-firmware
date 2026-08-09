@@ -45,3 +45,38 @@ run = "uv run pio run"
 description = "Run unit tests (native)"
 depends = ["setup"]
 run = "uv run pio test -e native"
+
+[tasks.lint]
+description = "Static analysis with cppcheck (fails on high-severity defects)"
+depends = ["setup"]
+run = "uv run pio check -e prod-solo --fail-on-defect high"
+
+[tasks."lint:full"]
+description = "Static analysis with cppcheck, medium+ gate (skips platform packages)"
+depends = ["setup"]
+run = "uv run pio check -e prod-solo --fail-on-defect medium --skip-packages"
+
+[tasks."flash:ota"]
+description = "Flash over network OTA (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS for web auth)"
+depends = ["setup", "build"]
+run = '''
+  BIN="bin/AVATTO-GW90-Ti.bin"
+  if [ ! -f "$BIN" ]; then echo "Firmware not found: $BIN"; exit 1; fi
+  DEVICE_IP="${OTA_DEVICE_IP:?Set OTA_DEVICE_IP env var}"
+  CURL_AUTH=()
+  if [ -n "${OTA_USER:-}" ]; then CURL_AUTH=(-u "${OTA_USER}:${OTA_PASS:-}"); fi
+  echo "Uploading firmware to http://$DEVICE_IP/update ..."
+  curl "${CURL_AUTH[@]}" -v -F "firmware=@$BIN;filename=$(basename $BIN)" "http://$DEVICE_IP/update" 2>&1
+  echo ""
+  echo "OTA triggered. Waiting for device to come back..."
+  for i in $(seq 1 60); do
+    sleep 2
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://$DEVICE_IP/" 2>/dev/null || true)
+    if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ] || [ "$STATUS" = "401" ]; then
+      echo "Device is back online! ($((i*2))s)"
+      break
+    fi
+    echo "  waiting... ($((i*2))s)"
+  done
+  echo "Done."
+'''

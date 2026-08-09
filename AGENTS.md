@@ -25,6 +25,10 @@ mise run build           # Build prod-solo (default)
 mise run build:debug     # Build debug-solo
 mise run flash           # Serial flash (set UPLOAD_PORT env var)
 mise run flash:debug     # Debug flash (set UPLOAD_PORT env var)
+mise run flash:ota       # OTA flash over network (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS)
+mise run test            # Native unit tests (Unity)
+mise run lint            # Static analysis via pio check/cppcheck (fails on high severity)
+mise run lint:full       # cppcheck medium+ gate (skips platform packages)
 mise run monitor         # Serial monitor (set MONITOR_PORT env var)
 mise run clean           # Clean artifacts
 mise run setup           # uv sync --group build

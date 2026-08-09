@@ -1,11 +1,11 @@
 <div id="main">
   <div class="row">
-    <form class="saveParams" method="POST" action="saveParams">
+    <form class="saveParams col-sm-12" method="POST" action="saveParams">
       <div class="col-sm-12 cardPadding">
         <div class="card">
-          <div class="card-header fw-bold text-start text-primary">
+          <div class="card-header">
             <img src="icon_mqtt_settings.svg" class="title_icon_style" />
-            <span>MQTT Settings</span>
+            <span>Connection</span>
           </div>
           <div class="card-body">
             <div class="mb-2 form-check form-switch">
@@ -21,7 +21,7 @@
               <label class="form-check-label" for="MqttEnable">Enable</label>
             </div>
             <div class="mb-2">
-              <label for="server">Server</label>
+              <label for="MqttServer">Server</label>
               <input
                 data-replace="serverMqtt"
                 class="form-control"
@@ -32,40 +32,51 @@
               />
             </div>
             <div class="mb-2">
-              <label for="port">Port</label>
+              <label for="MqttPort">Port</label>
               <input
                 data-replace="portMqtt"
                 class="form-control"
                 id="MqttPort"
-                type="text"
+                type="number"
                 name="MqttPort"
+                min="1"
+                max="65535"
                 placeholder="1883"
               />
             </div>
             <div class="mb-2">
-              <label for="user">Username</label>
+              <label for="MqttUser">Username</label>
               <input
                 data-replace="userMqtt"
                 class="form-control"
                 id="MqttUser"
                 type="text"
                 name="MqttUser"
-                placeholder="mqttuser"
+                placeholder="e.g. mqttuser"
               />
             </div>
             <div class="mb-2">
-              <label for="pass">Password</label>
+              <label for="MqttPass">Password</label>
               <input
                 data-replace="passMqtt"
                 class="form-control"
                 id="MqttPass"
                 type="password"
                 name="MqttPass"
-                placeholder="mqttpassword"
+                placeholder="password"
               />
             </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <img src="icon_mqtt_settings.svg" class="title_icon_style" />
+            <span>Topic &amp; Discovery</span>
+          </div>
+          <div class="card-body">
             <div class="mb-2">
-              <label for="topic">Topic</label>
+              <label for="MqttTopic">Topic</label>
               <input
                 data-replace="topicMqtt"
                 class="form-control"
@@ -76,7 +87,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="interval">Interval</label>
+              <label for="MqttInterval">Interval (seconds)</label>
               <input
                 data-replace="intervalMqtt"
                 class="form-control"
@@ -88,9 +99,6 @@
             </div>
 
             <div class="mb-2 form-check form-switch">
-              <label class="form-check-label" for="discovery"
-                >Enable Home Assistant Discovery</label
-              >
               <input
                 data-replace="discoveryMqtt"
                 class="form-check-input"
@@ -99,18 +107,21 @@
                 role="switch"
                 name="MqttDiscovery"
               />
-            </div>
-            <br />
-            <div class="row justify-content-md-center">
-              <button
-                type="submit"
-                class="btn btn-outline-primary col-sm-12 col-md-6"
-                name="save"
+              <label class="form-check-label" for="MqttDiscovery"
+                >Enable Home Assistant Discovery</label
               >
-                Save
-              </button>
             </div>
           </div>
+        </div>
+
+        <div class="save-row">
+          <button
+            type="submit"
+            class="btn btn-outline-primary"
+            name="save"
+          >
+            Save
+          </button>
         </div>
       </div>
     </form>

@@ -1,12 +1,11 @@
 <div id="main">
-  <div class="col-sm-12">
-    <div class="card">
-      <div class="card-header">    
-         <img src="icon_wifi_config.svg" class="title_icon_style" />
-         <span>Wi-Fi</span>
-      </div>
-      <div class="card-body">
-        <form class="saveParams" method="POST" action="saveParams">
+    <form class="saveParams" method="POST" action="saveParams">
+      <div class="card mb-4">
+        <div class="card-header">
+          <img src="icon_wifi_config.svg" class="title_icon_style" />
+          <span>Connection</span>
+        </div>
+        <div class="card-body">
           <div class="row">
             <div class="mb-2 col-sm-12 col-md-6">
               <div class="gauge-wrapper">
@@ -14,7 +13,7 @@
                 <div class="outer-glow"></div>
 
                 <!-- Outer progress ring -->
-                <svg class="progress-ring" width="220" height="220">
+                <svg class="progress-ring" width="140" height="140">
                   <defs>
                     <linearGradient
                       id="ringGradient"
@@ -32,19 +31,19 @@
                     class="progress-ring__bg"
                     stroke-width="12"
                     fill="transparent"
-                    r="90"
-                    cx="110"
-                    cy="110"
+                    r="60"
+                    cx="70"
+                    cy="70"
                   />
                   <!-- Dynamic progress ring -->
                   <circle
                     class="progress-ring__circle"
                     stroke="url(#ringGradient)"
-                    stroke-width="20"
+                    stroke-width="16"
                     fill="transparent"
-                    r="90"
-                    cx="110"
-                    cy="110"
+                    r="60"
+                    cx="70"
+                    cy="70"
                   />
                 </svg>
 
@@ -54,78 +53,58 @@
                   <div class="percent-num"></div>
                 </div>
               </div>
-              <div class="row justify-content-md-center">
-                <button
-                  type="button"
-                  id="wifiScanBtn"
-                  class="btn btn-outline-primary col-sm-12 col-md-6"
-                  onclick="getWifiList()"
-                >
-                     Scan Wi-Fi
-                </button>
-              </div>
             </div>
-            <br />
             <div class="mb-2 col-sm-12 col-md-6">
-              <div class="mb-2">
-                <div class="form-check form-switch">
-                  <input
-                    data-replace="dchp"
-                    class="form-check-input"
-                    id="dhcpWiFi"
-                    type="checkbox"
-                    role="switch"
-                    name="dhcpWiFi"
-                    onclick="WifiDhcpDsbl(this.checked)"
-                  />
-                  <label class="form-check-label" for="dhcpWiFi">DHCP</label>
+              <div class="collapse" id="collapseWifiPass">
+                <div class="card card-body">
+                  <div class="mb-2">
+                    <label for="WIFISSID">SSID</label>
+                    <input
+                      data-replace="ssid"
+                      class="form-control"
+                      id="WIFISSID"
+                      type="text"
+                      name="WIFISSID"
+                      value=""
+                      minlength="2"
+                      required
+                    />
+                  </div>
+                  <div class="mb-2">
+                    <label for="WIFIpassword">Password</label>
+                    <input
+                      data-replace="passWifi"
+                      class="form-control"
+                      id="WIFIpassword"
+                      type="password"
+                      name="WIFIpassword"
+                      minlength="8"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-              <div class="mb-2">
-                <label for="ip">IP</label>
-                <input
-                  data-replace="ip"
-                  class="form-control"
-                  id="WifiIp"
-                  type="text"
-                  name="ipAddress"
-                  placeholder="192.168.x.x"
-                />
-              </div>
-              <div class="mb-2">
-                <label for="mask">Subnet Mask</label>
-                <input
-                  data-replace="mask"
-                  class="form-control"
-                  id="WifiMask"
-                  type="text"
-                  name="ipMask"
-                  placeholder="255.255.255.0"
-                />
-              </div>
-              <div class="mb-2">
-                <label for="gateway">Default Gateway</label>
-                <input
-                  data-replace="gw"
-                  type="text"
-                  class="form-control"
-                  id="WifiGateway"
-                  name="ipGW"
-                  placeholder="192.168.x.x"
-                />
-              </div>
             </div>
-            <br />
+          </div>
+          <div class="save-row">
+            <button
+              type="button"
+              id="wifiScanBtn"
+              class="btn btn-outline-primary"
+              onclick="getWifiList()"
+            >
+              Scan Wi-Fi
+            </button>
           </div>
           <div class="row">
-            <div class="mb-2 col-sm-12 col-md-6">
+            <div class="mb-2 col-sm-12">
               <table class="table table-hover" style="word-break: break-word; overflow-wrap: break-word;">
                 <thead>
                   <tr>
-                    <th scope="col" style="word-break: break-word; overflow-wrap: break-word; max-width: 150px;">SSID</th>
-                    <th scope="col" style="word-break: break-word; overflow-wrap: break-word; max-width: 100px;">Security</th>
-                    <th scope="col" style="word-break: break-word; overflow-wrap: break-word; max-width: 80px;">Channel</th>
-                    <th scope="col" style="word-break: break-word; overflow-wrap: break-word; max-width: 80px;">RSSI</th>
+                    <th scope="col" style="max-width: 150px;">SSID</th>
+                    <th scope="col" style="max-width: 100px; white-space: nowrap;">Security</th>
+                    <th scope="col" style="max-width: 80px; white-space: nowrap;">Channel</th>
+                    <th scope="col" style="max-width: 80px; white-space: nowrap;">RSSI</th>
                   </tr>
                 </thead>
                 <tbody id="wifiTable">
@@ -144,82 +123,95 @@
                       </div>
                     </td>
                   </tr>
-                  <!-- <tr id="wifiScanButton">
-                    <td colspan="4">
-                      <div class="row justify-content-md-center">
-                        <button
-                          type="button"
-                          class="btn btn-outline-primary col-sm-12 col-md-6"
-                          onclick="getWifiList()"
-                        >
-                          Scan for WIFI networks
-                        </button>
-                      </div>
-                    </td>
-                  </tr> -->
+                  <tr class="text-muted">
+                    <td colspan="4" class="text-center" style="padding: 1rem;">No Wi-Fi networks yet. Tap "Scan Wi-Fi" to search.</td>
+                  </tr>
                 </tbody>
               </table>
-              <div class="collapse" id="collapseWifiPass">
-                <div class="card card-body">
-                  <div class="mb-2">
-                    <label for="WIFISSID">SSID</label>
-                    <input
-                      data-replace="ssid"
-                      class="form-control"
-                      id="WIFIssid"
-                      type="text"
-                      name="WIFISSID"
-                      id="WIFISSID"
-                      value=""
-                      minlength="2"
-                      required
-                    />
-                  </div>
-                  <div class="mb-2">
-                    <label for="pass">Password</label>
-                    <input
-                      data-replace="passWifi"
-                      class="form-control"
-                      id="WIFIpassword"
-                      type="password"
-                      name="WIFIpassword"
-                      id="WIFIpassword"
-                      minlength="8"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
-          <div class="col-sm-12">
-              <div class="row justify-content-md-center">
-                <button
-                  type="submit"
-                  class="btn btn-outline-primary col-sm-12 col-md-6"
-                  name="save"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-        </form>
+        </div>
       </div>
-    </div>
-  </div>
+
+      <div class="card mb-4">
+        <div class="card-header">
+          <img src="icon_wifi_config.svg" class="title_icon_style" />
+          <span>IP Settings</span>
+        </div>
+        <div class="card-body">
+          <div class="mb-2 form-check form-switch">
+            <input
+              data-replace="dchp"
+              class="form-check-input"
+              id="dhcpWiFi"
+              type="checkbox"
+              role="switch"
+              name="dhcpWiFi"
+              onclick="WifiDhcpDsbl(this.checked)"
+            />
+            <label class="form-check-label" for="dhcpWiFi">DHCP</label>
+          </div>
+          <div class="row">
+            <div class="mb-2 col-sm-12 col-md-6">
+              <label for="WifiIp">IP</label>
+              <input
+                data-replace="ip"
+                class="form-control"
+                id="WifiIp"
+                type="text"
+                name="ipAddress"
+                placeholder="192.168.x.x"
+              />
+            </div>
+            <div class="mb-2 col-sm-12 col-md-6">
+              <label for="WifiMask">Subnet Mask</label>
+              <input
+                data-replace="mask"
+                class="form-control"
+                id="WifiMask"
+                type="text"
+                name="ipMask"
+                placeholder="255.255.255.0"
+              />
+            </div>
+            <div class="mb-2 col-sm-12 col-md-6">
+              <label for="WifiGateway">Default Gateway</label>
+              <input
+                data-replace="gw"
+                type="text"
+                class="form-control"
+                id="WifiGateway"
+                name="ipGW"
+                placeholder="192.168.x.x"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="save-row">
+        <button
+          type="submit"
+          class="btn btn-outline-primary"
+          name="save"
+        >
+          Save
+        </button>
+      </div>
+    </form>
 </div>
 <style>
   :root {
     --primary-color: #ffb131;
     --percent: 0; /* Target percentage */
     /* Circumference calculation: 2 * Math.PI * 90(radius) = 565.48 */
-    --circumference: 565.48;
+    --circumference: 376.99;
   }
 
   .gauge-wrapper {
     position: relative;
     /* width: 300px; */
-    height: 300px;
+    height: 190px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -228,8 +220,8 @@
   /* Outer decorative glow - adds breathing effect */
   .outer-glow {
     position: absolute;
-    width: 250px;
-    height: 250px;
+    width: 160px;
+    height: 160px;
     border-radius: 50%;
     background: radial-gradient(
       circle,
@@ -263,8 +255,8 @@
   /* Inner ball container */
   .inner-ball {
     position: absolute;
-    width: 150px;
-    height: 150px;
+    width: 96px;
+    height: 96px;
     background-color: #fff;
     border-radius: 50%;
     overflow: hidden;
@@ -289,8 +281,8 @@
   .wave-layer::after {
     content: "";
     position: absolute;
-    width: 280px;
-    height: 280px;
+    width: 180px;
+    height: 180px;
     left: 50%;
     background-color: rgba(255, 255, 255, 0.8);
     border-radius: 43%; /* Key: irregular circle */
@@ -317,7 +309,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     color: #fff;
-    font-size: 28px;
+    font-size: 20px;
     font-weight: bold;
     font-family: "Arial";
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -392,4 +384,11 @@
       padding: 0.35rem !important;
     }
   }
+
+  [data-theme="dark"] .progress-ring__bg { stroke: #3a3a5a; }
+  [data-theme="dark"] .inner-ball { background-color: #2a2a4a; box-shadow: 0 10px 20px rgba(255,152,0,0.1); }
+  [data-theme="dark"] .percent-num { color: var(--text-main); }
+  [data-theme="dark"] .wave-layer::before { background-color: rgba(42,42,74,0.8); }
+  [data-theme="dark"] .wave-layer::after { background-color: rgba(42,42,74,0.4); }
 </style>
+

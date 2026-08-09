@@ -15,6 +15,13 @@ PLAN.md
 src/webh/*.gz.h
 *.gz.h
 src/web_routes.h
+src/version.h
 
 # Firmware binaries
 bin/
+
+# Local test tooling (Playwright, etc.) - not part of the firmware
+node_modules/
+test-results/
+package.json
+package-lock.json

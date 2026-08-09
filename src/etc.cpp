@@ -155,8 +155,8 @@ void ledUSBToggle()
 void getDeviceID(char *arr)
 {
   uint64_t mac = ESP.getEfuseMac();
-  uint8_t a;
-  uint8_t b;
+  uint8_t a = 0;
+  uint8_t b = 0;
   a ^= mac >> 8 * 0;
   a ^= mac >> 8 * 1;
   a ^= mac >> 8 * 2;
@@ -168,32 +168,14 @@ void getDeviceID(char *arr)
 
   char buf[20];
 
-  if (a < 16)
-  {
-    sprintf(buf, "0%x", a);
-  }
-  else
-  {
-    sprintf(buf, "%x", a);
-  }
-
-  if (b < 16)
-  {
-    sprintf(buf, "%s0%x", buf, b);
-  }
-  else
-  {
-    sprintf(buf, "%s%x", buf, b);
-  }
+  sprintf(buf, "%02x%02x", a, b);
 
   for (uint8_t cnt = 0; cnt < strlen(buf); cnt++)
   {
     buf[cnt] = toupper(buf[cnt]);
   }
 
-  // char buf[20];
   sprintf(arr, "%s-%s", deviceModel, buf);
-  // arr = buf;
 }
 
 // void writeDefaultConfig(const char *path, String StringConfig)
