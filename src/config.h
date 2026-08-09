@@ -25,6 +25,8 @@
 
 #define DEBOUNCE_TIME 70
 
+#define BUFFER_SIZE 256
+
 #define TCP_LISTEN_PORT 6638
 #define FORMAT_LITTLEFS_IF_FAILED true
 
