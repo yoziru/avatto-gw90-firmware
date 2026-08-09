@@ -29,7 +29,7 @@ def after_build(source, target, env):
     VERSION_FILE = 'tools/version'
     try:
         with open(VERSION_FILE) as FILE:
-            VERSION_NUMBER = FILE.readline()
+            VERSION_NUMBER = FILE.readline().strip()
     except:
         print('No version file found')
         VERSION_NUMBER = '0.0.0'

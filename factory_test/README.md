@@ -5,6 +5,11 @@
 This factory test program is used for full functional testing of the AVATTO GW90-TI Zigbee gateway on the production line.  
 The tests cover all hardware including ESP32-SOLO1 main controller, CC2652P Zigbee coordinator, LAN8720 Ethernet PHY, WiFi, LEDs, buttons, etc.
 
+There are **two** factory-test modes, both documented below:
+
+1. **Inline AP-scan test** — compiled into the normal firmware (`src/main.cpp`); no host PC required.
+2. **Standalone test firmware + Python host** — separate build in this folder; driven over serial.
+
 ## Test Architecture
 
 ```
@@ -38,6 +43,21 @@ The tests cover all hardware including ESP32-SOLO1 main controller, CC2652P Zigb
 | 15 | Factory Mark Write | NVS/LittleFS write mark | Mark written successfully | <1s |
 
 **Estimated total test time per board**: ~30-35 seconds
+
+## Inline AP-scan test (`src/main.cpp`)
+
+This mode is compiled into the normal firmware and needs no host PC. On power-up, if the device enters factory-test mode it scans for the factory-test access point (SSID defined in `src/main.cpp`), connects to it, and verifies:
+
+| # | Test Item | Method | Pass Indicator |
+|---|-----------|--------|----------------|
+| 1 | WiFi connectivity | Connect to the factory-test AP | PWR LED (GPIO14) |
+| 2 | LAN connectivity | Reach the test host over Ethernet | WiFi LED (GPIO12) |
+| 3 | Zigbee communication | ZNP comms with CC2652P | Zigbee LED (GPIO11) |
+| 4 | Button | Physical press detection | USB LED (GPIO8) for 0.5 s |
+
+**Credentials note**: the factory-test AP SSID/password are compile-time constants in `src/main.cpp` (the `factory_test()` block). They ship in the firmware binary, so they are not secrets. For production, these should be injected at build time (build flags/env) instead of hardcoded — tracked as follow-up refactor work.
+
+## Standalone test firmware + Python host
 
 ## Build Method
 
