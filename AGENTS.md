@@ -56,8 +56,13 @@ There is no syslog/telnet/UDP log forwarding. The log buffer is a `CircularBuffe
 
 ```
 src/
-├── main.cpp        Entry point: setup(), loop(), initLan(), connectWifi(), TCP socket bridge
-├── config.h        Pin definitions, config structs (ConfigSettingsStruct, MqttSettingsStruct, WgSettingsStruct)
+├── main.cpp        Entry point: setup(), loop(), button/LED handling
+├── config.h        Pin definitions, config structs, config loaders + parse_ip_address decls
+├── config.cpp      ConfigSettings/MqttSettings/WgSettings globals + loadConfig*() + parse_ip_address()
+├── network.h/cpp   Network: initLan, WiFi/AP, mDNS, overseer, WireGuard
+├── bridge.h/cpp    TCP socket bridge: accept/forward ZNP frames over LAN
+├── factory.h/cpp   Factory test mode (BUILD_FACTORY_TEST only)
+├── ip_utils.h      Pure IPv4 parser (unit-testable)
 ├── web.cpp         Web server (2145 lines), API, OTA, SSE events
 ├── web.h           Web server declarations, UPD_FILE URL
 ├── mqtt.cpp        MQTT client, HA auto-discovery

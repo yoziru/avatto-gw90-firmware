@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Refactor: split `main.cpp` (2053 → 484 lines) into `network.cpp` (initLan, WiFi/AP, mDNS, overseer, WireGuard), `bridge.cpp` (TCP socket bridge), `factory.cpp` (BUILD_FACTORY_TEST only); globals/`BUFFER_SIZE` moved into `config.h`.
+- Refactor: extract config loading into `config.cpp` + pure `ip_utils.h` `parseIpv4()` (4 new Unity tests; fixed `1.2.3` and `256.x` parse bugs). 59 → 63 tests.
 - CI: add `Release` workflow — bump `tools/version` + `manifest.json` via `patch`/`minor`/`major` (or explicit `X.Y.Z`), tag `vX.Y.Z`, build pinned `prod-solo`, attach firmware to GitHub release. Local equivalent: `scripts/release.sh`.
 - Build: gate all factory-test code behind `-DBUILD_FACTORY_TEST` (new `factory-test-solo` env); prod `prod-solo` and `debug-solo` builds now exclude it. Factory test triggers on BTN pressed (LOW) instead of released, and hard-reset mode is skipped in factory builds.
 - Build: make factory-test credentials injectable via `FACTORY_TEST_SSID`/`FACTORY_TEST_PASS`/`FACTORY_TEST_HOST` build flags with defaults preserved.
