@@ -10,6 +10,7 @@
 #include <CCTools.h>
 
 #include "config.h"
+#include "checksum.h"
 #include "web.h"
 #include "log.h"
 #include "etc.h"
@@ -606,16 +607,6 @@ void zbBegin(void)
 }
 
 /************************************************************************** */
-
-uint8_t zbGenChksum(uint8_t cmd, uint8_t *data, uint32_t len)
-{
-    uint8_t checksum = cmd;
-    for (uint32_t i = 0; i < len; i++)
-    {
-        checksum += data[i];
-    }
-    return checksum;
-}
 
 bool zbWaitForAck(uint32_t timeout)
 {

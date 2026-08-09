@@ -34,11 +34,8 @@ void writeDefaultConfig(const char *path, JsonDocument& doc);
 
 void resetSettings();
 
-String hexToDec(String hexString);
-
 void setClock();
 void setTimezone(String timezone);
-const char* getGmtOffsetForZone(const char* zone);
 void ledsScheduler ();
 
 //#define min(a, b) ((a) < (b) ? (a) : (b))
