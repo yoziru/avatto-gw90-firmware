@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- C++: enable `-std=gnu++17` (override framework `gnu++11` via `build_unflags`). (#22)
+- C++: modernize `encoding.h` — `constexpr`/`noexcept` helpers, `std::string_view` inputs, drop `strtol` hex parsing. (#22)
+- C++: convert `COORDINATOR_MODE_t` unscoped enum to scoped `enum class CoordinatorMode`; explicit `uint8_t` casts at JSON/serial boundaries. (#22)
+- C++: `constexpr` config constants; add missing include guards to `log.h`, `mqtt.h`, `zb.h`, `web.h`. (#22)
 - Build: mise.toml + pyproject.toml for reproducible builds. (#3)
 - CI: GitHub Actions workflow (PlatformIO, SHA-pinned deps). (#5)
 - Chore: untrack build artifacts (bin/, webh/, .vscode/). (#6)

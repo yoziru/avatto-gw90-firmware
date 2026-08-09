@@ -70,13 +70,13 @@ DynamicJsonDocument getRootData()
     const char *operationalMode = "operationalMode";
     switch (ConfigSettings.coordinator_mode)
     {
-    case COORDINATOR_MODE_USB:
+    case CoordinatorMode::USB:
         doc[operationalMode] = "Zigbee-to-USB";
         break;
-    case COORDINATOR_MODE_WIFI:
+    case CoordinatorMode::WIFI:
         doc[operationalMode] = "Zigbee-to-WiFi";
         break;
-    case COORDINATOR_MODE_LAN:
+    case CoordinatorMode::LAN:
         doc[operationalMode] = "Zigbee-to-Ethernet";
         break;
 
@@ -176,7 +176,7 @@ DynamicJsonDocument getRootData()
     const char *wifiModeAP = "wifiModeAP";
     const char *wifiDhcp = "wifiDhcp";
     doc["wifiMac"] = String(WiFi.macAddress().c_str());
-    if (ConfigSettings.coordinator_mode == COORDINATOR_MODE_WIFI)
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::WIFI)
     {
         doc[wifiEnabled] = yes;
         doc[wifiMode] = "Client";
@@ -302,13 +302,13 @@ void handleGeneral()
 
     switch (ConfigSettings.coordinator_mode)
     {
-    case COORDINATOR_MODE_USB:
+    case CoordinatorMode::USB:
         doc["checkedUsbMode"] = checked;
         break;
-    case COORDINATOR_MODE_WIFI:
+    case CoordinatorMode::WIFI:
         doc["checkedWifiMode"] = checked;
         break;
-    case COORDINATOR_MODE_LAN:
+    case CoordinatorMode::LAN:
         doc["checkedLanMode"] = checked;
         break;
 

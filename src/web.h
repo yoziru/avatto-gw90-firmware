@@ -1,3 +1,6 @@
+#ifndef WEB_H_
+#define WEB_H_
+
 #include <Arduino.h>
 #include <WebServer.h>
 #include <FS.h>
@@ -69,3 +72,5 @@ void getEspUpdate(String esp_fw_url);
 void runEspUpdateFirmware(uint8_t *data, size_t len);
 
 #define UPD_FILE "https://github.com/AVATTO-smart/avatto-gw90-firmware/releases/latest/download/AVATTO-GW90-Ti.bin"
+
+#endif

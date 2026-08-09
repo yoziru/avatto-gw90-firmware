@@ -147,13 +147,13 @@ void mqttPublishState()
     //}
 
     switch (ConfigSettings.coordinator_mode) {
-        case COORDINATOR_MODE_USB:
+        case CoordinatorMode::USB:
             root["mode"] = "Zigbee-to-USB";
             break;
-        case COORDINATOR_MODE_WIFI:
+        case CoordinatorMode::WIFI:
             root["mode"] = "Zigbee-to-WiFi";
             break;
-        case COORDINATOR_MODE_LAN:
+        case CoordinatorMode::LAN:
             root["mode"] = "Zigbee-to-Ethernet";
             break;
         default:

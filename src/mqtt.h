@@ -1,3 +1,5 @@
+#ifndef MQTT_H_
+#define MQTT_H_
 
 void mqttConnectSetup();
 void mqttReconnect();
@@ -10,3 +12,5 @@ void mqttPublishDiscovery();
 void mqttPublishMsg(String topic, String msg, bool retain);
 void mqttPublishIo(String const &io, String const &state);
 void mqttSubscribe(String topic);
+
+#endif
