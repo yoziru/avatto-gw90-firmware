@@ -8,6 +8,7 @@
 
 extern volatile uint8_t btnFlag;
 extern Ticker tmrNetworkOverseer;
+extern Ticker tmrZbHealth;
 extern IPAddress apIP;
 extern DNSServer dnsServer;
 extern WiFiServer server;

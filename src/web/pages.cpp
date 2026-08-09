@@ -150,6 +150,22 @@ JsonDocument getRootData()
         doc["zigbeeHwRev"] = "unknown";
     }
 
+    const unsigned long nowMs = millis();
+    const unsigned long zbSilence = nowMs - zbGetLastRxMs();
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::USB)
+    {
+        doc["zbStatus"] = "USB passthrough";
+    }
+    else if (zbSilence < 15000)
+    {
+        doc["zbStatus"] = "Active";
+    }
+    else
+    {
+        doc["zbStatus"] = "Silent " + String(zbSilence / 1000) + "s";
+    }
+    doc["zbAutoResets"] = String(zbGetAutoResetCount());
+
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 

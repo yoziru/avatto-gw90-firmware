@@ -24,6 +24,7 @@ WiFiServer server(TCP_LISTEN_PORT, MAX_SOCKET_CLIENTS);
 WireGuard wg;
 
 Ticker tmrNetworkOverseer(handleTmrNetworkOverseer, overseerInterval, 0, MILLIS);
+Ticker tmrZbHealth(zbHealthCheck, 30000, 0, MILLIS);
 
 void initLan()
 {
@@ -116,6 +117,7 @@ void startServers(bool usb)
   {
     wgBegin();
   }
+  tmrZbHealth.start();
 }
 
 void handleTmrNetworkOverseer()

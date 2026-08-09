@@ -24,6 +24,25 @@ zbVerStruct zbVer;
 
 extern const char *tempFile;
 
+volatile unsigned long zbLastRxMs = 0;   // last time bytes were received from the coordinator
+volatile unsigned long zbClientTxMs = 0; // last time a TCP client sent bytes to the coordinator
+volatile uint32_t zbAutoResets = 0;      // count of automatic coordinator resets by zbHealthCheck
+
+unsigned long zbGetLastRxMs()
+{
+    return zbLastRxMs;
+}
+
+unsigned long zbGetLastClientTxMs()
+{
+    return zbClientTxMs;
+}
+
+uint32_t zbGetAutoResetCount()
+{
+    return zbAutoResets;
+}
+
 const byte cmdLed0 = 0x27;
 const byte cmdLed1 = 0x0A;
 const byte cmdLedIndex = 0x01; // for led 1
@@ -166,6 +185,51 @@ void zbCheck()
     }
     digitalWrite(LED_PWR, 1);
     digitalWrite(LED_USB, 0);
+}
+
+// Periodic coordinator health check.
+//
+// Fully passive: it never injects frames into Serial2 and never consumes bytes
+// that belong to the ZNP bridge. It simply observes whether the coordinator is
+// producing output. If a TCP client (ZHA/Zigbee2MQTT) has been actively sending
+// frames to the coordinator but the coordinator has produced NOTHING for a long
+// window, the coordinator is almost certainly hung, so we reset it. This keeps
+// ZHA/Z2M from silently losing the Zigbee network.
+//
+// IMPORTANT: this must stay observation-only. Probing the coordinator with
+// BSL-mode commands (zbGetStatus/zbSendCommand) on the shared Serial2 line would
+// corrupt live ZNP frames and break connectivity — do not reintroduce that.
+void zbHealthCheck()
+{
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::USB)
+    {
+        return; // USB passthrough: nothing to monitor
+    }
+
+    const unsigned long now = millis();
+    const unsigned long coordinatorSilenceMs = now - zbLastRxMs;
+    const unsigned long clientIdleMs = now - zbClientTxMs;
+
+    // Only suspect a hang when a client is (or recently was) actively talking
+    // to the coordinator. A quiet-but-healthy network must never trigger a reset.
+    const unsigned long silentWindowMs = 180000; // 3 min with zero coordinator output
+    const unsigned long clientActiveWindowMs = 120000; // client sent frames within 2 min
+
+    if (coordinatorSilenceMs < silentWindowMs || clientIdleMs > clientActiveWindowMs)
+    {
+        return;
+    }
+
+    static uint8_t missCount = 0;
+    missCount++;
+    printLogMsg(String("[ZBH] Coordinator silent ") + String(coordinatorSilenceMs / 1000) + "s while client active (" + String(missCount) + "/3)");
+    if (missCount >= 3)
+    {
+        printLogMsg("[ZBH] Coordinator hung, resetting...");
+        missCount = 0;
+        zbAutoResets++;
+        zigbeeRestart();
+    }
 }
 
 void zbLedToggle()

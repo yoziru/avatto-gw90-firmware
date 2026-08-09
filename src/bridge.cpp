@@ -5,7 +5,11 @@
 #include "log.h"
 #include "mqtt.h"
 #include "web.h"
+#include "zb.h"
 #include "bridge.h"
+
+extern volatile unsigned long zbLastRxMs;
+extern volatile unsigned long zbClientTxMs;
 
 WiFiClient client[MAX_SOCKET_CLIENTS];
 
@@ -161,7 +165,11 @@ void processSocketBridge()
         if (net_bytes_read < BUFFER_SIZE - 1)
           net_bytes_read++;
       } // send to Zigbee
-      Serial2.write(net_buf, net_bytes_read);
+      if (net_bytes_read > 0)
+      {
+        Serial2.write(net_buf, net_bytes_read);
+        zbClientTxMs = millis(); // client -> coordinator traffic
+      }
       // print to web console
       printRecvSocket(net_bytes_read, net_buf);
       net_bytes_read = 0;
@@ -174,6 +182,7 @@ void processSocketBridge()
 
   if (Serial2.available())
   {
+    zbLastRxMs = millis();
     while (Serial2.available())
     { // read from Zigbee
       serial_buf[serial_bytes_read] = Serial2.read();
