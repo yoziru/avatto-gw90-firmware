@@ -310,8 +310,3 @@ void setTimezone(String timezone)
   DEBUG_PRINTLN(timeNow);
   printLogMsg("Local time: " + timeNow);
 }
-
-void ledsScheduler()
-{
-  DEBUG_PRINTLN(F("LEDS Scheduler"));
-}
