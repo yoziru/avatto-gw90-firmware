@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Build: gate all factory-test code behind `-DBUILD_FACTORY_TEST` (new `factory-test-solo` env); prod `prod-solo` and `debug-solo` builds now exclude it. Factory test triggers on BTN pressed (LOW) instead of released, and hard-reset mode is skipped in factory builds.
+- Build: make factory-test credentials injectable via `FACTORY_TEST_SSID`/`FACTORY_TEST_PASS`/`FACTORY_TEST_HOST` build flags with defaults preserved.
+- Cleanup: remove dead factory BSL/Type-C passthrough code (`typecReveivePktProcess`, `zigbeeReveivePktProcess`, `bsl_flag`, unused RX buffers) and commented-out `cmd2zigbee`/`clearS2Buffer`.
 - Test: extract `zbGenChksum` → `src/checksum.h` and `getGmtOffsetForZone` → `src/zones.h` as header-only pure functions; add Unity suites (15 new tests, 59 total). (#28)
 - Cleanup: remove dead `hexToDec` (no callers). (#28)
 - CI: add `pio check` (cppcheck) lint gate, `debug-solo` build job, and firmware artifact upload (`bin/*.bin`) to the workflow. (#27)

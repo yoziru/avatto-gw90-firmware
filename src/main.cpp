@@ -71,10 +71,10 @@ extern CCTools CCTool;
 const byte ZIGBEE_LED_ON[] = {0xFE, 0x02, 0x27, 0x0A, 0x01, 0x01, 0x2F};
 const byte ZIGBEE_LED_OFF[] = {0xFE, 0x02, 0x27, 0x0A, 0x01, 0x00, 0x2E};
 const byte cmdSysVersion[] = {0Xfe, 0, 0X21, 0X02, 0x23};
-const byte cmdGetChipId[] = {3, 0x28, 0X28};
 
-
+#ifdef BUILD_FACTORY_TEST
 void factory_test(void);
+#endif
 
 
 void initLan()
@@ -1141,21 +1141,6 @@ void setupCoordinatorMode()
   Serial.println(F("======== setupCoordinatorMode() END ========\n"));
 }
 
-// void cmd2zigbee(const HardwareSerial serial, byte cmd[], const byte size){
-//   byte checksum;
-//   for (byte i = 1; i < size - 1; i++){
-//     checksum ^= cmd[i];
-//   }
-//   cmd[size] = checksum;
-//   serial.write(cmd, size);
-// }
-
-// void clearS2Buffer(){
-//   while (Serial2.available()){//clear buffer
-//     Serial2.read();
-//   }
-// }
-
 void setup()
 {
   // PHY warm-restart workaround: ESP.restart() doesn't drop the 3.3V rail (esp. PoE),
@@ -1187,7 +1172,7 @@ void setup()
   digitalWrite(LED_USB, 1);
 
 // hard reset
-#ifndef BUILD_DEBUG
+#if !defined(BUILD_DEBUG) && !defined(BUILD_FACTORY_TEST)
   if (!digitalRead(BTN))
   {
     DEBUG_PRINTLN(F("[hard reset] Entering hard reset mode"));
@@ -1207,7 +1192,7 @@ void setup()
     }
     DEBUG_PRINTLN(F("[hard reset] Btn up, exit"));
   }
-#endif // !BUILD_DEBUG
+#endif // !BUILD_DEBUG && !BUILD_FACTORY_TEST
   //--------------------
 
   // zig connection & leds testing
@@ -1262,10 +1247,12 @@ void setup()
   }
 
   zbInit();
-  if(digitalRead(BTN) && ConfigSettings.coordinator_mode != CoordinatorMode::USB)
+#ifdef BUILD_FACTORY_TEST
+  if (!digitalRead(BTN) && ConfigSettings.coordinator_mode != CoordinatorMode::USB)
   {
     factory_test();
   }
+#endif
   //-----------------
   attachInterrupt(digitalPinToInterrupt(BTN), btnInterrupt, FALLING);
 
@@ -1546,84 +1533,19 @@ void loop(void)
 
 
 /***************************************************************** */
-#if 1
+#ifdef BUILD_FACTORY_TEST
+
+#ifndef FACTORY_TEST_SSID
+#define FACTORY_TEST_SSID "ezsmart_factory_test"
+#endif
+#ifndef FACTORY_TEST_PASS
+#define FACTORY_TEST_PASS "ezsmart@2026"
+#endif
+#ifndef FACTORY_TEST_HOST
+#define FACTORY_TEST_HOST "www.baidu.com"
+#endif
 
 TaskHandle_t xTestTaskHandle = NULL;
-
-uint8_t typecRxBuf[256]={0};
-uint8_t zigbeeRxBuf[256]={0};
-uint8_t bsl_flag=0;
-
-
-void typecReveivePktProcess(void)
-{
-  if (Serial.available())
-  {
-    uint16_t bytes_read = 0;
-    
-    // Read data received from Serial
-    while (Serial.available() && bytes_read < 256 - 1)
-    {
-        typecRxBuf[bytes_read] = Serial.read();
-        bytes_read++;
-    }
-    
-    // Forward received data through Serial
-    if (bytes_read > 0)
-    {
-        //for test
-        // Serial.write(typecRxBuf, bytes_read);
-        // Serial.flush();
-
-        if(!bsl_flag)
-        {
-          Serial2.updateBaudRate(500000);
-          zbBegin();
-          bsl_flag =1;
-        }
-        else
-        {
-            Serial.printf("zigbee sync: %d",zbCheckLastCmd());
-          //runFlash("/config/fw.hex");
-          //zbFlashStart(0,0);
-          // uint8_t status=0;
-          // if(zbCheckLastCmd())
-          // {
-          //     Serial.println("last cmd executed success");
-          // }
-          //zbFlashStart(0,18000);
-        }
-        //runFlash();
-
-        //zbFlashStart(0,18000);
-    }
-  }
-}
-
-
-void zigbeeReveivePktProcess(void)
-{
-  if (Serial2.available())
-  {
-    uint16_t bytes_read = 0;
-    
-    // Read data received from Serial2
-    while (Serial2.available() && bytes_read < 256 - 1)
-    {
-        zigbeeRxBuf[bytes_read] = Serial2.read();
-        bytes_read++;
-    }
-    
-    // Forward received data through Serial
-    if (bytes_read > 0)
-    {
-        //for test
-        //if(bsl_flag)zbSendAck();
-        Serial.write(zigbeeRxBuf, bytes_read);
-    }
-  }
-}
-
 
 void factory_initLan()
 {
@@ -1662,8 +1584,8 @@ void testTaskFunction(void *pvParameters)
   // ========== Connecting to WiFi AP ==========
   Serial.println("\n[TEST TASK] ========== Connecting to WiFi AP ==========");
   
-  const char* testSSID = "ezsmart_factory_test";
-  const char* testPASS = "ezsmart@2026";  // Set AP password here if needed
+  const char* testSSID = FACTORY_TEST_SSID;
+  const char* testPASS = FACTORY_TEST_PASS;
   // Turn off indicator LEDs
   digitalWrite(LED_PWR, 0);
   digitalWrite(LED_USB, 1);
@@ -1815,7 +1737,7 @@ void testTaskFunction(void *pvParameters)
       Serial.println("[WIFI TEST] Testing WiFi network connectivity...");
       
       WiFiClient wifiTestClient;
-      const char* testHost = "www.baidu.com";
+      const char* testHost = FACTORY_TEST_HOST;
       const int testPort = 80;
       
       unsigned long startTime = millis();
@@ -1926,7 +1848,7 @@ void testTaskFunction(void *pvParameters)
       Serial.println("[LAN TEST] Testing LAN network connectivity...");
       
       WiFiClient lanTestClient;
-      const char* testHost = "www.baidu.com";
+      const char* testHost = FACTORY_TEST_HOST;
       const int testPort = 80;
       
       unsigned long startTime = millis();
@@ -2077,7 +1999,7 @@ void factory_test(void)
       Serial.print(rssi);
       Serial.println(" dBm");
       
-      if (ssid == "ezsmart_factory_test")
+      if (ssid == FACTORY_TEST_SSID)
       {
           foundTestAP = true;
           if (rssi > testAP_RSSI)
@@ -2116,7 +2038,7 @@ void factory_test(void)
   }
 }
 
-#endif
+#endif // BUILD_FACTORY_TEST
 
 
 
