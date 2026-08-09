@@ -25,7 +25,7 @@
 
 #define DEBOUNCE_TIME 70
 
-#define TCP_LISTEN_PORT 9999
+#define TCP_LISTEN_PORT 6638
 #define FORMAT_LITTLEFS_IF_FAILED true
 
 // CC2652 settings (FOR BSL VALIDATION!)
@@ -75,7 +75,7 @@ struct ConfigSettingsStruct
     bool disableWeb;                   // Web server enabled
     int refreshLogs;                   // Logs refresh interval
     char hostname[50];                 // Hostname
-    bool connectedSocket[10];          // Socket connected
+    bool connectedSocket[MAX_SOCKET_CLIENTS];  // Socket connected
     int connectedClients;              // Connected clients
     unsigned long socketTime;          // Socket time
     int tempOffset;                    // Temperature offset
@@ -150,8 +150,6 @@ struct zbVerStruct
 typedef CircularBuffer<char, 8024> LogConsoleType;
 
 // #define WL_MAC_ADDR_LENGTH 6
-
-#define DEBUG
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.print(String(x))

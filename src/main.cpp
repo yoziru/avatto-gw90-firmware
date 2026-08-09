@@ -44,7 +44,7 @@ MqttSettingsStruct MqttSettings;
 WgSettingsStruct WgSettings;
 
 // volatile bool btnFlag = false;
-int btnFlag = false;
+volatile uint8_t btnFlag = 0;
 bool updWeb = false;
 
 void mDNS_start();
@@ -1187,7 +1187,7 @@ void setup()
   digitalWrite(LED_USB, 1);
 
 // hard reset
-#if BUILD_ENV_NAME != debug
+#ifndef BUILD_DEBUG
   if (!digitalRead(BTN))
   {
     DEBUG_PRINTLN(F("[hard reset] Entering hard reset mode"));
@@ -1207,7 +1207,7 @@ void setup()
     }
     DEBUG_PRINTLN(F("[hard reset] Btn up, exit"));
   }
-#endif
+#endif // !BUILD_DEBUG
   //--------------------
 
   // zig connection & leds testing
@@ -1307,7 +1307,7 @@ void setup()
 
 }
 
-WiFiClient client[10];
+WiFiClient client[MAX_SOCKET_CLIENTS];
 
 void socketClientConnected(int client)
 {

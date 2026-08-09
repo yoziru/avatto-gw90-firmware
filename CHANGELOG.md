@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Fix: gate `DEBUG_PRINT*` behind the `-DDEBUG` build flag only — unconditional `#define DEBUG` in `config.h` leaked full debug logging into prod firmware. (#26)
+- Fix: `#if BUILD_ENV_NAME != debug` preprocessor guard never worked (compared a string literal); replaced with a real `-DBUILD_DEBUG` flag for debug envs. (#26)
+- Fix: `btnFlag` written from an ISR was not `volatile`; now `volatile uint8_t`. (#26)
+- Fix: socket arrays sized `[10]` vs `MAX_SOCKET_CLIENTS` (5) — unified; `TCP_LISTEN_PORT` 9999 → 6638 to match config/docs default. (#26)
 - Security: remove committed factory-test credentials (`factory-test-ap.txt`, `factory-test-process.txt`, `bin/factory-test-ap.txt`); document the inline AP-scan test flow in `factory_test/README.md` instead. (#25)
 - Build: wire `version_increment_post.py` so patch version auto-increments every build; stop committing `tools/.version_no_increment` (now gitignored). (#25)
 - Build: fix `build.py` version filename trailing-newline bug (`AVATTO-GW90-Ti_v1.0.7<newline>.full.bin`). (#25)
