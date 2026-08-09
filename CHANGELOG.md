@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- CI: add `pio check` (cppcheck) lint gate, `debug-solo` build job, and firmware artifact upload (`bin/*.bin`) to the workflow. (#27)
 - Fix: gate `DEBUG_PRINT*` behind the `-DDEBUG` build flag only — unconditional `#define DEBUG` in `config.h` leaked full debug logging into prod firmware. (#26)
 - Fix: `#if BUILD_ENV_NAME != debug` preprocessor guard never worked (compared a string literal); replaced with a real `-DBUILD_DEBUG` flag for debug envs. (#26)
 - Fix: `btnFlag` written from an ISR was not `volatile`; now `volatile uint8_t`. (#26)
