@@ -145,10 +145,9 @@ tools/
 
 ## Release Flow
 
-1. Update `tools/version` manually for major/minor bumps
-2. `pio run -e prod-solo` builds and auto-increments patch version
-3. Output in `bin/`: OTA binary and full flash binary
-4. Update `manifest.json` with new version/path for ESP Web Tools
+1. **Manual builds**: `mise run build` auto-increments the patch version in `tools/version`; output in `bin/`: OTA binary + full flash binary.
+2. **Automated releases**: trigger the `Release` workflow on GitHub (Actions → Release → Run workflow) with `patch`/`minor`/`major` (or explicit `X.Y.Z`). It bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds `prod-solo` with the version pinned, and creates a GitHub release with the firmware attached. Local script: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
+3. Update `manifest.json` for ESP Web Tools — done automatically by the release workflow.
 
 ## Web Frontend
 

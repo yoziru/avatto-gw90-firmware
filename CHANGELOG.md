@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- CI: add `Release` workflow — bump `tools/version` + `manifest.json` via `patch`/`minor`/`major` (or explicit `X.Y.Z`), tag `vX.Y.Z`, build pinned `prod-solo`, attach firmware to GitHub release. Local equivalent: `scripts/release.sh`.
 - Build: gate all factory-test code behind `-DBUILD_FACTORY_TEST` (new `factory-test-solo` env); prod `prod-solo` and `debug-solo` builds now exclude it. Factory test triggers on BTN pressed (LOW) instead of released, and hard-reset mode is skipped in factory builds.
 - Build: make factory-test credentials injectable via `FACTORY_TEST_SSID`/`FACTORY_TEST_PASS`/`FACTORY_TEST_HOST` build flags with defaults preserved.
 - Cleanup: remove dead factory BSL/Type-C passthrough code (`typecReveivePktProcess`, `zigbeeReveivePktProcess`, `bsl_flag`, unused RX buffers) and commented-out `cmd2zigbee`/`clearS2Buffer`.
