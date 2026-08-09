@@ -57,6 +57,16 @@ extern const char *configFileMqtt;
 extern const char *configFileWg;
 extern const char *deviceModel;
 
+IPAddress parse_ip_address(const char *str);
+bool loadSystemVar();
+bool loadConfigWifi();
+bool loadConfigEther();
+bool loadConfigGeneral();
+bool loadConfigSecurity();
+bool loadConfigSerial();
+bool loadConfigMqtt();
+bool loadConfigWg();
+
 struct ConfigSettingsStruct
 {
     char ssid[50];                     // WiFi SSID
@@ -148,6 +158,10 @@ struct zbVerStruct
 };
 
 typedef CircularBuffer<char, 8024> LogConsoleType;
+
+extern ConfigSettingsStruct ConfigSettings;
+extern MqttSettingsStruct MqttSettings;
+extern WgSettingsStruct WgSettings;
 
 // #define WL_MAC_ADDR_LENGTH 6
 

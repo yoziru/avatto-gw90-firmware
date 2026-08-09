@@ -19,6 +19,8 @@
 extern struct ConfigSettingsStruct ConfigSettings;
 extern struct zbVerStruct zbVer;
 
+zbVerStruct zbVer;
+
 extern const char *tempFile;
 
 const byte cmdLed0 = 0x27;

@@ -1,0 +1,438 @@
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <FS.h>
+#include <LittleFS.h>
+
+#include "config.h"
+#include "etc.h"
+#include "ip_utils.h"
+#include "log.h"
+
+ConfigSettingsStruct ConfigSettings;
+MqttSettingsStruct MqttSettings;
+WgSettingsStruct WgSettings;
+
+IPAddress parse_ip_address(const char *str)
+{
+  IPAddress result;
+  uint8_t octets[4];
+  if (parseIpv4(str, octets))
+  {
+    for (int i = 0; i < 4; i++)
+    {
+      result[i] = octets[i];
+    }
+  }
+  return result;
+}
+
+bool loadSystemVar()
+{ // todo remove
+  File configFile = LittleFS.open(configFileSystem, FILE_READ);
+  if (!configFile)
+  {
+    DEBUG_PRINTLN(F("failed open. try to write defaults"));
+
+    float CPUtemp = getCPUtemp(true);
+    int correct = CPUtemp - 30;
+    String tempOffset = String(correct);
+
+    String StringConfig = "{\"emergencyWifi\":0,\"tempOffset\":" + tempOffset + "}";
+    DEBUG_PRINTLN(StringConfig);
+    JsonDocument doc;
+    deserializeJson(doc, StringConfig);
+
+    File configFile = LittleFS.open(configFileSystem, FILE_WRITE);
+    if (!configFile)
+    {
+      DEBUG_PRINTLN(F("failed write"));
+      return false;
+    }
+    else
+    {
+      serializeJson(doc, configFile);
+    }
+    return true;
+  }
+
+  JsonDocument doc;
+  deserializeJson(doc, configFile);
+
+  ConfigSettings.tempOffset = (int)doc["tempOffset"];
+  if (!ConfigSettings.tempOffset)
+  {
+    DEBUG_PRINTLN(F("no tempOffset in system.json"));
+    configFile.close();
+
+    float CPUtemp = getCPUtemp(true);
+    int correct = CPUtemp - 30;
+    String tempOffset = String(correct);
+    doc["tempOffset"] = int(tempOffset.toInt());
+
+    configFile = LittleFS.open(configFileSystem, FILE_WRITE);
+    serializeJson(doc, configFile);
+    configFile.close();
+    DEBUG_PRINTLN(F("saved tempOffset in system.json"));
+    ConfigSettings.tempOffset = int(tempOffset.toInt());
+  }
+  configFile.close();
+  return true;
+}
+// Load WiFi configuration
+bool loadConfigWifi()
+{
+ // File configFile = LittleFS.open(configFileWifi, FILE_READ);
+  const char *enableWiFi = "enableWiFi";
+  const char *ssid = "ssid";
+  const char *pass = "pass";
+  const char *dhcpWiFi = "dhcpWiFi";
+  const char *ip = "ip";
+  const char *mask = "mask";
+  const char *gw = "gw";
+  if (!LittleFS.exists(configFileWifi))
+  {
+    // String StringConfig = "{\"enableWiFi\":0,\"ssid\":\"\",\"pass\":\"\",\"dhcpWiFi\":1,\"ip\":\"\",\"mask\":\"\",\"gw\":\"\",\"disableEmerg\":1}";
+    JsonDocument doc;
+    doc[enableWiFi] = 0;
+    doc[ssid] = "";
+    doc[pass] = "";
+    doc[dhcpWiFi] = 1;
+    doc[ip] = "";
+    doc[mask] = "";
+    doc[gw] = "";
+    writeDefaultConfig(configFileWifi, doc);
+  }
+  File configFile = LittleFS.open(configFileWifi, FILE_READ);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+
+    configFile.close();
+    LittleFS.remove(configFileWifi);
+    return false;
+  }
+
+  ConfigSettings.dhcpWiFi = (int)doc[dhcpWiFi];
+  strlcpy(ConfigSettings.ssid, doc[ssid] | "", sizeof(ConfigSettings.ssid));
+  strlcpy(ConfigSettings.password, doc[pass] | "", sizeof(ConfigSettings.password));
+  strlcpy(ConfigSettings.ipAddressWiFi, doc[ip] | "", sizeof(ConfigSettings.ipAddressWiFi));
+  strlcpy(ConfigSettings.ipMaskWiFi, doc[mask] | "", sizeof(ConfigSettings.ipMaskWiFi));
+  strlcpy(ConfigSettings.ipGWWiFi, doc[gw] | "", sizeof(ConfigSettings.ipGWWiFi));
+  // ConfigSettings.enableWiFi = (int)doc["enableWiFi"];
+  // ConfigSettings.disableEmerg = (int)doc["disableEmerg"];
+
+  configFile.close();
+  return true;
+}
+// Load Ethernet configuration
+bool loadConfigEther()
+{
+  const char *dhcp = "dhcp";
+  const char *ip = "ip";
+  const char *mask = "mask";
+  const char *gw = "gw";
+  //File configFile = LittleFS.open(configFileEther, FILE_READ);
+  if (!LittleFS.exists(configFileEther))
+  {
+    JsonDocument doc;
+    doc[dhcp] = 1;
+    doc[ip] = "";
+    doc[mask] = "";
+    doc[gw] = "";
+    // doc["disablePingCtrl"] = 0;
+    // String StringConfig = "{\"dhcp\":1,\"ip\":\"\",\"mask\":\"\",\"gw\":\"\",\"disablePingCtrl\":0}";
+    writeDefaultConfig(configFileEther, doc);
+  }
+
+  File configFile = LittleFS.open(configFileEther, FILE_READ);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+
+    configFile.close();
+    LittleFS.remove(configFileEther);
+    return false;
+  }
+
+  ConfigSettings.dhcp = (int)doc[dhcp];
+  strlcpy(ConfigSettings.ipAddress, doc[ip] | "", sizeof(ConfigSettings.ipAddress));
+  strlcpy(ConfigSettings.ipMask, doc[mask] | "", sizeof(ConfigSettings.ipMask));
+  strlcpy(ConfigSettings.ipGW, doc[gw] | "", sizeof(ConfigSettings.ipGW));
+  // ConfigSettings.disablePingCtrl = (int)doc["disablePingCtrl"];
+
+  configFile.close();
+  return true;
+}
+// Load general configuration
+bool loadConfigGeneral()
+{
+  const char *hostname = "hostname";
+  const char *disableLeds = "disableLeds";
+  const char *refreshLogs = "refreshLogs";
+  const char *disableLedPwr = "disableLedPwr";
+  const char *disableLedUSB = "disableLedUSB";
+  const char *prevCoordMode = "prevCoordMode";
+  const char *keepWeb = "keepWeb";
+  const char *timeZoneName = "timeZoneName";
+ // File configFile = LittleFS.open(configFileGeneral, FILE_READ);
+ // DEBUG_PRINTLN(configFile.readString());
+  if (!LittleFS.exists(configFileGeneral))
+  {
+    // String deviceID = deviceModel;
+    // getDeviceID(deviceID);
+    DEBUG_PRINTLN("RESET ConfigGeneral");
+    // String StringConfig = "{\"hostname\":\"" + deviceID + "\",\"disableLeds\": false,\"refreshLogs\":1000,\"usbMode\":0,\"disableLedPwr\":0,\"disableLedUSB\":0,\""+ coordMode +"\":0}\""+ prevCoordMode +"\":0, \"keepWeb\": 0}";
+    JsonDocument doc;
+    doc[hostname] = deviceModel;
+    doc[disableLeds] = 0;
+    doc[refreshLogs] = 1000;
+    doc[disableLedPwr] = 0;
+    doc[disableLedUSB] = 0;
+    doc[coordMode] = 0;
+    doc[prevCoordMode] = 0;
+    doc[keepWeb] = 0;
+    writeDefaultConfig(configFileGeneral, doc);
+  }
+
+  File configFile = LittleFS.open(configFileGeneral, FILE_READ);
+  DEBUG_PRINTLN(configFile.readString());
+  configFile.seek(0, SeekSet);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+
+    configFile.close();
+    LittleFS.remove(configFileGeneral);
+    return false;
+  }
+
+  if ((double)doc[refreshLogs] < 1000)
+  {
+    ConfigSettings.refreshLogs = 1000;
+  }
+  else
+  {
+    ConfigSettings.refreshLogs = (int)doc[refreshLogs];
+  }
+  DEBUG_PRINTLN(F("[loadConfigGeneral] 'doc[coordMode]' res is:"));
+  DEBUG_PRINTLN(String((uint8_t)doc[coordMode]));
+  strlcpy(ConfigSettings.hostname, doc[hostname] | "", sizeof(ConfigSettings.hostname));
+  ConfigSettings.coordinator_mode = static_cast<CoordinatorMode>((uint8_t)doc[coordMode]);
+  ConfigSettings.prevCoordinator_mode = static_cast<CoordinatorMode>((uint8_t)doc[prevCoordMode]);
+  DEBUG_PRINTLN(F("[loadConfigGeneral] 'static_cast' res is:"));
+  DEBUG_PRINTLN(String(static_cast<uint8_t>(ConfigSettings.coordinator_mode)));
+  ConfigSettings.disableLedPwr = (uint8_t)doc[disableLedPwr];
+  // DEBUG_PRINTLN(F("[loadConfigGeneral] disableLedPwr"));
+  ConfigSettings.disableLedUSB = (uint8_t)doc[disableLedUSB];
+  // DEBUG_PRINTLN(F("[loadConfigGeneral] disableLedUSB"));
+  ConfigSettings.disableLeds = (uint8_t)doc[disableLeds];
+  // DEBUG_PRINTLN(F("[loadConfigGeneral] disableLeds"));
+  ConfigSettings.keepWeb = (uint8_t)doc[keepWeb];
+  // DEBUG_PRINTLN(F("[loadConfigGeneral] disableLeds"));
+  strlcpy(ConfigSettings.timeZone, doc[timeZoneName] | "", sizeof(ConfigSettings.timeZone));
+  configFile.close();
+  DEBUG_PRINTLN(F("[loadConfigGeneral] config load done"));
+  return true;
+}
+// Load security configuration
+bool loadConfigSecurity()
+{
+  const char *disableWeb = "disableWeb";
+  const char *webAuth = "webAuth";
+  const char *webUser = "webUser";
+  const char *webPass = "webPass";
+  const char *fwEnabled = "fwEnabled";
+  const char *fwIp = "fwIp";
+  //File configFile = LittleFS.open(configFileSecurity, FILE_READ);
+  if (!LittleFS.exists(configFileSecurity))
+  {
+    // String StringConfig = "{\"disableWeb\":0,\"webAuth\":0,\"webUser\":"",\"webPass\":""}";
+    JsonDocument doc;
+    doc[disableWeb] = 0;
+    doc[webAuth] = 0;
+    doc[webUser] = "admin";
+    doc[webPass] = "";
+    doc[fwEnabled] = 0;
+    doc[fwIp] = "";
+    writeDefaultConfig(configFileSecurity, doc);
+  }
+
+  File configFile = LittleFS.open(configFileSecurity, FILE_READ);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+
+    configFile.close();
+    LittleFS.remove(configFileSecurity);
+    return false;
+  }
+
+  ConfigSettings.disableWeb = (uint8_t)doc[disableWeb];
+  ConfigSettings.webAuth = (uint8_t)doc[webAuth];
+  strlcpy(ConfigSettings.webUser, doc[webUser] | "", sizeof(ConfigSettings.webUser));
+  strlcpy(ConfigSettings.webPass, doc[webPass] | "", sizeof(ConfigSettings.webPass));
+  ConfigSettings.fwEnabled = (uint8_t)doc[fwEnabled];
+  ConfigSettings.fwIp = parse_ip_address(doc[fwIp] | "0.0.0.0");
+
+  configFile.close();
+  return true;
+}
+
+bool loadConfigSerial()
+{
+  const char *baud = "baud";
+  const char *port = "port";
+  //File configFile = LittleFS.open(configFileSerial, FILE_READ);
+  if (!LittleFS.exists(configFileSerial))
+  {
+    // String StringConfig = "{\"baud\":115200,\"port\":6638}";
+    JsonDocument doc;
+    doc[baud] = 115200;
+    doc[port] = 6638;
+    writeDefaultConfig(configFileSerial, doc);
+  }
+
+  File configFile = LittleFS.open(configFileSerial, FILE_READ);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+
+    configFile.close();
+    LittleFS.remove(configFileSerial);
+    return false;
+  }
+
+  ConfigSettings.serialSpeed = (int)doc[baud];
+  ConfigSettings.socketPort = (int)doc[port];
+  if (ConfigSettings.socketPort == 0)
+  {
+    ConfigSettings.socketPort = TCP_LISTEN_PORT;
+  }
+  configFile.close();
+  return true;
+}
+// Load MQTT configuration
+bool loadConfigMqtt()
+{
+  const char *enable = "enable";
+  const char *server = "server";
+  const char *port = "port";
+  const char *user = "user";
+  const char *pass = "pass";
+  const char *topic = "topic";
+  const char *interval = "interval";
+  const char *discovery = "discovery";
+
+  //File configFile = LittleFS.open(configFileMqtt, FILE_READ);
+  if (!LittleFS.exists(configFileMqtt))
+  {
+    char deviceIdArr[20];
+    getDeviceID(deviceIdArr);
+
+    JsonDocument doc;
+    doc[enable] = 0;
+    doc[server] = "";
+    doc[port] = 1883;
+    doc[user] = "mqttuser";
+    doc[pass] = "";
+    doc[topic] = String(deviceIdArr);
+    doc[interval] = 60;
+    doc[discovery] = 0;
+    writeDefaultConfig(configFileMqtt, doc);
+  }
+
+  File configFile = LittleFS.open(configFileMqtt, FILE_READ);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+    configFile.close();
+    LittleFS.remove(configFileMqtt);
+    return false;
+  }
+
+  MqttSettings.enable = (int)doc[enable];
+  strlcpy(MqttSettings.server, doc[server] | "", sizeof(MqttSettings.server));
+  MqttSettings.serverIP = parse_ip_address(MqttSettings.server);
+  MqttSettings.port = (int)doc[port];
+  strlcpy(MqttSettings.user, doc[user] | "", sizeof(MqttSettings.user));
+  strlcpy(MqttSettings.pass, doc[pass] | "", sizeof(MqttSettings.pass));
+  strlcpy(MqttSettings.topic, doc[topic] | "", sizeof(MqttSettings.topic));
+  MqttSettings.interval = (int)doc[interval];
+  MqttSettings.discovery = (int)doc[discovery];
+
+  configFile.close();
+  return true;
+}
+// Load WG configuration
+bool loadConfigWg()
+{
+  const char *enable = "enable";
+  const char *localAddr = "localAddr";
+  const char *localIP = "localIP";
+  const char *endAddr = "endAddr";
+  const char *endPubKey = "endPubKey";
+  const char *endPort = "endPort";
+
+  //File configFile = LittleFS.open(configFileWg, FILE_READ);
+  if (!LittleFS.exists(configFileWg))
+  {
+    JsonDocument doc;
+    doc[enable] = 0;
+    doc[localAddr] = "";
+    doc[localIP] = "";
+    doc[endAddr] = "";
+    doc[endPubKey] = "";
+    doc[endPort] = 51820;
+    writeDefaultConfig(configFileWg, doc);
+  }
+
+  File configFile = LittleFS.open(configFileWg, FILE_READ);
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  if (error)
+  {
+    DEBUG_PRINTLN(F("deserializeJson() failed: "));
+    DEBUG_PRINTLN(error.f_str());
+    configFile.close();
+    LittleFS.remove(configFileWg);
+    return false;
+  }
+
+  WgSettings.enable = (int)doc[enable];
+
+  strlcpy(WgSettings.localAddr, doc[localAddr] | "", sizeof(WgSettings.localAddr));
+  WgSettings.localIP = parse_ip_address(WgSettings.localAddr);
+
+  strlcpy(WgSettings.localPrivKey, doc[localIP] | "", sizeof(WgSettings.localPrivKey));
+  strlcpy(WgSettings.endAddr, doc[endAddr] | "", sizeof(WgSettings.endAddr));
+  strlcpy(WgSettings.endPubKey, doc[endPubKey] | "", sizeof(WgSettings.endPubKey));
+  WgSettings.endPort = doc[endPort] | 51820;
+
+  configFile.close();
+  return true;
+}
