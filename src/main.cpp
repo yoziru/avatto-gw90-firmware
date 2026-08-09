@@ -13,7 +13,6 @@
 #include <DNSServer.h>
 #include <CCTools.h>
 #include <WireGuard-ESP32.h>
-#include <CronAlarms.h>
 
 #include "config.h"
 #include "web.h"
@@ -1282,16 +1281,6 @@ void setup()
   DEBUG_PRINTLN(String(deviceIdArr));
   printLogMsg(String(deviceIdArr));
 
-  // Cron.create(const_cast<char *>("0 */1 * * * *"), ledsScheduler, false);
-
-  /*
-  cron_parse_expr(cronstring, &(Alarm[id].expr), &err);
-  if (err) {
-    memset(&(Alarm[id].expr), 0, sizeof(Alarm[id].expr));
-    return dtINVALID_ALARM_ID;
-  }
-  */
-
 }
 
 WiFiClient client[MAX_SOCKET_CLIENTS];
@@ -1524,7 +1513,6 @@ void loop(void)
   {
     dnsServer.processNextRequest();
   }
-  Cron.delay();
 }
 
 

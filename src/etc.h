@@ -36,6 +36,5 @@ void resetSettings();
 
 void setClock();
 void setTimezone(String timezone);
-void ledsScheduler ();
 
 //#define min(a, b) ((a) < (b) ? (a) : (b))
