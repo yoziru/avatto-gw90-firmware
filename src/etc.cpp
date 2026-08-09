@@ -218,30 +218,6 @@ void writeDefaultConfig(const char *path, JsonDocument &doc)
   configFile.close();
 }
 
-String hexToDec(String hexString)
-{
-
-  unsigned int decValue = 0;
-  int nextInt;
-
-  for (int i = 0; i < hexString.length(); i++)
-  {
-
-    nextInt = int(hexString.charAt(i));
-    if (nextInt >= 48 && nextInt <= 57)
-      nextInt = map(nextInt, 48, 57, 0, 9);
-    if (nextInt >= 65 && nextInt <= 70)
-      nextInt = map(nextInt, 65, 70, 10, 15);
-    if (nextInt >= 97 && nextInt <= 102)
-      nextInt = map(nextInt, 97, 102, 10, 15);
-    nextInt = constrain(nextInt, 0, 15);
-
-    decValue = (decValue * 16) + nextInt;
-  }
-
-  return String(decValue);
-}
-
 void resetSettings()
 {
   DEBUG_PRINTLN(F("[resetSettings] Start"));
@@ -333,20 +309,6 @@ void setTimezone(String timezone)
   DEBUG_PRINT(F("Local time: "));
   DEBUG_PRINTLN(timeNow);
   printLogMsg("Local time: " + timeNow);
-}
-
-const char *getGmtOffsetForZone(const char *zone)
-{
-  for (int i = 0; i < timeZoneCount; i++)
-  {
-    if (strcmp(zone, timeZones[i].zone) == 0)
-    {
-      // Зона найдена, возвращаем GMT Offset
-      return timeZones[i].gmtOffset;
-    }
-  }
-  // Зона не найдена
-  return nullptr;
 }
 
 void ledsScheduler()

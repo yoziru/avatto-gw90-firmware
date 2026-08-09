@@ -1,6 +1,8 @@
 #ifndef ZONES_H
 #define ZONES_H
 
+#include <cstring>
+
 // Structure for key-value pairs
 struct TimeZone {
     const char* zone;
@@ -474,5 +476,17 @@ const TimeZone timeZones[] = {
 
 // Number of elements in the array
 const int timeZoneCount = sizeof(timeZones) / sizeof(timeZones[0]);
+
+inline const char *getGmtOffsetForZone(const char *zone) noexcept
+{
+  for (int i = 0; i < timeZoneCount; i++)
+  {
+    if (strcmp(zone, timeZones[i].zone) == 0)
+    {
+      return timeZones[i].gmtOffset;
+    }
+  }
+  return nullptr;
+}
 
 #endif // ZONES_H
