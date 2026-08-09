@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fix: add `delay(1)` yield to `loop()` — PR #29 removed `CronAlarms`, whose `Cron.delay()` was the only yield, causing a 100% CPU busy-spin. (#33)
+- Fix: auto-recover a hung CC2652P coordinator via a fully-passive `zbHealthCheck()` (observes client↔coordinator traffic; resets only when a client is active with zero coordinator output for 3 min ×3); exposes Coordinator status + auto-reset count in the Device Status card. (#34)
 - Test: extract CC2652P ZNP version-response decode into pure `src/zb_ver.h` (`decodeZbVer`), used by `getZbVer()`; add Unity suite (4 tests). 63 → 67 tests.
 - Refactor: split `main.cpp` (2053 → 484 lines) into `network.cpp` (initLan, WiFi/AP, mDNS, overseer, WireGuard), `bridge.cpp` (TCP socket bridge), `factory.cpp` (BUILD_FACTORY_TEST only); globals/`BUFFER_SIZE` moved into `config.h`.
 - Refactor: extract config loading into `config.cpp` + pure `ip_utils.h` `parseIpv4()` (4 new Unity tests; fixed `1.2.3` and `256.x` parse bugs). 59 → 63 tests.
