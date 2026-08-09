@@ -15,6 +15,7 @@
 #include "log.h"
 #include "etc.h"
 #include "zb.h"
+#include "zb_ver.h"
 
 extern struct ConfigSettingsStruct ConfigSettings;
 extern struct zbVerStruct zbVer;
@@ -87,12 +88,13 @@ void getZbVer()
             {
                 zbVerBuf[i] = Serial2.read();
             }
-            zbVer.zbRev = zbVerBuf[5] | (zbVerBuf[6] << 8) | (zbVerBuf[7] << 16) | (zbVerBuf[8] << 24);
-            zbVer.maintrel = zbVerBuf[4];
-            zbVer.minorrel = zbVerBuf[3];
-            zbVer.majorrel = zbVerBuf[2];
-            zbVer.product = zbVerBuf[1];
-            zbVer.transportrev = zbVerBuf[0];
+            const ZbVerInfo info = decodeZbVer(zbVerBuf);
+            zbVer.zbRev = info.zbRev;
+            zbVer.maintrel = info.maintrel;
+            zbVer.minorrel = info.minorrel;
+            zbVer.majorrel = info.majorrel;
+            zbVer.product = info.product;
+            zbVer.transportrev = info.transportrev;
 
             Serial.write(zbVerBuf,zbVerLen);
             printLogMsg(String("[ZBVER]") + " Rev: " + zbVer.zbRev + " Maintrel: " + zbVer.maintrel + " Minorrel: " + zbVer.minorrel + " Majorrel: " + zbVer.majorrel + " Transportrev: " + zbVer.transportrev + " Product: " + zbVer.product);
