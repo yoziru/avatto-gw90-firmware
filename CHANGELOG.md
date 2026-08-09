@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Test: extract CC2652P ZNP version-response decode into pure `src/zb_ver.h` (`decodeZbVer`), used by `getZbVer()`; add Unity suite (4 tests). 63 → 67 tests.
 - Refactor: split `main.cpp` (2053 → 484 lines) into `network.cpp` (initLan, WiFi/AP, mDNS, overseer, WireGuard), `bridge.cpp` (TCP socket bridge), `factory.cpp` (BUILD_FACTORY_TEST only); globals/`BUFFER_SIZE` moved into `config.h`.
 - Refactor: extract config loading into `config.cpp` + pure `ip_utils.h` `parseIpv4()` (4 new Unity tests; fixed `1.2.3` and `256.x` parse bugs). 59 → 63 tests.
 - CI: add `Release` workflow — bump `tools/version` + `manifest.json` via `patch`/`minor`/`major` (or explicit `X.Y.Z`), tag `vX.Y.Z`, build pinned `prod-solo`, attach firmware to GitHub release. Local equivalent: `scripts/release.sh`.
