@@ -6,6 +6,7 @@ extern void run_log_tests(void);
 extern void run_api_dispatch_tests(void);
 extern void run_checksum_tests(void);
 extern void run_zones_tests(void);
+extern void run_ip_utils_tests(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -18,5 +19,6 @@ int main(int argc, char **argv) {
     run_api_dispatch_tests();
     run_checksum_tests();
     run_zones_tests();
+    run_ip_utils_tests();
     return UNITY_END();
 }
