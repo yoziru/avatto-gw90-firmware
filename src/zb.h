@@ -4,7 +4,13 @@
 void clearS2Buffer();
 void getZbVer();
 void zbCheck();
+void zbHealthCheck();
 void zbLedToggle();
+
+// Coordinator health metrics (for the web UI).
+unsigned long zbGetLastRxMs();
+unsigned long zbGetLastClientTxMs();
+uint32_t zbGetAutoResetCount();
 int8_t checkFwHex(const char *tempFile);
 int8_t runFlash(const char *hexFilePath,uint32_t binsize);
 bool programFlashFromFile(const char *filePath);

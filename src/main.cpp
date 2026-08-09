@@ -449,6 +449,7 @@ void loop(void)
 
   tmrBtnLongPress.update();
   tmrNetworkOverseer.update();
+  tmrZbHealth.update();
   if (updWeb)
   {
     webServerHandleClient();
