@@ -2,26 +2,26 @@
 #define ENCODING_H_
 
 #include <stdint.h>
-#include <cstdlib>
-#include <string>
 
-inline uint8_t hexNibble(char c) {
-    if (c >= 'a') return c - 'a' + 10;
-    if (c >= 'A') return c - 'A' + 10;
-    return c - '0';
+#include <string>
+#include <string_view>
+
+constexpr uint8_t hexNibble(char c) noexcept {
+    if (c >= 'a') return static_cast<uint8_t>(c - 'a' + 10);
+    if (c >= 'A') return static_cast<uint8_t>(c - 'A' + 10);
+    return static_cast<uint8_t>(c - '0');
 }
 
-inline std::string urlDecode(const std::string &input) {
+inline std::string urlDecode(const std::string_view input) {
     std::string decoded;
-    char hexBuf[] = "0x00";
-    size_t len = input.length();
+    decoded.reserve(input.length());
+    const size_t len = input.length();
     size_t i = 0;
     while (i < len) {
-        char c = input[i++];
+        const char c = input[i++];
         if (c == '%' && i + 1 < len) {
-            hexBuf[2] = input[i++];
-            hexBuf[3] = input[i++];
-            decoded += (char)strtol(hexBuf, NULL, 16);
+            decoded += static_cast<char>((hexNibble(input[i]) << 4) | hexNibble(input[i + 1]));
+            i += 2;
         } else if (c == '+') {
             decoded += ' ';
         } else {
@@ -31,17 +31,18 @@ inline std::string urlDecode(const std::string &input) {
     return decoded;
 }
 
-inline void hex2bin(uint8_t *out, const char *in) {
-    while (*in) {
-        while (*in == ' ')
-            in++;
-        if (!*in)
+inline void hex2bin(uint8_t *out, const std::string_view in) {
+    size_t i = 0;
+    while (i < in.length()) {
+        while (i < in.length() && in[i] == ' ')
+            i++;
+        if (i >= in.length())
             break;
-        uint8_t c = hexNibble(*in++);
+        uint8_t c = hexNibble(in[i++]);
         c <<= 4;
-        if (!*in)
+        if (i >= in.length())
             break;
-        c |= hexNibble(*in++);
+        c |= hexNibble(in[i++]);
         *out++ = c;
     }
 }

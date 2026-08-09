@@ -32,17 +32,17 @@
 #define NEED_BSL_PIN 15  // CC2652 pin number (FOR BSL VALIDATION!)
 #define NEED_BSL_LEVEL 0 // 0 = LOW, 1 = HIGH
 
-const int16_t overseerInterval = 5 * 1000; // check lan or wifi connection every 5sec
-const uint8_t overseerMaxRetry = 4;       // 5x4 = 20sec for PHY stability
-const uint8_t LED_USB = 12;                // RED
-const uint8_t LED_PWR = 14;                // BLUE
-const uint8_t MAX_SOCKET_CLIENTS = 5;
+constexpr int16_t overseerInterval = 5 * 1000; // check lan or wifi connection every 5sec
+constexpr uint8_t overseerMaxRetry = 4;       // 5x4 = 20sec for PHY stability
+constexpr uint8_t LED_USB = 12;                // RED
+constexpr uint8_t LED_PWR = 14;                // BLUE
+constexpr uint8_t MAX_SOCKET_CLIENTS = 5;
 
-enum COORDINATOR_MODE_t : uint8_t
+enum class CoordinatorMode : uint8_t
 {
-  COORDINATOR_MODE_LAN,                // LAN mode
-  COORDINATOR_MODE_WIFI,               // WiFi mode
-  COORDINATOR_MODE_USB                 // USB mode
+  LAN = 0,               // LAN mode
+  WIFI = 1,              // WiFi mode
+  USB = 2                // USB mode
 };
 
 extern const char *coordMode;// coordMode node name
@@ -86,8 +86,8 @@ struct ConfigSettingsStruct
     bool disableLedPwr;                // Disable LED PWR
     // bool disablePingCtrl;
     bool disableLeds;                  // Disable LEDs
-    COORDINATOR_MODE_t coordinator_mode;            // Coordinator mode
-    COORDINATOR_MODE_t prevCoordinator_mode;        // Coordinator previous mode
+    CoordinatorMode coordinator_mode = CoordinatorMode::LAN;          // Coordinator mode
+    CoordinatorMode prevCoordinator_mode = CoordinatorMode::LAN;      // Coordinator previous mode
     bool keepWeb;                      // Keep web server
     bool apStarted;                    // AP started
     bool wifiWebSetupInProgress;       // WiFi web setup in progress

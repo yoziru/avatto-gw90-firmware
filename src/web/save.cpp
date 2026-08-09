@@ -46,7 +46,7 @@ void handleSaveParams()
                         DEBUG_PRINTLN("mode == 1");
                         wifiWebSetupInProgress = true;
                     }
-                    doc[coordMode] = static_cast<COORDINATOR_MODE_t>(mode);
+                    doc[coordMode] = static_cast<uint8_t>(mode);
                     DEBUG_PRINTLN("doc[coordMode]");
                 }
             }

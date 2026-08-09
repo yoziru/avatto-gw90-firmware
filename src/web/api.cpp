@@ -421,7 +421,7 @@ void handleApi()
                     }
                     else
                     {
-                        resp = (String)ConfigSettings.coordinator_mode;
+                        resp = String(static_cast<uint8_t>(ConfigSettings.coordinator_mode));
                     }
                 }
                 else if (serverWeb.arg(param) == "zbRev")
