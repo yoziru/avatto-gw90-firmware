@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Deps: remove unused libs — AsyncTCP, EspSoftwareSerial, ESP32Ping (no code references; Serial2 is hardware UART). (#23)
+- Deps: pin all remaining `lib_deps` to exact versions for reproducible builds (CircularBuffer 1.4.0, Ticker 4.4.0, PubSubClient 2.8.0, CronAlarms 0.1.0, Unity 2.6.1). (#23)
 - C++: enable `-std=gnu++17` (override framework `gnu++11` via `build_unflags`). (#22)
 - C++: modernize `encoding.h` — `constexpr`/`noexcept` helpers, `std::string_view` inputs, drop `strtol` hex parsing. (#22)
 - C++: convert `COORDINATOR_MODE_t` unscoped enum to scoped `enum class CoordinatorMode`; explicit `uint8_t` casts at JSON/serial boundaries. (#22)
