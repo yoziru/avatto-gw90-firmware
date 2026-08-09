@@ -687,8 +687,6 @@ div#main { max-width: var(--content-max); margin-left: auto; margin-right: auto;
   .machine_bg { width: 100%; }
   .diagram-wrap { width: 95%; }
   .card { margin: 0 0 1.5rem; position: relative; }
-  .masonry { padding: 0; display: flex; flex-direction: column; }
-  .masonry > div { position: static; margin-bottom: 10px; width: 100%; }
   .col-sm-12 { margin-bottom: 15px; }
   .nav-link svg { width: 25px; height: 25px; flex-shrink: 0; min-width: 25px; min-height: 25px; }
   .nav-link { display: flex; align-items: center; gap: 0.5rem; color: #fff; }

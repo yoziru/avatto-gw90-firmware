@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Security: remove committed factory-test credentials (`factory-test-ap.txt`, `factory-test-process.txt`, `bin/factory-test-ap.txt`); document the inline AP-scan test flow in `factory_test/README.md` instead. (#25)
+- Build: wire `version_increment_post.py` so patch version auto-increments every build; stop committing `tools/.version_no_increment` (now gitignored). (#25)
+- Build: fix `build.py` version filename trailing-newline bug (`AVATTO-GW90-Ti_v1.0.7<newline>.full.bin`). (#25)
+- Cleanup: delete dead `tools/` scripts (`commit.sh`, `make_git_hook.sh`, `flash.sh`, `esptool.py`, `debug_build.py`); stale `debug-ui/`; dead web JS (`bootstrap.min.js`, `jquery-min.js`, `masonry.js`) + inert `data-masonry` attributes/CSS. (#25)
 - Deps: migrate ArduinoJson 6.x → 7.4.3 (`DynamicJsonDocument`/`StaticJsonDocument` → auto-sized `JsonDocument`, `createNested*` → `to<JsonArray>()`/`add<JsonObject>()`). (#24)
 - Fix: off-by-one buffer overflow in `mqttCallback` (`jjson[length+1]` → `jjson[length]`). (#24)
 - Deps: remove unused `ArduinoJson.h` includes from `zb.cpp`/`web/common.cpp`; self-contained `etc.h`. (#24)

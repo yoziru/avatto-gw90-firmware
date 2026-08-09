@@ -1,7 +1,0 @@
-1. On power-up, scan for AP: ezsmart_factory_test. If the factory test AP is found, enter factory test mode. Otherwise, run normally.
-
-2. Once factory test starts, connect directly to the factory test AP. Test WiFi connectivity, LAN connectivity, and ZIGBEE communication.
-
-3. Test results: WiFi → LED D9 (PWR indicator), LAN → LED D12 (WiFi indicator), ZIGBEE → LED D11. If a test passes, the corresponding LED lights up.
-
-4. When the button is pressed, LED D8 (USB indicator) lights up for 0.5 seconds, then turns off.
