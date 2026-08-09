@@ -32,7 +32,7 @@ DynamicJsonDocument getRootData()
 {
     DynamicJsonDocument doc(1024);
 
-    char verArr[25];
+    char verArr[48];
     const char *env = STRINGIFY(BUILD_ENV_NAME);
 
     sprintf(verArr, "%s (%s)", VERSION, env);
@@ -126,7 +126,7 @@ DynamicJsonDocument getRootData()
     doc["uptime"] = readableTime;
 
     float CPUtemp = getCPUtemp();
-    doc["deviceTemp"] = String(CPUtemp);
+    doc["deviceTemp"] = String(CPUtemp, 1);
     doc["hwRev"] = deviceModel;
     doc["espModel"] = String(ESP.getChipModel());
     doc["espCores"] = String(ESP.getChipCores());
@@ -518,6 +518,7 @@ void handleAbout()
     }
 
     doc["buildDate"] = buildDate;
+    doc["espModel"] = String(ESP.getChipModel());
 
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);

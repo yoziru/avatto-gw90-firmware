@@ -731,7 +731,7 @@ bool loadConfigWg()
     doc[localIP] = "";
     doc[endAddr] = "";
     doc[endPubKey] = "";
-    doc[endPort] = "";
+    doc[endPort] = 51820;
     writeDefaultConfig(configFileWg, doc);
   }
 
@@ -756,7 +756,7 @@ bool loadConfigWg()
   strlcpy(WgSettings.localPrivKey, doc[localIP] | "", sizeof(WgSettings.localPrivKey));
   strlcpy(WgSettings.endAddr, doc[endAddr] | "", sizeof(WgSettings.endAddr));
   strlcpy(WgSettings.endPubKey, doc[endPubKey] | "", sizeof(WgSettings.endPubKey));
-  WgSettings.endPort = (int)doc[endPort];
+  WgSettings.endPort = doc[endPort] | 51820;
 
   configFile.close();
   return true;

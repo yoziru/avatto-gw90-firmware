@@ -50,7 +50,6 @@ const api = {
 		API_WIFISCANSTATUS: 3,
 		API_GET_FILELIST: 4,
 		API_GET_FILE: 5,
-		API_SEND_HEX: 6,
 		API_WIFICONNECTSTAT: 7,
 		API_CMD: 8,
 		API_GET_LOG: 9,
@@ -58,19 +57,6 @@ const api = {
 	},
 	pages: pages
 };
-
-function showToast(show) {
-	const toast = document.querySelector(".toast");
-	if (toast) {
-		if (show) {
-			toast.classList.add("show");
-			toast.classList.remove("hide");
-		} else {
-			toast.classList.remove("show");
-			toast.classList.add("hide");
-		}
-	}
-}
 
 function showModal(show) {
 	const modal = document.getElementById("modal");
@@ -101,8 +87,6 @@ function initBsHandlers() {
 	document.addEventListener("click", function (e) {
 		const tabBtn = e.target.closest("[data-bs-toggle='tab']");
 		if (tabBtn) { e.preventDefault(); switchTab(tabBtn); return; }
-		const dismissToast = e.target.closest("[data-bs-dismiss='toast']");
-		if (dismissToast) { showToast(false); return; }
 		const dismissModal = e.target.closest("[data-bs-dismiss='modal']");
 		if (dismissModal) { showModal(false); return; }
 		const modal = getEl("modal");
@@ -120,10 +104,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	const activeLink = document.querySelector("a[href='" + document.location.pathname + "']");
 	if (activeLink && activeLink.parentElement) activeLink.parentElement.classList.add("nav-active");
 	loadPage(document.location.pathname);
-
-	if (!(localStorage.getItem("refresh_tip_got") == 1)) {
-		toastConstructor("refreshTip");
-	}
 
 	if (isMobile()) {
 		if (!(localStorage.getItem("shv_sdnv_frst_t") == 1)) {
@@ -151,11 +131,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	initDarkModeToggle();
 	initBsHandlers();
 });
-
-function isHex(txt) {
-	var regex = /[0-9A-Fa-f]{21}/g;
-	return regex.test(txt);
-}
 
 function copyCode() {
 	let textArea = getEl("generatedFile");
@@ -221,27 +196,19 @@ advanced:
 }
 
 function fillFileTable(files) {
-	const icon = "<i class='bi bi-filetype-json'></i>";
 	const filelist = getEl("filelist");
 	files.forEach((elem) => {
 		const row = document.createElement("tr");
-		row.innerHTML = "<td>" + icon + "<a href='#config_file' onclick=\"readfile('" + elem.filename + "');\">" + elem.filename + "</a></td><td>" + elem.size + "B</td>";
+		const size = (elem.size !== undefined && elem.size !== null) ? elem.size + "B" : "—";
+		row.innerHTML = "<td class='filename'><a href='#config_file' title='" + elem.filename + "' onclick=\"readfile('" + elem.filename + "');\">" + elem.filename + "</a></td><td>" + size + "</td>";
 		filelist.appendChild(row);
-	});
-}
-
-function sendHex() {
-	let hexInput = getEl("sendHex");
-	let hex = hexInput.value.toUpperCase();
-	let hexSize = hex.split(" ").length;
-	fetch(apiLink + api.actions.API_SEND_HEX + "&hex=" + hex + "&size=" + hexSize).then(() => {
-		hexInput.value = "";
 	});
 }
 
 function loadPage(url) {
 	window.history.pushState("", document.title, url);
 	console.log("[loadPage] url: " + url);
+	window.scrollTo(0, 0);
 	switch (url) {
 		case api.pages.API_PAGE_ROOT.str:
 			apiGetPage(api.pages.API_PAGE_ROOT);
@@ -268,13 +235,17 @@ function loadPage(url) {
 			break;
 		case api.pages.API_PAGE_WIFI.str:
 			apiGetPage(api.pages.API_PAGE_WIFI, () => {
-				if (getEl("WIFIssid").value.length > 1) {
+				if (getEl("WIFISSID").value.length > 1) {
 					setTimeout(() => toggleCollapse("collapseWifiPass", true), 600);
 				}
 				fetch(apiLink + api.actions.API_GET_PARAM + "&param=coordMode").then(r => r.text()).then(data => {
 					if (parseInt(data) != 1) {
 						getQA(".card").forEach(c => c.classList.add("card-disabled"));
-						toastConstructor("wifiDisabled");
+						const main = getEl("main");
+						if (main) {
+							const banner = el("div", { "class": "alert alert-info mb-3", role: "alert", html: "<strong>Wi-Fi mode is not active.</strong> Enable it in the <a href='/general'>General</a> settings to use Wi-Fi." });
+							main.prepend(banner);
+						}
 					}
 				});
 				if (getEl("dhcpWiFi").checked) WifiDhcpDsbl(true);
@@ -304,10 +275,6 @@ function loadPage(url) {
 		default:
 			apiGetPage(api.pages.API_PAGE_ROOT);
 			break;
-	}
-	const toast = document.querySelector(".toast");
-	if (url != api.pages.API_PAGE_WIFI.str && toast && toast.classList.contains("show")) {
-		if (getEl("toastBody").textContent.indexOf("Wi-Fi mode") > 0) showToast(false);
 	}
 	if (isMobile()) sidenavAutoclose(true);
 }
@@ -372,6 +339,7 @@ function apiGetPage(page, doneCall) {
 					const btnGrn = "btn-outline-success";
 					const cmd = this.getAttribute("data-cmd");
 					if (cmd) {
+						if (cmd === "3") { modalConstructor("confirmRestart"); return; }
 						const sp = createSpinner();
 						const sp2 = el("span", { "class": classHide });
 						this.appendChild(sp);
@@ -440,15 +408,9 @@ function apiGetPage(page, doneCall) {
 							if (isIpValue && !isMaskInPropertyName) {
 								elem.innerHTML = valueToSet;
 							} else {
-								elem.textContent = valueToSet;
-							}
-							if (property === "deviceTemp") {
-								const tempValue = parseFloat(valueToSet);
-								if (!isNaN(tempValue)) {
-									const percentage = Math.min((tempValue / 90) * 100, 100);
-									const prgTemp = getEl("prgTemp");
-									if (prgTemp) prgTemp.style.width = percentage + "%";
-								}
+								const pill = statusPill(valueToSet);
+								if (pill) elem.innerHTML = pill;
+								else elem.textContent = valueToSet;
 							}
 							break;
 					}
@@ -499,39 +461,10 @@ function showPreloader(state) {
 	}
 }
 
-function toastConstructor(params) {
-	const toastBtns = getEl("toastButtons");
-	const toastHeader = getEl("toastHeaderText");
-	const toastBody = getEl("toastBody");
-	if (toastBtns) toastBtns.innerHTML = "";
-	if (toastHeader) toastHeader.textContent = "";
-	if (toastBody) toastBody.textContent = "";
-	switch (params) {
-		case "refreshTip":
-			if (toastHeader) toastHeader.textContent = "Tip";
-			if (toastBody) toastBody.textContent = "Statuses and other information in this window are updated when the page refreshes.";
-			if (toastBtns) toastBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary", text: "Got it!", click: () => { localStorage.setItem("refresh_tip_got", 1); showToast(false); } }));
-			break;
-		case "wifiDisabled":
-			if (toastHeader) toastHeader.textContent = "Info";
-			if (toastBody) toastBody.textContent = "Wi-Fi page is inactive because Wi-Fi mode is not activated. Activate Wi-Fi in the 'General' settings";
-			if (toastBtns) {
-				toastBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary", text: "Go to 'General'", click: () => { window.location = "/general"; showToast(false); } }));
-				toastBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary", text: "Close", click: () => showToast(false) }));
-			}
-			break;
-		default:
-			break;
-	}
-	showToast(true);
-}
-
 function applyTheme(dark) {
 	if (dark) document.documentElement.setAttribute("data-theme", "dark");
 	else document.documentElement.removeAttribute("data-theme");
 	localStorage.setItem("theme", dark ? "dark" : "light");
-	const sidebarToggle = document.getElementById("darkModeToggle");
-	if (sidebarToggle) sidebarToggle.checked = dark;
 }
 
 function toggleDarkModeMobile() {
@@ -544,13 +477,8 @@ function initDarkModeToggle() {
 	const isDark = saved !== null ? saved === "dark" : prefersDark;
 	if (isDark) document.documentElement.setAttribute("data-theme", "dark");
 	else document.documentElement.removeAttribute("data-theme");
-	const sidebarToggle = document.getElementById("darkModeToggle");
-	if (sidebarToggle) {
-		sidebarToggle.checked = isDark;
-		sidebarToggle.addEventListener("change", function () {
-			applyTheme(this.checked);
-		});
-	}
+	const btn = document.getElementById("darkModeToggleSide");
+	if (btn) btn.addEventListener("click", toggleDarkModeMobile);
 }
 
 function closeModal() {
@@ -738,16 +666,6 @@ function ZBfwStartEvents() {
 	});
 }
 
-function modalAddSpiner() {
-	const btns = getQ(".modal-footer");
-	if (btns) btns.appendChild(el("div", { role: "status", "class": "spinner-border text-primary", append: el("span", { "class": classHide }) }));
-}
-
-function modalAddClose() {
-	const btns = getQ(".modal-footer");
-	if (btns) btns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
-}
-
 function modalConstructor(type, params) {
 	console.log("[modalConstructor] start");
 	const hText = getQ(".modal-title");
@@ -757,62 +675,20 @@ function modalConstructor(type, params) {
 	if (mBody) { mBody.textContent = ""; mBody.style.color = ""; }
 	if (mBtns) mBtns.innerHTML = "";
 	switch (type) {
-		case "flashZB":
-			if (hText) hText.textContent = "Zigbee OTA update";
-			if (mBody) mBody.innerHTML = "Fetching firmware information...";
-			modalAddSpiner();
-			processResponsesZB().then(zbData => {
-				if (!zbData || !zbData.fwInfo) {
-					if (mBody) { mBody.innerHTML = "Error fetching firmware information<br>Check your network!"; mBody.style.color = "red"; }
-					if (mBtns) mBtns.innerHTML = "";
-					modalAddClose();
-					return;
-				}
-				let fwData = zbData.fwInfo;
-				let curZbVer = zbData.localVersion;
-				const cl = "col-sm-12 mb-2 ";
-				if (mBody) mBody.innerHTML = "";
-				if (mBtns) mBtns.innerHTML = "";
-				modalAddClose();
-				if (mBody) mBody.appendChild(el("div", { "class": "container", style: "max-width: 400px", append: el("div", { "class": "row", id: "flashZBrow" }) }));
-				const row = getEl("flashZBrow");
-				if (row) {
-					row.appendChild(el("span", { "class": cl, text: "Your current firmware revision: " + curZbVer }));
-					row.appendChild(el("hr", { "class": "border border-dark border-top" }));
-					let coordinatorFw = null;
-					if (Array.isArray(fwData)) {
-						coordinatorFw = fwData.find(fw => fw.name && fw.name.toLowerCase().includes("coordinator") && fw.firmwareType && fw.firmwareType.toLowerCase().includes("zigbee"));
-					}
-					if (!coordinatorFw) {
-						if (mBody) { mBody.innerHTML = "Error: No firmware found in JSON"; mBody.style.color = "red"; }
-						if (mBtns) mBtns.innerHTML = "";
-						modalAddClose();
-						return;
-					}
-					row.appendChild(el("span", { "class": cl, text: "Available Coordinator firmware:" }));
-					row.appendChild(el("textarea", { "class": cl + "form-control", text: "Revision: " + coordinatorFw.version + "\nFile: " + coordinatorFw.name + "\nDescription: " + (coordinatorFw.firmwareDesc || "N/A"), rows: 5, disabled: "" }));
-					row.appendChild(el("button", { "class": cl + "btn btn-warning", text: "Flash Coordinator " + coordinatorFw.version, click: function () {
-						let fwUrl = coordinatorFw.link;
-						if (fwUrl.includes("github.com")) fwUrl = fwUrl.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
-						fwUrl = encodeURIComponent(fwUrl);
-						console.log("Flash URL:", decodeURIComponent(fwUrl));
-						ZBfwStartEvents();
-						fetch(apiLink + api.actions.API_FLASH_ZB + "&fwurl=" + fwUrl).then(r => r.text()).then(data => console.log("API Response:", data)).catch(err => { console.error("API Error:", err); if (mBody) { mBody.innerHTML = "API request failed: " + err; mBody.style.color = "red"; } });
-					}}));
-				}
-			}).catch(err => {
-				if (mBody) { mBody.innerHTML = "Error fetching firmware information<br>Check your network!"; mBody.style.color = "red"; }
-				if (mBtns) mBtns.innerHTML = "";
-				modalAddClose();
-				console.error("Zigbee OTA error:", err);
-			});
-			break;
 		case "flashWarning":
 			if (hText) { hText.textContent = "WARNING"; hText.style.color = "red"; }
 			if (mBody) { mBody.textContent = "Flashing unofficial, incorrect or corrupted firmware can damage or brick your device!!!"; mBody.style.color = "red"; }
 			if (mBtns) {
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Close", click: closeModal }));
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: "I agree and I am taking the risk", click: () => { closeModal(); localStorage.setItem("flash_warning", 1); const ub = getEl("updButton"); if (ub) ub.removeAttribute("disabled"); } }));
+			}
+			break;
+		case "confirmRestart":
+			if (hText) hText.textContent = "Restart ESP32";
+			if (mBody) mBody.textContent = "The device will restart and the connection will be interrupted for a few seconds. Continue?";
+			if (mBtns) {
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-secondary", text: "Cancel", click: closeModal }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: "Restart", click: () => { closeModal(); espReboot(); rebootWait(); } }));
 			}
 			break;
 		case "espFlashGitInfo":
@@ -847,7 +723,7 @@ function modalConstructor(type, params) {
 			if (selRow) {
 				selRow.appendChild(el("button", { "class": "col-sm-12 mb-2 btn btn-primary", text: "Coordinator", click: () => showZigbeeVersionInfo("coordinator") }));
 				selRow.appendChild(el("button", { "class": "col-sm-12 mb-2 btn btn-outline-primary", text: "Router", click: () => showZigbeeVersionInfo("router") }));
-				selRow.appendChild(el("button", { type: "button", "class": "col-sm-12 btn btn-secondary", text: "Cancel", click: closeModal }));
+				selRow.appendChild(el("button", { type: "button", "class": "col-sm-12 btn btn-outline-secondary", text: "Cancel", click: closeModal }));
 			}
 			break;
 		case "zbVersionInfo":
@@ -868,11 +744,6 @@ function modalConstructor(type, params) {
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update Now", click: () => { closeModal(); zbFlashGitWait(); } }));
 			}
-			break;
-		case "espBetaFeedback":
-			if (hText) { hText.textContent = "FW beta feedback"; hText.style.color = "blue"; }
-			if (mBody) mBody.textContent = params;
-			if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "OK", click: () => { localStorage.setItem("beta_feedback", 1); closeModal(); } }));
 			break;
 		case "rebootWait":
 			if (hText) hText.textContent = "DEVICE RESTART";
@@ -909,7 +780,7 @@ function modalConstructor(type, params) {
 				}, 1000);
 			} else {
 				let body = "New parameters saved. ";
-				if (hText) hText.textContent = "SETTINGS SAVED";
+				if (hText) hText.textContent = "Settings saved";
 				const wifiModeEl = getEl("wifiMode");
 				if (wifiModeEl && wifiModeEl.checked) {
 					body += "You will be redirected to the Wi-Fi network selection page.";
@@ -923,11 +794,6 @@ function modalConstructor(type, params) {
 				}
 				if (mBody) mBody.textContent = body;
 			}
-			break;
-		case "keepWeb":
-			if (hText) hText.textContent = "Keep network & web server";
-			if (mBody) mBody.textContent = "This function allows you to leave one of the communication channels active and have access to the web interface. The device itself will select an available channel according to priority: WIFI, ETHERNET, WIFI AP";
-			if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn", text: "Ok", click: closeModal }));
 			break;
 		default:
 			break;
@@ -977,6 +843,8 @@ function getWifiList() {
 					clearInterval(timerId);
 					clearInterval(tmrUpdWifi);
 					if (scanBtn) scanBtn.disabled = false;
+					const wifiTable = getEl("wifiTable");
+					if (wifiTable) wifiTable.innerHTML = '<tr><td colspan="4" class="text-muted text-center" style="padding:1rem;">No Wi-Fi networks found. Tap "Scan Wi-Fi".</td></tr>';
 				} else {
 					if (data.wifi.length > 0) {
 						clearInterval(timerId);
@@ -1004,7 +872,7 @@ function getWifiList() {
 						if (scanBtn) scanBtn.disabled = false;
 						getQA(".ssidSelector").forEach(row => {
 							row.addEventListener("click", function (e) {
-								const ssidInput = getEl("WIFIssid");
+								const ssidInput = getEl("WIFISSID");
 								const passInput = getEl("WIFIpassword");
 								if (ssidInput) ssidInput.value = e.currentTarget.id;
 								if (passInput) passInput.value = "";
@@ -1015,6 +883,8 @@ function getWifiList() {
 						if (preloader) preloader.classList.add(classHide);
 						if (scanButton) scanButton.classList.remove(classHide);
 						if (scanBtn) scanBtn.disabled = false;
+						const wifiTable = getEl("wifiTable");
+						if (wifiTable) wifiTable.innerHTML = '<tr><td colspan="4" class="text-muted text-center" style="padding:1rem;">No Wi-Fi networks found. Tap "Scan Wi-Fi".</td></tr>';
 					}
 				}
 			});
@@ -1044,7 +914,10 @@ function setupSwipeHandler() {
 				if (sidenav) sidenav.classList.add("sidenav-active");
 				sidenavAutoclose();
 			} else if (endPoint == startPoint) {
-				if (sidenav) sidenav.classList.remove("sidenav-active");
+				// tap: only close the drawer when tapping outside of it
+				const t = event.changedTouches[0];
+				const el = document.elementFromPoint(t.clientX, t.clientY);
+				if (sidenav && el && !sidenav.contains(el)) sidenav.classList.remove("sidenav-active");
 			}
 		} else {
 			startPoint = event.touches[0].clientX;
@@ -1069,6 +942,25 @@ function MqttInputDsbl(state) {
 function WgInputDsbl(state) {
 	["WgLocalAddr", "WgLocalPrivKey", "WgEndAddr", "WgEndPubKey", "WgEndPort"].forEach(id => { const e = getEl(id); if (e) e.disabled = state; });
 	const div = getEl("div_show5"); if (div) div.style.display = state ? "none" : "";
+}
+
+function statusPill(value) {
+	const s = String(value).trim().toLowerCase();
+	let tone = null;
+	if (s === "yes" || s === "on" || s === "connected" || s.indexOf("connected to") === 0) tone = "success";
+	else if (s.indexOf("connecting") === 0) tone = "warning";
+	else if (s === "no" || s === "off" || s === "not connected" || s === "not started" || s === "disconnected" || s === "ap not started") tone = "secondary";
+	if (!tone) return null;
+	return '<span class="status-pill ' + tone + '">' + String(value) + '</span>';
+}
+
+function toggleWgKeyVisibility() {
+	toggleInputVisibility("WgLocalPrivKey");
+}
+
+function toggleInputVisibility(id) {
+	const input = getEl(id);
+	if (input) input.type = input.type === "password" ? "text" : "password";
 }
 
 function SeqInputDsbl(state) {
@@ -1139,30 +1031,13 @@ function checkLatestESPrelease() {
 			downloadCount += combinedData.jsonData.assets[i].download_count;
 		}
 		var releaseInfo = "New firmware (" + combinedData.jsonData.tag_name + ") was found on GitHub. It was downloaded " + downloadCount.toLocaleString() + " times. Go -> System and Tools -> Firmware update page to get more info.";
-		var betaInfo = "Thanks for testing new version! Don't forget to give feedback ;)";
 		if (gitVer > localVer) {
 			setTimeout(() => {
 				if (!(localStorage.getItem("update_notify") == 1)) modalConstructor("espGitUpdate", releaseInfo);
 				console.log(releaseInfo);
 			}, 500);
-		} else if (gitVer < localVer) {
-			if (!(localStorage.getItem("beta_feedback") == 1)) modalConstructor("espBetaFeedback", betaInfo);
-			console.log(betaInfo);
 		}
 	});
-}
-
-async function processResponsesZB() {
-    try {
-        let [fwData, localVerData] = await Promise.all([
-            fetchData(zbFwInfoUrl, true),
-            fetchData("/api?action=1&param=zbRev", false)
-        ]);
-        return { fwInfo: fwData, localVersion: localVerData.trim() };
-    } catch (error) {
-        console.error("Error while getting Zigbee versions:", error);
-        throw error;
-    }
 }
 
 let isZbVersionLoading = false;
@@ -1220,9 +1095,9 @@ async function showZigbeeVersionInfo(firmwareType) {
 
 // ========== Lightweight i18n (MicroI18n) ==========
 const languages = [
-	{ value: "en", text: "English" },
-	{ value: "zh", text: "中文" },
-	{ value: "de", text: "Deutsch" }
+	{ value: "en", text: "English", flag: "🇬🇧" },
+	{ value: "zh", text: "中文", flag: "🇨🇳" },
+	{ value: "de", text: "Deutsch", flag: "🇩🇪" }
 ];
 
 class MicroI18n {
@@ -1249,30 +1124,64 @@ function initLanguage() {
 	const browserLang = (navigator.language || navigator.userLanguage || "").substring(0, 2);
 	const preferredLang = savedLang || (languages.some((l) => l.value === browserLang) ? browserLang : "en");
 	microI18n = new MicroI18n(preferredLang);
-	function populateSel(selId) {
-		const sel = document.getElementById(selId);
-		if (!sel) return;
-		sel.innerHTML = "";
-		languages.forEach(({ text, value }) => {
-			const opt = document.createElement("option");
-			opt.value = value;
-			opt.textContent = text;
-			sel.appendChild(opt);
-		});
-		sel.value = preferredLang;
-		sel.addEventListener("change", function () {
-			localStorage.setItem("selected-lang", this.value);
-			["langSel", "langSelSide"].forEach(id => {
-				const s = document.getElementById(id);
-				if (s) s.value = this.value;
-			});
-			changeLanguage(this.value);
-		});
-	}
-	populateSel("langSel");
-	populateSel("langSelSide");
+	updateLangFlags(preferredLang);
 	updateLocalizedContent();
 }
+
+function setLanguage(lng) {
+	if (!languages.some((l) => l.value === lng)) return;
+	localStorage.setItem("selected-lang", lng);
+	microI18n.setLanguage(lng);
+	updateLangFlags(lng);
+	updateLocalizedContent();
+}
+
+function setLanguageFlag(lng) {
+	setLanguage(lng);
+	closeLangDropdowns();
+}
+
+function updateLangFlags(lng) {
+	const match = languages.find((l) => l.value === lng);
+	if (match) {
+		const btnFlag = document.getElementById("langBtnFlag");
+		if (btnFlag) btnFlag.textContent = match.flag;
+		const btnFlagSide = document.getElementById("langBtnFlagSide");
+		if (btnFlagSide) btnFlagSide.textContent = match.flag;
+		const btnLabelSide = document.getElementById("langBtnLabelSide");
+		if (btnLabelSide) btnLabelSide.textContent = match.text;
+	}
+	document.querySelectorAll("#langMenu .lang-option").forEach((opt) => {
+		opt.classList.toggle("active", opt.dataset.lang === lng);
+	});
+	document.querySelectorAll("#langMenuSide .lang-option-side").forEach((opt) => {
+		opt.classList.toggle("active", opt.dataset.lang === lng);
+	});
+}
+
+function toggleLangDropdown() {
+	const w = document.getElementById("langSwitcher");
+	if (w) w.classList.toggle("open");
+}
+
+function toggleLangDropdownSide() {
+	const w = document.getElementById("langSwitcherSide");
+	if (w) w.classList.toggle("open");
+}
+
+function closeLangDropdowns() {
+	["langSwitcher", "langSwitcherSide"].forEach(id => {
+		const w = document.getElementById(id);
+		if (w) w.classList.remove("open");
+	});
+}
+
+document.addEventListener("click", function (e) {
+	["langSwitcher", "langSwitcherSide"].forEach(id => {
+		const w = document.getElementById(id);
+		if (w && !w.contains(e.target)) w.classList.remove("open");
+	});
+});
 
 function localize() {
 	if (!microI18n) return;
@@ -1318,9 +1227,4 @@ function localizeTitle(pathname) {
 function updateLocalizedContent() {
 	localizeTitle(window.location.pathname);
 	localize();
-}
-
-function changeLanguage(lng) {
-	microI18n.setLanguage(lng);
-	updateLocalizedContent();
 }

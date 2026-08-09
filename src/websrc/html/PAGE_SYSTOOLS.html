@@ -20,6 +20,11 @@
     #file-input_zb:hover, #file-input:hover {
       background-color: #e9ecef;
     }
+    [data-theme="dark"] #file-input_zb, [data-theme="dark"] #file-input {
+      background-color: #2a2a4a;
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
     [data-theme="dark"] #file-input_zb:hover, [data-theme="dark"] #file-input:hover { background-color: #3a3a5a; }
   </style>
   <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
@@ -35,7 +40,7 @@
         aria-selected="true"
       >
         <img src="icon_system_control.svg" class="title_icon_style" />
-        <span>System Control</span>
+        <span>System</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -50,7 +55,7 @@
         aria-selected="false"
       >
         <img src="realTime_control.svg" class="title_icon_style" />
-        <span>System Tools</span>
+        <span>Tools</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -65,7 +70,7 @@
         aria-selected="false"
       >
         <img src="icon_firmware_update.svg" class="title_icon_style" />
-        <span>Firmware Update</span>
+        <span>Firmware</span>
       </button>
     </li>
   </ul>
@@ -80,7 +85,10 @@
       <div class="row masonry" data-masonry='{"percentPosition": true }'>
         <div class="col-sm-12 col-md-6 mb-4">
           <div class="card">
-            <div class="card-header">System Variables</div>
+            <div class="card-header">
+              <img src="icon_config_generator.svg" class="title_icon_style" />
+              <span>System Variables</span>
+            </div>
             <div class="card-body">
               <div class="container">
                 <form class="saveParams" method="POST" action="saveParams">
@@ -98,7 +106,7 @@
                       maxlength="50"
                       required
                     />
-                    <label for="refreshLogs">Console Log Refresh Interval</label>
+                    <label for="refreshLogs">Log refresh interval (seconds)</label>
                     <input
                       data-replace="refreshLogs"
                       class="form-control"
@@ -112,7 +120,7 @@
                       placeholder="ms"
                       required
                     />
-                    <label for="timezone">Time Zone</label>
+                    <label for="timeZoneId">Time Zone</label>
                     <select
                       data-replace="timeZones"
                       id="timeZoneId"
@@ -120,10 +128,10 @@
                       name="timeZoneName"
                     ></select>
                     <div class="col">
-                      <div class="row justify-content-md-center mt-2">
+                      <div class="save-row">
                         <button
                           type="submit"
-                          class="btn btn-outline-primary col-sm-12 col-md-6"
+                          class="btn btn-outline-primary"
                         >
                           Save
                         </button>
@@ -138,7 +146,10 @@
 
         <div class="col-sm-12 col-md-6 mb-4">
           <div class="card">
-            <div class="card-header">Module Control</div>
+            <div class="card-header">
+              <img src="icon_system_control.svg" class="title_icon_style" />
+              <span>Module Control</span>
+            </div>
             <div class="card-body">
               <div
                 class="row"
@@ -192,7 +203,10 @@
 
         <div class="col-sm-12 col-md-6 mb-4">
           <div class="card">
-            <div class="card-header">Current Control</div>
+            <div class="card-header">
+              <img src="realTime_control.svg" class="title_icon_style" />
+              <span>Current Control</span>
+            </div>
             <div class="card-body">
               <div
                 class="row"
@@ -225,27 +239,6 @@
                   justify-content: center;
                 "
               >
-                <!-- <button
-                  type="button"
-                  data-cmd="6"
-                  class="btn btn-danger col-sm-12 col-md-auto mb-1 me-1"
-                >
-                  Power LED
-                </button> -->
-                <!-- <button
-                  type="button"
-                  data-cmd="7"
-                  class="btn btn-danger col-sm-12 col-md-auto mb-1 me-1"
-                >
-                  RED 💡 Toggle
-                </button> -->
-                <!-- <button
-                  type="button"
-                  data-cmd="12"
-                  class="btn btn-warning col-sm-12 col-md-auto mb-1 me-1"
-                >
-                  YELLOW 💡 Toggle
-                </button> -->
               </div>
             </div>
           </div>
@@ -262,20 +255,22 @@
       <div class="row masonry">
         <div class="col-sm-12 col-md-6 mb-4">
           <div class="card">
-            <div class="card-header">Logs </div>
+            <div class="card-header">
+              <svg class="title_icon_style svg-icon" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><use href="icons.svg#clipboard2" /></svg>
+              <span>Logs</span>
+            </div>
             <div class="card-body">
               <div class="row">
                 <div class="col">
-                  <div class="col-sm-12">Raw Data:</div>
                   <textarea
-                    class="form-control col-sm-12 mb-2"
+                    class="form-control mb-2"
                     id="console"
                     rows="8"
                   ></textarea>
                   <button
                     type="button"
                     data-cmd="8"
-                    onclick="$('console').val('')"
+                    onclick="document.getElementById('console').value = ''"
                     class="btn btn-outline-primary col-sm-12 col-md-auto mb-1 me-1"
                   >
                     Clear Console
@@ -283,7 +278,7 @@
                   <button
                     type="button"
                     data-cmd="11"
-                    class="btn btn-outline-accent2 col-sm-12 col-md-auto mb-1 me-1"
+                    class="btn btn-outline-warning col-sm-12 col-md-auto mb-1 me-1"
                   >
                     Check Zigbee Connection
                   </button>
@@ -302,8 +297,12 @@
 
         <div class="col-sm-12 col-md-6 mb-4">
           <div class="card">
-            <div class="card-header">File Browser</div>
+            <div class="card-header">
+              <svg class="title_icon_style svg-icon" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><use href="icons.svg#systemTools" /></svg>
+              <span>File Browser</span>
+            </div>
             <div class="card-body">
+              <div class="file-table-wrap">
               <table id="filelist" class="table">
                 <thead>
                   <tr>
@@ -312,10 +311,11 @@
                   </tr>
                 </thead>
               </table>
+              </div>
               <form method="POST" action="saveFile">
                 <div class="form-group">
                   <div>
-                    <label for="file">File : <span id="title"></span></label
+                    <label for="config_file">File : <span id="title"></span></label
                     ><input
                       type="hidden"
                       name="filename"
@@ -330,10 +330,10 @@
                     rows="10"
                   ></textarea>
                 </div>
-                <div class="row justify-content-md-center">
+                <div class="save-row">
                   <button
                     type="submit"
-                    class="btn btn-outline-primary col-sm-12 col-md-6"
+                    class="btn btn-outline-primary"
                   >
                     Save  
                   </button>
@@ -343,27 +343,6 @@
           </div>
         </div>
 
-        <!--<div class="col-sm-12 col-md-6 mb-4">
-          <div class='card'>
-            <div class='card-header'>Tests</div>
-            <div class='card-body'>
-              <div class="row">
-                <div class="col">
-                  <label for="zbFirmware" class="form-label">Select firmware file</label>
-                  <input class="form-control" type="file" id="zbFirmware" accept=".hex">
-                  <button type="button" onclick="zbOta()" class="btn btn-warning col-sm-12 col-md-6">Update Zigbee
-                    firmware</button>
-                  <div class="mt-3">
-                    <input class="form-control col-sm-6" id="sendHex" type="text" name="sendHex" value="" maxlength="50"
-                      placeholder="Send hex to zigbee module">
-                    <button type="button" onclick="sendHex()"
-                      class="btn btn-outline-primary col-sm-3 mt-2">Send</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>-->
       </div>
     </div>
 
@@ -373,11 +352,14 @@
       role="tabpanel"
       aria-labelledby="fw-tab"
     >
-      <div class="row masonry" data-masonry='{"percentPosition": true }'>
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">ESP32 Update</div>
-            <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12 col-md-6 mb-4 d-flex">
+          <div class="card flex-fill d-flex flex-column">
+            <div class="card-header">
+              <img src="icon_firmware_update.svg" class="title_icon_style" />
+              <span>ESP32 Update</span>
+            </div>
+            <div class="card-body d-flex flex-column">
               <form
                 class="container"
                 method="POST"
@@ -414,13 +396,13 @@
                 <br />
                 <div
                   class="container"
-                  style="max-width: 300px; margin-top: 15px"
+                  style="max-width: 300px; margin-top: auto; padding-top: 15px"
                 >
                   <div class="row">
                     <button
                       type="button"
                       id="upd_esp_git"
-                      class="btn btn-warning col-sm-12 mb-2"
+                      class="btn btn-outline-warning col-sm-12 mb-2"
                     >
                       Install latest from Github
                     </button>
@@ -440,10 +422,13 @@
           </div>
         </div>
 
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">Zigbee Update</div>
-            <div class="card-body">
+        <div class="col-sm-12 col-md-6 mb-4 d-flex">
+          <div class="card flex-fill d-flex flex-column">
+            <div class="card-header">
+              <img src="icon_zigbee_info.svg" class="title_icon_style" />
+              <span>Zigbee Update</span>
+            </div>
+            <div class="card-body d-flex flex-column">
               <form
                 class="container"
                 method="POST"
@@ -478,9 +463,7 @@
                   </div>
                 </div>
                 <br />
-                <div class="container" style="max-width: 300px; margin-top: 15px">
-                  <div class="row">
-                  </div>
+                <div class="container" style="max-width: 300px; margin-top: auto; padding-top: 15px">
                   <div class="row">
                     <button
                       type="button"
@@ -495,44 +478,13 @@
             </div>
           </div>
         </div>
-
-        <!--data-cmd="9"  <div class="col-sm-12 col-md-6 mb-4">
-          <div class='card'>
-            <div class='card-header'>ESP32 OTA online update</div>
-            <div class='card-body'>
-              <div class="container" style="max-width: 400px;">
-                <div class="row">
-                  <button type="button" id="upd_esp_git" class="btn btn-warning col-sm-12 mb-2">Install latest from Github</button>
-                </div>
-                <div class="row">
-                  <button type="button" class="btn btn-outline-warning col-sm-12 flsh_esp mb-2">Show changelog</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> -->
-
-        <!-- <div class="col-sm-12 col-md-6 mb-4">
-          <div class='card'>
-            <div class='card-header'>Zigbee OTA online update</div>
-            <div class='card-body'>
-              <div class="container" style="max-width: 400px;">
-                <div class="row">
-                  <button type="button" class="btn btn-primary col-sm-12 flsh_zb mb-2">Check for updates</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> -->
       </div>
     </div>
 
     <script>
-      document.querySelectorAll(".flsh_zb").forEach(function(btn) { btn.addEventListener("click", function() { modalConstructor("flashZB"); }); });
       function sub(obj) {
         let fileName = obj.value.split("\\\\");
         if (fileName != "") {
-          localStorage.setItem("beta_feedback", 0);
           if (!(localStorage.getItem('flash_warning') == 1)) { modalConstructor("flashWarning"); }
           else { getEl("updButton").removeAttribute("disabled"); }
         } else { getEl("updButton").disabled = true; }

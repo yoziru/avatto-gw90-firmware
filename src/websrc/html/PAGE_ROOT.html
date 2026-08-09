@@ -5,8 +5,8 @@
   <div class="row masonry" data-masonry='{"percentPosition": true }'>
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
-        <div class="card-header fw-bold text-start text-primary">
-          <img src="icon_operating_mode.svg" class="title_icon_style" />
+        <div class="card-header">
+          <img src="icon_operating_mode.svg" class="title_icon_style" style="width: 30px; height: 30px" />
           <span>Operating mode</span>
         </div>
         <div class="card-body" style="text-align: center; overflow: hidden;">
@@ -14,9 +14,9 @@
             <div class="diagram-wrap">
               <img id="machineImg" src="device_operating_default.png" />
               <svg class="conn-svg" viewBox="0 0 500 292" preserveAspectRatio="none">
-                <polyline class="line-wifi" points="54,120 54,205 206,205 206,229" fill="none" stroke-width="2"/>
-                <polyline class="line-lan" points="230,120 230,178 255,178 255,229" fill="none" stroke-width="2"/>
-                <polyline class="line-usb" points="406,120 406,151 304,151 304,229" fill="none" stroke-width="2"/>
+                <polyline class="line-wifi" points="54,120 54,205 206,205 206,232" fill="none" stroke-width="2"/>
+                <polyline class="line-lan" points="230,120 230,178 255,178 255,232" fill="none" stroke-width="2"/>
+                <polyline class="line-usb" points="406,120 406,151 304,151 304,232" fill="none" stroke-width="2"/>
               </svg>
               <div class="machine_info">
                 <div class="info_item" data-mode="wifi">
@@ -48,7 +48,7 @@
     </div>
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
-        <div class="card-header fw-bold text-start text-primary">
+        <div class="card-header">
           <img src="icon_header_ethernet.svg" class="title_icon_style" />
           <span>Ethernet</span>
         </div>
@@ -89,40 +89,9 @@
       </div>
     </div>
 
-    <div class="col-sm-12 col-md-6 mb-4 item-box">
-      <div class="card small-card" style="width: 35%">
-        <div class="card-header fw-bold">
-          <img src="Time.svg" class="title_icon_style" />
-          <span>Uptime</span>
-        </div>
-        <div class="card-body" style="text-align: center">
-          <span data-replace="uptime"></span>
-        </div>
-      </div>
-      <div class="card small-card" style="width: 60%">
-        <div class="card-header fw-bold">
-          <img src="Temp.svg" class="title_icon_style" />
-          <span>Temperature</span>
-        </div>
-        <div class="card-body" style="text-align: center">
-          <div class="progress progress-div">
-            <div
-              id="prgTemp"
-              class="progress-bar progress-bar-striped progress-bar-animated"
-              role="progressbar"
-              style="width: 55%"
-            ></div>
-            <div class="progress-text">
-              <span data-replace="deviceTemp"></span> °C
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
-        <div class="card-header fw-bold text-start text-primary">
+        <div class="card-header">
           <img src="icon_header_hardware.svg" class="title_icon_style" />
           <span>Device Status</span>
         </div>
@@ -137,10 +106,15 @@
                 <td>Ethernet:</td>
                 <td data-replace="connectedEther"></td>
               </tr>
-              <!-- <tr>
-                <td>Socket client connected:</td>
-                <td data-replace="connectedSocketStatus"></td>
-              </tr> -->
+              <tr>
+                <td>Uptime:</td>
+                <td data-replace="uptime"></td>
+              </tr>
+              <tr>
+                <td>Temperature:</td>
+                <td><span data-replace="deviceTemp"></span> °C</td>
+              </tr>
+
               <tr>
                 <td>WiFi Enabled:</td>
                 <td data-replace="wifiEnabled"></td>
@@ -157,10 +131,7 @@
                 <td>WiFi Access Point Status:</td>
                 <td data-replace="wifiModeAPStatus"></td>
               </tr>
-              <!-- <tr>
-                <td>Device Uptime:</td>
-                <td data-replace="uptime"></td>
-              </tr> -->
+
               <tr>
                 <td>Connection Duration:</td>
                 <td data-replace="connectedSocket"></td>
@@ -173,7 +144,7 @@
 
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
-        <div class="card-header fw-bold text-start text-primary">
+        <div class="card-header">
           <img src="icon_header_hardware.svg" class="title_icon_style" />
           <span>Device information</span>
         </div>
@@ -192,10 +163,7 @@
                 <td>ESP32 Hardware Version:</td>
                 <td data-replace="espModel"></td>
               </tr>
-              <tr>
-                <!-- <td>ESP32 temperature:</td>
-                <td><span data-replace="deviceTemp"></span> °C</td> -->
-              </tr>
+
               <tr>
                 <td>ESP32 Frequency:</td>
                 <td>
@@ -221,10 +189,6 @@
                 <td>CC2652P Hardware Version:</td>
                 <td data-replace="zigbeeHwRev"></td>
               </tr>
-              <!--<tr>
-                                <td>CC2652P flash size:</td>
-                                <td>352 Kb</td>
-                            </tr>-->
               <tr>
                 <td>CC2652P Firmware Version:</td>
                 <td data-replace="zigbeeFwRev"></td>
@@ -237,7 +201,7 @@
 
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
-        <div class="card-header fw-bold text-start text-primary">
+        <div class="card-header">
           <img src="icon_header_wifi.svg" class="title_icon_style" />
           <span>WiFi</span>
         </div>
@@ -279,7 +243,7 @@
     </div>
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
-        <div class="card-header fw-bold text-start text-primary">
+        <div class="card-header">
           <img src="icon_header_vpn.svg" class="title_icon_style" />
           <span>VPN</span>
         </div>

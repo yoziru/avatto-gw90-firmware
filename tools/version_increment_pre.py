@@ -16,17 +16,6 @@ def _git(*args):
 
 
 GIT_HASH = _git("git", "rev-parse", "--short", "HEAD")
-GIT_DIRTY = False
-if GIT_HASH:
-    try:
-        GIT_DIRTY = (
-            subprocess.run(
-                ["git", "diff", "--quiet"], capture_output=True, text=True, timeout=5
-            ).returncode
-            != 0
-        )
-    except Exception:
-        GIT_DIRTY = False
 
 VERSION_FILE = 'tools/version'
 VERSION_HEADER = 'version.h'
@@ -59,7 +48,7 @@ else:
         print('No version file found or incorrect data in it!!')
         VERSION_NUMBER = "0.0.0"
 
-GIT_SUFFIX = ("+g" + GIT_HASH + ("-dirty" if GIT_DIRTY else "")) if GIT_HASH else ""
+GIT_SUFFIX = ("+g" + GIT_HASH) if GIT_HASH else ""
 
 HEADER_FILE = """
 // AUTO GENERATED FILE, DO NOT EDIT
