@@ -475,6 +475,8 @@ void loop(void)
   {
     dnsServer.processNextRequest();
   }
+
+  delay(1); // yield to the RTOS scheduler; prevents a 100% CPU busy-spin
 }
 
 
