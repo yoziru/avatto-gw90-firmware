@@ -581,7 +581,7 @@ void handleSysTools()
 void handleAbout()
 {
     String result;
-    JsonDocument doc;
+    JsonDocument doc = getRootData();
 
     doc["firmwareVersion"] = String(VERSION);
     String buildTimestamp = String(BUILD_TIMESTAMP);
@@ -597,7 +597,6 @@ void handleAbout()
     }
 
     doc["buildDate"] = buildDate;
-    doc["espModel"] = String(ESP.getChipModel());
 
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);

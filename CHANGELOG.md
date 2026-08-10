@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- UI: move the **Device information** card from the status page to the About page, and move the **Zigbee connection** card up to sit directly below the Operating-mode diagram on the status page.
+- UI: About page cleanup - remove the marketing/link cards (Official Website, Product Documentation, Online Support, Purchase Channels) and the footer tech logos. Rename "Brand Information" to **Device** and merge "Hardware Information" + the moved "Device Information" into a single **System Information** card (model, MCU, Zigbee, Ethernet, interfaces, firmware/hardware versions, flash and memory). Drop the now-unused SVGs. The About API now serves the full device info (`handleAbout()` reuses `getRootData()`).
+- UI: point the footer repository link at `yoziru/avatto-gw90-firmware` instead of `AVATTO-smart/...`.
+
 - Feature: the status page now has a **Zigbee connection** card showing the live link between the coordinator and its client (Z2M, ZHA, or the USB host in Serial mode): connection state (Connected / Not connected / USB passthrough), client IP, connected-for duration, coordinator status, and auto-reset count. The card auto-refreshes every 5 s via `/status`; it works for both Zigbee2MQTT and ZHA (both use the TCP socket) and degrades gracefully in Serial mode. The "Connection Duration" row moved here from Device Status and is renamed "Connected for".
 - Fix: values sent through the `respValuesArr` HTTP header (status-page `data-replace` fields) are ASCII-only — an em dash placeholder rendered as mojibake (`â€"`) in the browser. Use an ASCII `-` for not-applicable values instead. Also replaced the remaining em dashes across the source with ASCII hyphens for consistency.
 
