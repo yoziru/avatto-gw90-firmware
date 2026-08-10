@@ -77,7 +77,8 @@ src/
 
 tools/
 ├── build.py                 Post-build: merge bootloader + partitions + firmware
-├── version_increment_pre.py Pre-build: auto-increment version in tools/version
+├── gen_version.py           Pre-build: generate src/version.h from tools/version (read-only; -dirty when tree is dirty)
+├── version_util.py          Shared version read + git describe helper (used by gen_version.py and build.py)
 ├── webfilesbuilder/         Gulp-based web frontend build (npm install + npx gulp)
 ├── flash.sh                 Manual serial flash script
 └── esptool.py               ESP flasher
@@ -178,4 +179,4 @@ Keep `CHANGELOG.md` up to date with every meaningful change. Follow the existing
 - **cppcheck vs GCC 14.2**: `pio check` without `--skip-packages` fails parsing the toolchain's `type_traits` (cppcheck 2.21 limitation). Always use `--skip-packages`.
 - **Native tests**: `mise run test` runs the Unity suite (native env). Only pure logic is testable (no hardware deps).
 - **CPU temp**: Requires WiFi to be active; `getCPUtemp()` temporarily enables WiFi to read.
-- **Version auto-increment**: Patch version bumps every build. Create `tools/.version_no_increment` to skip.
+- **Version is constant**: `tools/gen_version.py` reads `tools/version` as-is (no auto-increment). Only the release workflow bumps it; builds from a dirty working tree get a `-dirty` suffix (`tools/version_util.py`'s `describe()`), so they're distinguishable from clean CI/release builds.
