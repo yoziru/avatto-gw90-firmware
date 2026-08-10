@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <FS.h>
 #include <LittleFS.h>
 #include <ETH.h>
@@ -17,7 +18,6 @@ extern struct ConfigSettingsStruct ConfigSettings;
 extern CCTools CCTool;
 
 const char *coordMode = "coordMode";         // coordMode node name
-const char *prevCoordMode = "prevCoordMode"; // prevCoordMode node name
 const char *configFileSystem = "/config/system.json";
 const char *configFileWifi = "/config/configWifi.json";
 const char *configFileEther = "/config/configEther.json";
@@ -78,23 +78,192 @@ float readtemp(bool clear)
   }
 }
 
-float getCPUtemp(bool clear)
+// The ESP32 TSENS shares the SAR ADC with the RF PHY. On ESP-IDF 5.x the radio
+// stays in modem-sleep after esp_wifi_start(), so temprature_sens_read()
+// returns the fixed 0x80 sentinel (53.3°C). A real scan forces the PHY up and
+// clocks the ADC, giving a live reading.
+//
+// The read is performed asynchronously by a small state machine driven from
+// loop() (tempSensorLoop). getCPUtemp() only ever returns the cached value, so
+// a page load or MQTT publish never blocks the main loop for the ~1.3 s the
+// radio power-up + scan takes (that would stall the web server, the Zigbee
+// socket bridge and MQTT all at once). We refresh at most every
+// kTempReadIntervalMs to limit 2.4 GHz RF noise near the Zigbee coordinator.
+static const uint32_t kTempReadIntervalMs = 15000;
+static const uint32_t kTempSettleMs = 1200;
+static const uint8_t kTempSampleCount = 5;
+
+static float cachedTemp = 0.0f;
+static uint32_t lastTempReadMs = 0;
+
+enum class TempReadStage : uint8_t {
+    Idle,       // no read in progress
+    WaitSettle, // radio powered on, waiting for the PHY/PLL to stabilize
+    Sampling,   // collecting kTempSampleCount samples spaced ~20 ms apart
+    TearDown    // radio powered down, finalizing the cached result
+};
+static TempReadStage tempStage = TempReadStage::Idle;
+static uint32_t tempStageStartMs = 0;
+static uint8_t tempSamples[kTempSampleCount] = {0};
+static uint8_t tempSampleIdx = 0;
+static bool tempPowered = false;
+
+// Median of a 5-sample buffer (rejects outliers from the coarse TSENS).
+static uint8_t median5(uint8_t s[5])
 {
-  DEBUG_PRINTLN(F("getCPUtemp"));
-  float CPUtemp = 0.0;
-  if (WiFi.getMode() == WIFI_MODE_NULL || WiFi.getMode() == WIFI_OFF)
+  for (int i = 0; i < 4; i++)
   {
-    DEBUG_PRINTLN(F("enable wifi to enable temp sensor"));
-    WiFi.mode(WIFI_STA); // enable wifi to enable temp sensor
-    CPUtemp = readtemp(clear);
-    WiFi.disconnect();
-    WiFi.mode(WIFI_OFF); // disable wifi
+    for (int j = i + 1; j < 5; j++)
+    {
+      if (s[j] < s[i])
+      {
+        uint8_t t = s[i];
+        s[i] = s[j];
+        s[j] = t;
+      }
+    }
+  }
+  return s[2];
+}
+
+// Synchronous read — only used by boot-time calibration (getCPUtemp(true)),
+// where blocking is fine because setup() is still running and nothing else
+// needs the loop.
+static float readTempSync(bool clear)
+{
+  float result = 0.0f;
+  bool wifiWasOn = (WiFi.getMode() == WIFI_MODE_STA || WiFi.getMode() == WIFI_MODE_APSTA);
+  if (!wifiWasOn)
+  {
+    WiFi.mode(WIFI_STA);
+    if (esp_wifi_start() == ESP_OK)
+    {
+      WiFi.setSleep(false);
+      WiFi.scanNetworks(true);   // async scan forces the radio fully on
+      delay(kTempSettleMs);
+      uint8_t samples[kTempSampleCount] = {0};
+      for (int i = 0; i < kTempSampleCount; i++)
+      {
+        samples[i] = temprature_sens_read();
+        delay(20);
+      }
+      result = (median5(samples) - 32) / 1.8f;
+      WiFi.scanDelete();
+      esp_wifi_stop();
+      WiFi.mode(WIFI_OFF);
+    }
   }
   else
   {
-    CPUtemp = readtemp(clear);
+    result = readtemp(clear);
   }
-  return CPUtemp;
+  return result;
+}
+
+// Kick off a background read if the cache is stale. Never blocks.
+static void tempSensorRefresh()
+{
+  if (tempStage != TempReadStage::Idle)
+  {
+    return;
+  }
+  const uint32_t now = millis();
+  if (cachedTemp != 0.0f && (now - lastTempReadMs) < kTempReadIntervalMs)
+  {
+    return;
+  }
+  tempStageStartMs = now;
+  tempSampleIdx = 0;
+  if (WiFi.getMode() == WIFI_MODE_STA || WiFi.getMode() == WIFI_MODE_APSTA)
+  {
+    // Radio already powered (STA fallback active): sample immediately.
+    tempStage = TempReadStage::Sampling;
+  }
+  else
+  {
+    WiFi.mode(WIFI_STA);
+    if (esp_wifi_start() != ESP_OK)
+    {
+      tempStage = TempReadStage::Idle;
+      return;
+    }
+    WiFi.setSleep(false);
+    WiFi.scanNetworks(true);
+    tempPowered = true;
+    tempStage = TempReadStage::WaitSettle;
+  }
+}
+
+// Advance the async temp read. Call frequently from loop(); returns quickly.
+void tempSensorLoop()
+{
+  const uint32_t now = millis();
+  switch (tempStage)
+  {
+  case TempReadStage::Idle:
+    tempSensorRefresh();
+    break;
+  case TempReadStage::WaitSettle:
+    if (now - tempStageStartMs >= kTempSettleMs)
+    {
+      tempStageStartMs = now;
+      tempStage = TempReadStage::Sampling;
+    }
+    break;
+  case TempReadStage::Sampling:
+    if (tempSampleIdx >= kTempSampleCount)
+    {
+      tempStage = TempReadStage::TearDown;
+      break;
+    }
+    if (now - tempStageStartMs >= 20u * tempSampleIdx)
+    {
+      tempSamples[tempSampleIdx++] = temprature_sens_read();
+    }
+    break;
+  case TempReadStage::TearDown:
+    if (tempPowered)
+    {
+      WiFi.scanDelete();
+      esp_wifi_stop();
+      WiFi.mode(WIFI_OFF);
+      tempPowered = false;
+    }
+    {
+      uint8_t med = median5(tempSamples);
+      cachedTemp = (med - 32) / 1.8f - ConfigSettings.tempOffset;
+      lastTempReadMs = now;
+      if (med == 0x80)
+      {
+        printLogMsg("CPUtemp: sensor not powered (0x80 sentinel)");
+      }
+      else
+      {
+        printLogMsg(String("CPUtemp raw=") + String(tempSamples[0], HEX) + ".." + String(tempSamples[4], HEX) +
+                    " t=" + String(cachedTemp));
+      }
+    }
+    tempStage = TempReadStage::Idle;
+    break;
+  }
+}
+
+float getCPUtemp(bool clear)
+{
+  DEBUG_PRINTLN(F("getCPUtemp"));
+  if (clear)
+  {
+    // Boot-time calibration only — a synchronous blocking read is acceptable
+    // here because setup() hasn't started serving yet.
+    float raw = readTempSync(true);
+    cachedTemp = raw;
+    lastTempReadMs = millis();
+    return raw;
+  }
+  // Normal path: never block the caller. Kick off a background refresh if the
+  // cache is stale and return whatever we have.
+  tempSensorRefresh();
+  return cachedTemp;
 }
 
 void zigbeeRouterRejoin()
@@ -122,20 +291,6 @@ void zigbeeRestart()
   CCTool.restart();
   printLogMsg("ZB restart was done");
   DEBUG_PRINTLN(F("ZB restart was done"));
-}
-
-void adapterModeUSB()
-{
-  // Deprecated: Use settings page to change coordinator mode permanently
-  printLogMsg("Warning: Temporary USB switch deprecated. Use Settings > General to change mode permanently.");
-  DEBUG_PRINTLN(F("[DEPRECATED] adapterModeUSB - use config instead"));
-}
-
-void adapterModeLAN()
-{
-  // Deprecated: Use settings page to change coordinator mode permanently
-  printLogMsg("Warning: Temporary LAN switch deprecated. Use Settings > General to change mode permanently.");
-  DEBUG_PRINTLN(F("[DEPRECATED] adapterModeLAN - use config instead"));
 }
 
 void ledPowerToggle()

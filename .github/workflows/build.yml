@@ -44,8 +44,8 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Build prod-solo firmware
-        run: pio run -e prod-solo
+      - name: Build prod firmware
+        run: pio run -e prod
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -82,8 +82,8 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Build debug-solo firmware
-        run: pio run -e debug-solo
+      - name: Build debug firmware
+        run: pio run -e debug
 
   test:
     runs-on: ubuntu-latest
@@ -128,4 +128,4 @@ jobs:
         run: pip install --upgrade platformio
 
       - name: Static analysis (cppcheck, high severity gate)
-        run: pio check -e prod-solo --fail-on-defect high
+        run: pio check -e prod --fail-on-defect high --skip-packages

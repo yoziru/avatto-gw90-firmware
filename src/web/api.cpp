@@ -2,7 +2,7 @@
 #include <ArduinoJson.h>
 #include <ETH.h>
 #include <HTTPClient.h>
-#include <WiFiClientSecure.h>
+#include <NetworkClientSecure.h>
 #include <LittleFS.h>
 #include <WiFi.h>
 
@@ -141,7 +141,7 @@ void handleApi()
                 }
 
                 HTTPClient http;
-                WiFiClientSecure client;
+                NetworkClientSecure client;
                 client.setInsecure();
                 client.setTimeout(10000);
 
@@ -249,7 +249,7 @@ void handleApi()
                     sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), String("Total size: ") + String(downloaded) + " bytes");
                     sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Validating and flashing...");
 
-                    xTaskCreate(checkFwHexTask, "CheckFWHex", 8192, (void *)tempFile, 3, NULL);
+                    xTaskCreatePinnedToCore(checkFwHexTask, "CheckFWHex", 8192, (void *)tempFile, 3, NULL, 0);
                 }
             }
             else
@@ -270,19 +270,19 @@ void handleApi()
         {
             enum CMD_t : uint8_t
             {
-                CMD_ZB_ROUTER_RECON,
-                CMD_ZB_RST,
-                CMD_ZB_BSL,
-                CMD_ESP_RES,
-                CMD_ADAP_LAN,
-                CMD_ADAP_USB,
-                CMD_LED_PWR_TOG,
-                CMD_LED_USB_TOG,
-                CMD_CLEAR_LOG,
-                CMD_ESP_UPD_URL,
-                CMD_ZB_CHK_REV,
-                CMD_ZB_CHK_CON,
-                CMD_ZB_LED_TOG
+                CMD_ZB_ROUTER_RECON = 0,
+                CMD_ZB_RST = 1,
+                CMD_ZB_BSL = 2,
+                CMD_ESP_RES = 3,
+                // 4, 5 were the deprecated temporary mode switches (removed);
+                // numbers are kept so existing data-cmd / API callers don't shift.
+                CMD_LED_PWR_TOG = 6,
+                CMD_LED_USB_TOG = 7,
+                CMD_CLEAR_LOG = 8,
+                CMD_ESP_UPD_URL = 9,
+                CMD_ZB_CHK_REV = 10,
+                CMD_ZB_CHK_CON = 11,
+                CMD_ZB_LED_TOG = 12
             };
             String result = wrongArgs;
             const char *argCmd = "cmd";
@@ -307,12 +307,6 @@ void handleApi()
                 case CMD_ESP_RES:
                     serverWeb.send(HTTP_CODE_OK, contTypeText, result);
                     ESP.restart();
-                    break;
-                case CMD_ADAP_LAN:
-                    adapterModeLAN();
-                    break;
-                case CMD_ADAP_USB:
-                    adapterModeUSB();
                     break;
                 case CMD_LED_PWR_TOG:
                     ledPowerToggle();
@@ -351,6 +345,9 @@ void handleApi()
             {
                 doc[connected] = true;
                 doc["ip"] = WiFi.localIP().toString();
+                doc["mask"] = WiFi.subnetMask().toString();
+                doc["gw"] = WiFi.gatewayIP().toString();
+                doc["ssid"] = WiFi.SSID();
             }
             else
             {
@@ -415,14 +412,7 @@ void handleApi()
                 }
                 else if (serverWeb.arg(param) == "coordMode")
                 {
-                    if (wifiWebSetupInProgress)
-                    {
-                        resp = "1";
-                    }
-                    else
-                    {
-                        resp = String(static_cast<uint8_t>(ConfigSettings.coordinator_mode));
-                    }
+                    resp = String(static_cast<uint8_t>(ConfigSettings.coordinator_mode));
                 }
                 else if (serverWeb.arg(param) == "zbRev")
                 {

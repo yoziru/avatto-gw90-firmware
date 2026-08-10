@@ -27,62 +27,61 @@ IPAddress parse_ip_address(const char *str)
 }
 
 bool loadSystemVar()
-{ // todo remove
+{
   File configFile = LittleFS.open(configFileSystem, FILE_READ);
   if (!configFile)
   {
     DEBUG_PRINTLN(F("failed open. try to write defaults"));
 
+    // Auto-calibrate against a ~30°C reference (room temperature) on first
+    // boot: store the offset needed so the reported temperature reads 30°C.
     float CPUtemp = getCPUtemp(true);
-    int correct = CPUtemp - 30;
-    String tempOffset = String(correct);
+    int correct = static_cast<int>(CPUtemp - 30.0f);
 
-    String StringConfig = "{\"emergencyWifi\":0,\"tempOffset\":" + tempOffset + "}";
-    DEBUG_PRINTLN(StringConfig);
     JsonDocument doc;
-    deserializeJson(doc, StringConfig);
+    doc["tempOffset"] = correct;
+    DEBUG_PRINTLN(String("calibrated tempOffset to ") + correct);
 
-    File configFile = LittleFS.open(configFileSystem, FILE_WRITE);
+    configFile = LittleFS.open(configFileSystem, FILE_WRITE);
     if (!configFile)
     {
       DEBUG_PRINTLN(F("failed write"));
       return false;
     }
-    else
-    {
-      serializeJson(doc, configFile);
-    }
+    serializeJson(doc, configFile);
+    configFile.close();
+
+    ConfigSettings.tempOffset = correct;
     return true;
   }
 
   JsonDocument doc;
   deserializeJson(doc, configFile);
-
-  ConfigSettings.tempOffset = (int)doc["tempOffset"];
-  if (!ConfigSettings.tempOffset)
-  {
-    DEBUG_PRINTLN(F("no tempOffset in system.json"));
-    configFile.close();
-
-    float CPUtemp = getCPUtemp(true);
-    int correct = CPUtemp - 30;
-    String tempOffset = String(correct);
-    doc["tempOffset"] = int(tempOffset.toInt());
-
-    configFile = LittleFS.open(configFileSystem, FILE_WRITE);
-    serializeJson(doc, configFile);
-    configFile.close();
-    DEBUG_PRINTLN(F("saved tempOffset in system.json"));
-    ConfigSettings.tempOffset = int(tempOffset.toInt());
-  }
   configFile.close();
+
+  ConfigSettings.tempOffset = (int)doc["tempOffset"] | 0;
+  if (ConfigSettings.tempOffset == 0)
+  {
+    // No calibration stored yet: calibrate now against the 30°C reference.
+    float CPUtemp = getCPUtemp(true);
+    int correct = static_cast<int>(CPUtemp - 30.0f);
+    ConfigSettings.tempOffset = correct;
+
+    JsonDocument writeDoc;
+    writeDoc["tempOffset"] = correct;
+    configFile = LittleFS.open(configFileSystem, FILE_WRITE);
+    if (configFile)
+    {
+      serializeJson(writeDoc, configFile);
+      configFile.close();
+    }
+    DEBUG_PRINTLN(String("calibrated tempOffset to ") + correct);
+  }
   return true;
 }
 // Load WiFi configuration
 bool loadConfigWifi()
 {
- // File configFile = LittleFS.open(configFileWifi, FILE_READ);
-  const char *enableWiFi = "enableWiFi";
   const char *ssid = "ssid";
   const char *pass = "pass";
   const char *dhcpWiFi = "dhcpWiFi";
@@ -91,9 +90,7 @@ bool loadConfigWifi()
   const char *gw = "gw";
   if (!LittleFS.exists(configFileWifi))
   {
-    // String StringConfig = "{\"enableWiFi\":0,\"ssid\":\"\",\"pass\":\"\",\"dhcpWiFi\":1,\"ip\":\"\",\"mask\":\"\",\"gw\":\"\",\"disableEmerg\":1}";
     JsonDocument doc;
-    doc[enableWiFi] = 0;
     doc[ssid] = "";
     doc[pass] = "";
     doc[dhcpWiFi] = 1;
@@ -122,8 +119,6 @@ bool loadConfigWifi()
   strlcpy(ConfigSettings.ipAddressWiFi, doc[ip] | "", sizeof(ConfigSettings.ipAddressWiFi));
   strlcpy(ConfigSettings.ipMaskWiFi, doc[mask] | "", sizeof(ConfigSettings.ipMaskWiFi));
   strlcpy(ConfigSettings.ipGWWiFi, doc[gw] | "", sizeof(ConfigSettings.ipGWWiFi));
-  // ConfigSettings.enableWiFi = (int)doc["enableWiFi"];
-  // ConfigSettings.disableEmerg = (int)doc["disableEmerg"];
 
   configFile.close();
   return true;
@@ -179,17 +174,12 @@ bool loadConfigGeneral()
   const char *refreshLogs = "refreshLogs";
   const char *disableLedPwr = "disableLedPwr";
   const char *disableLedUSB = "disableLedUSB";
-  const char *prevCoordMode = "prevCoordMode";
   const char *keepWeb = "keepWeb";
   const char *timeZoneName = "timeZoneName";
  // File configFile = LittleFS.open(configFileGeneral, FILE_READ);
- // DEBUG_PRINTLN(configFile.readString());
   if (!LittleFS.exists(configFileGeneral))
   {
-    // String deviceID = deviceModel;
-    // getDeviceID(deviceID);
     DEBUG_PRINTLN("RESET ConfigGeneral");
-    // String StringConfig = "{\"hostname\":\"" + deviceID + "\",\"disableLeds\": false,\"refreshLogs\":1000,\"usbMode\":0,\"disableLedPwr\":0,\"disableLedUSB\":0,\""+ coordMode +"\":0}\""+ prevCoordMode +"\":0, \"keepWeb\": 0}";
     JsonDocument doc;
     doc[hostname] = deviceModel;
     doc[disableLeds] = 0;
@@ -197,7 +187,6 @@ bool loadConfigGeneral()
     doc[disableLedPwr] = 0;
     doc[disableLedUSB] = 0;
     doc[coordMode] = 0;
-    doc[prevCoordMode] = 0;
     doc[keepWeb] = 0;
     writeDefaultConfig(configFileGeneral, doc);
   }
@@ -230,7 +219,6 @@ bool loadConfigGeneral()
   DEBUG_PRINTLN(String((uint8_t)doc[coordMode]));
   strlcpy(ConfigSettings.hostname, doc[hostname] | "", sizeof(ConfigSettings.hostname));
   ConfigSettings.coordinator_mode = static_cast<CoordinatorMode>((uint8_t)doc[coordMode]);
-  ConfigSettings.prevCoordinator_mode = static_cast<CoordinatorMode>((uint8_t)doc[prevCoordMode]);
   DEBUG_PRINTLN(F("[loadConfigGeneral] 'static_cast' res is:"));
   DEBUG_PRINTLN(String(static_cast<uint8_t>(ConfigSettings.coordinator_mode)));
   ConfigSettings.disableLedPwr = (uint8_t)doc[disableLedPwr];

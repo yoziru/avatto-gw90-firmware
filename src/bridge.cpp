@@ -1,7 +1,7 @@
 #include <WiFi.h>
 
 #include "config.h"
-#include "network.h"
+#include "net.h"
 #include "log.h"
 #include "mqtt.h"
 #include "web.h"
@@ -131,7 +131,7 @@ void processSocketBridge()
         }
         if (ConfigSettings.fwEnabled)
         {
-          WiFiClient TempClient2 = server.available();
+          WiFiClient TempClient2 = server.accept();
           if (TempClient2.remoteIP() == ConfigSettings.fwIp)
           {
             printLogMsg(String("[SOCK IP WHITELIST] Accepted connection from IP: ") + TempClient2.remoteIP().toString());
@@ -145,12 +145,12 @@ void processSocketBridge()
         }
         else
         {
-          client[i] = server.available();
+          client[i] = server.accept();
           continue;
         }
       }
     }
-    WiFiClient TempClient = server.available();
+    WiFiClient TempClient = server.accept();
     TempClient.stop();
   }
 

@@ -11,69 +11,48 @@
           <div class="card-body">
             <div
               class="row"
-              onclick="KeepWebDsbl(!document.getElementById('usbMode').checked)"
+              onclick="KeepWebDsbl(!document.getElementById('serialMode').checked)"
             >
-              <!-- LAN Mode (recommended) -->
+              <!-- Network Mode (recommended) -->
               <div class="col-12 mb-3">
                 <div class="mode-option">
-                  <label class="mode-option-inner" for="lanMode">
+                  <label class="mode-option-inner" for="networkMode">
                     <input
-                      data-replace="checkedLanMode"
+                      data-replace="checkedNetworkMode"
                       class="form-check-input mode-radio"
                       type="radio"
                       name="coordMode"
-                      id="lanMode"
+                      id="networkMode"
                       value="0"
                     />
                     <img src="lan_connection.svg" alt="" class="mode-icon" />
                     <span class="mode-text">
                       <span class="mode-title">
-                        <strong>LAN Mode</strong>
+                        <strong>Network Mode</strong>
                         <span class="recommended-badge">Recommended</span>
                       </span>
-                      <span class="mode-desc">Use Ethernet + WiFi Hotspot</span>
+                      <span class="mode-desc">Ethernet with automatic Wi-Fi fallback</span>
                     </span>
                   </label>
                 </div>
               </div>
 
-              <!-- WiFi Mode -->
+              <!-- Serial Mode + Keep Network & Web -->
               <div class="col-12 mb-3">
                 <div class="mode-option">
-                  <label class="mode-option-inner" for="wifiMode">
+                  <label class="mode-option-inner" for="serialMode">
                     <input
-                      data-replace="checkedWifiMode"
+                      data-replace="checkedSerialMode"
                       class="form-check-input mode-radio"
                       type="radio"
                       name="coordMode"
-                      id="wifiMode"
+                      id="serialMode"
                       value="1"
-                    />
-                    <img src="wifi_connection.svg" alt="" class="mode-icon" />
-                    <span class="mode-text">
-                      <span class="mode-title"><strong>WiFi Mode</strong></span>
-                      <span class="mode-desc">Connect to router as WiFi client</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- USB Mode + Keep Network & Web -->
-              <div class="col-12 mb-3">
-                <div class="mode-option">
-                  <label class="mode-option-inner" for="usbMode">
-                    <input
-                      data-replace="checkedUsbMode"
-                      class="form-check-input mode-radio"
-                      type="radio"
-                      name="coordMode"
-                      id="usbMode"
-                      value="2"
                     />
                     <img src="usb_connection.svg" alt="" class="mode-icon" />
                     <span class="mode-text">
-                      <span class="mode-title"><strong>USB Mode</strong></span>
-                      <span class="mode-desc">Directly connect to computer, disable network (serial test)</span>
+                      <span class="mode-title"><strong>Serial Mode</strong></span>
+                      <span class="mode-desc">Directly connect to computer via USB (serial test)</span>
                     </span>
                   </label>
                   <div class="mode-option-extra">
@@ -119,7 +98,7 @@
                     Power Indicator LED
                   </button>
                   <button type="button" data-cmd="7" class="btn btn-danger">
-                    Wi-Fi/USB Mode LED
+                    Wi-Fi/Serial Mode LED
                   </button>
                 </div>
               </div>

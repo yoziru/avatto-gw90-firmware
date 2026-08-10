@@ -12,7 +12,7 @@
 #include <CCTools.h>
 
 #include "config.h"
-#include "network.h"
+#include "net.h"
 #include "bridge.h"
 #include "web.h"
 #include "log.h"
@@ -110,20 +110,20 @@ void setLedsDisable(bool mode, bool setup)
       Serial.println("[LED] LED_PWR (Blue): OFF (disabled in config)");
     }
     
-    // Red USB LED - only on in USB mode
-    if (ConfigSettings.coordinator_mode == CoordinatorMode::USB && !ConfigSettings.disableLedUSB)
+    // Red USB LED - only on in SERIAL mode
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH && !ConfigSettings.disableLedUSB)
     {
       digitalWrite(LED_USB, HIGH);
-      Serial.println("[LED] LED_USB (Red): ON (USB mode)");
+      Serial.println("[LED] LED_USB (Red): ON (serial mode)");
     }
     else
     {
       digitalWrite(LED_USB, LOW);
-      if (ConfigSettings.coordinator_mode == CoordinatorMode::USB) {
+      if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH) {
         Serial.println("[LED] LED_USB (Red): OFF (disabled in config)");
       } else {
-        const char* modeNames[] = {"LAN", "WiFi", "USB"};
-        Serial.print("[LED] LED_USB (Red): OFF (not in USB mode, current: ");
+        const char* modeNames[] = {"Network", "Serial"};
+        Serial.print("[LED] LED_USB (Red): OFF (not in serial mode, current: ");
         Serial.print(modeNames[static_cast<size_t>(ConfigSettings.coordinator_mode)]);
         Serial.println(")");
       }
@@ -147,7 +147,7 @@ void handleLongBtn()
       btnFlag = false;
     }
     else
-      btnFlag++;
+      btnFlag = static_cast<uint8_t>(btnFlag + 1);
   }
   else
   { // stop long press
@@ -162,36 +162,28 @@ void handleLongBtn()
   }
 }
 
-void toggleUsbMode()
+void toggleSerialMode()
 {
   Serial.println("\n========== MODE TOGGLE TRIGGERED ==========");
   
-  const char* modeNames[] = {"LAN", "WiFi", "USB"};
+  const char* modeNames[] = {"Network", "Serial"};
   Serial.print("[MODE] Current Mode: ");
   Serial.print(modeNames[static_cast<size_t>(ConfigSettings.coordinator_mode)]);
   Serial.print(" (");
   Serial.print(static_cast<uint8_t>(ConfigSettings.coordinator_mode));
   Serial.println(")");
   
-  if (ConfigSettings.coordinator_mode != CoordinatorMode::USB)
+  if (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH)
   {
     Serial.print("[MODE] Switching from ");
     Serial.print(modeNames[static_cast<size_t>(ConfigSettings.coordinator_mode)]);
-    Serial.println(" to USB mode");
-    
-    ConfigSettings.prevCoordinator_mode = ConfigSettings.coordinator_mode; // remember current state
-    ConfigSettings.coordinator_mode = CoordinatorMode::USB;                // toggle
-    
-    Serial.print("[MODE] Previous mode saved: ");
-    Serial.println(modeNames[static_cast<size_t>(ConfigSettings.prevCoordinator_mode)]);
+    Serial.println(" to Serial mode");
+    ConfigSettings.coordinator_mode = CoordinatorMode::PASSTHROUGH;
   }
   else
   {
-    Serial.print("[MODE] Switching from USB to ");
-    Serial.print(modeNames[static_cast<size_t>(ConfigSettings.prevCoordinator_mode)]);
-    Serial.println(" mode");
-    
-    ConfigSettings.coordinator_mode = ConfigSettings.prevCoordinator_mode;
+    Serial.println("[MODE] Switching from Serial to Network mode");
+    ConfigSettings.coordinator_mode = CoordinatorMode::NETWORK;
   }
   
   Serial.print("[MODE] New Mode: ");
@@ -206,7 +198,6 @@ void toggleUsbMode()
   File configFile = LittleFS.open(path, FILE_READ);
   deserializeJson(doc, configFile);
   configFile.close();
-  doc[prevCoordMode] = static_cast<uint8_t>(ConfigSettings.prevCoordinator_mode);
   doc[coordMode] = static_cast<uint8_t>(ConfigSettings.coordinator_mode);
   configFile = LittleFS.open(path, FILE_WRITE);
   serializeJson(doc, configFile);
@@ -216,24 +207,24 @@ void toggleUsbMode()
   Serial.println("[MODE] Restarting device...");
   Serial.println("==========================================\n");
   
-  digitalWrite(LED_USB, ConfigSettings.coordinator_mode == CoordinatorMode::USB ? 1 : 0);
+  digitalWrite(LED_USB, ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH ? 1 : 0);
   ESP.restart();
 }
 
 void setupCoordinatorMode()
 {
   Serial.println(F("\n======== setupCoordinatorMode() ========"));
-  if (ConfigSettings.coordinator_mode > CoordinatorMode::USB || ConfigSettings.coordinator_mode < CoordinatorMode::LAN)
+  if (ConfigSettings.coordinator_mode > CoordinatorMode::PASSTHROUGH || ConfigSettings.coordinator_mode < CoordinatorMode::NETWORK)
   {
-    Serial.println(F("[MODE] WRONG MODE DETECTED, set to LAN"));
-    ConfigSettings.coordinator_mode = CoordinatorMode::LAN;
+    Serial.println(F("[MODE] WRONG MODE DETECTED, set to NETWORK"));
+    ConfigSettings.coordinator_mode = CoordinatorMode::NETWORK;
   }
-  const char* modeNames[] = {"LAN", "WiFi", "USB"};
+  const char* modeNames[] = {"Network", "Serial"};
   Serial.print(F("[MODE] Mode: ")); Serial.print(modeNames[static_cast<size_t>(ConfigSettings.coordinator_mode)]);
   Serial.print(F(" (")); Serial.print(static_cast<uint8_t>(ConfigSettings.coordinator_mode)); Serial.println(F(")"));
   Serial.print(F("[MODE] keepWeb=")); Serial.println(ConfigSettings.keepWeb);
   Serial.print(F("[MODE] disableWeb=")); Serial.println(ConfigSettings.disableWeb);
-  if (ConfigSettings.coordinator_mode != CoordinatorMode::USB || ConfigSettings.keepWeb)
+  if (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH || ConfigSettings.keepWeb)
   { // start network overseer
     Serial.println(F("[MODE] Registering WiFi event & starting overseer timer"));
     if (tmrNetworkOverseer.state() == STOPPED)
@@ -246,36 +237,31 @@ void setupCoordinatorMode()
   }
   else
   {
-    Serial.println(F("[MODE] USB mode without keepWeb - no network overseer"));
+    Serial.println(F("[MODE] SERIAL mode without keepWeb - no network overseer"));
   }
   switch (ConfigSettings.coordinator_mode)
   {
-  case CoordinatorMode::USB:
-    Serial.println(F("[MODE] -> USB: MODE_SWITCH=HIGH"));
+  case CoordinatorMode::PASSTHROUGH:
+    Serial.println(F("[MODE] -> SERIAL: MODE_SWITCH=HIGH"));
     digitalWrite(MODE_SWITCH, 1);
     break;
 
-  case CoordinatorMode::WIFI:
-    Serial.println(F("[MODE] -> WIFI: calling connectWifi()"));
-    connectWifi();
-    break;
-
-  case CoordinatorMode::LAN:
-    Serial.println(F("[MODE] -> LAN: calling initLan()"));
+  case CoordinatorMode::NETWORK:
+    Serial.println(F("[MODE] -> NETWORK: calling initLan()"));
     initLan();
     break;
 
   default:
     break;
   }
-  if (!ConfigSettings.disableWeb && (ConfigSettings.coordinator_mode != CoordinatorMode::USB || ConfigSettings.keepWeb))
+  if (!ConfigSettings.disableWeb && (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH || ConfigSettings.keepWeb))
   {
     updWeb = true;
     Serial.println(F("[MODE] Web server enabled (updWeb=true)"));
   }
-  if (ConfigSettings.coordinator_mode == CoordinatorMode::USB && ConfigSettings.keepWeb)
+  if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH && ConfigSettings.keepWeb)
   {
-    Serial.println(F("[MODE] USB+keepWeb: trying connectWifi()"));
+    Serial.println(F("[MODE] SERIAL+keepWeb: trying connectWifi()"));
     connectWifi();
   }
   Serial.println(F("======== setupCoordinatorMode() END ========\n"));
@@ -388,7 +374,7 @@ void setup()
 
   zbInit();
 #ifdef BUILD_FACTORY_TEST
-  if (!digitalRead(BTN) && ConfigSettings.coordinator_mode != CoordinatorMode::USB)
+  if (!digitalRead(BTN) && ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH)
   {
     factory_test();
   }
@@ -442,7 +428,7 @@ void loop(void)
       {
         btnFlag = false;
         tmrBtnLongPress.stop();
-        toggleUsbMode();
+        toggleSerialMode();
       }
     }
   }
@@ -450,6 +436,8 @@ void loop(void)
   tmrBtnLongPress.update();
   tmrNetworkOverseer.update();
   tmrZbHealth.update();
+  tempSensorLoop();     // non-blocking async temp read (no 1.3s stall in handlers)
+  wifiCommitPending(); // commit a staged wifi save once the STA link is up
   if (updWeb)
   {
     webServerHandleClient();
@@ -462,7 +450,7 @@ void loop(void)
     }
   }
 
-  if (ConfigSettings.coordinator_mode != CoordinatorMode::USB)
+  if (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH)
   {
     processSocketBridge();
 

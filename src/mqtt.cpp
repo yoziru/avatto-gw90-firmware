@@ -137,24 +137,13 @@ void mqttPublishState()
             root["ip"] = ConfigSettings.ipAddressWiFi;
         }
     }
-    //if (ConfigSettings.emergencyWifi)
-    //{
-    //    root["emergencyMode"] = "ON";
-    //}
-    //else
-    //{
-    //    root["emergencyMode"] = "OFF";
-    //}
 
     switch (ConfigSettings.coordinator_mode) {
-        case CoordinatorMode::USB:
-            root["mode"] = "Zigbee-to-USB";
+        case CoordinatorMode::PASSTHROUGH:
+            root["mode"] = "Zigbee-to-Serial";
             break;
-        case CoordinatorMode::WIFI:
-            root["mode"] = "Zigbee-to-WiFi";
-            break;
-        case CoordinatorMode::LAN:
-            root["mode"] = "Zigbee-to-Ethernet";
+        case CoordinatorMode::NETWORK:
+            root["mode"] = "Zigbee-to-Network";
             break;
         default:
             break;
@@ -343,20 +332,6 @@ void mqttPublishDiscovery()
                 buffJson["dev"] = via;
                 break;
             }
-            //case 4:
-            //{   
-            //    topic = binary_sensor_topic + deviceName + "/emrgncMd/config";
-            //    buffJson["name"] = "Emergency mode";
-            //    buffJson["uniq_id"] = deviceName + "/emrgncMd";
-            //    buffJson["stat_t"] = mtopic + "/state";
-            //    buffJson["avty_t"] = mtopic + "/avty";
-            //    buffJson["val_tpl"] = "{{ value_json.emergencyMode }}";
-            //    buffJson["json_attr_t"] = mtopic + "/state";
-            //    buffJson["dev_cla"] = "power";
-            //    buffJson["icon"] = "mdi:access-point-network";
-            //    buffJson["dev"] = via;
-            //    break;
-            //}
             case 4:
             {
                 topic = sensor_topic + deviceName + "/uptime/config";

@@ -7,14 +7,82 @@
 #include "config.h"
 #include "web.h"
 #include "etc.h"
+#include "net.h"
+#include "wifi_save_logic.h"
 
 extern struct ConfigSettingsStruct ConfigSettings;
 extern struct MqttSettingsStruct MqttSettings;
 extern struct WgSettingsStruct WgSettings;
 
-extern bool wifiWebSetupInProgress;
 extern bool loadConfigMqtt();
 extern bool loadConfigWg();
+
+// Candidate wifi config that is only committed to disk after the STA link to
+// it actually succeeds (see wifiCommitPending). Kept in RAM so a wrong-password
+// join can never overwrite the saved network.
+struct PendingWifi
+{
+    bool active = false;
+    String ssid;
+    String pass;
+    bool dhcp;
+    String ip;
+    String mask;
+    String gw;
+};
+
+static PendingWifi pendingWifi;
+
+// Persist the wifi fields to /config/configWifi.json and refresh runtime
+// ConfigSettings so the new values are active without a reboot.
+static void writeWifiConfig(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw)
+{
+    File configFile = LittleFS.open(configFileWifi, FILE_READ);
+    JsonDocument doc;
+    deserializeJson(doc, configFile);
+    configFile.close();
+    doc["ssid"] = ssid;
+    doc["pass"] = pass;
+    doc["dhcpWiFi"] = dhcp ? 1 : 0;
+    doc["ip"] = ip;
+    doc["mask"] = mask;
+    doc["gw"] = gw;
+    configFile = LittleFS.open(configFileWifi, FILE_WRITE);
+    serializeJson(doc, configFile);
+    configFile.close();
+    loadConfigWifi();
+}
+
+static void wifiStagePending(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw)
+{
+    pendingWifi.active = true;
+    pendingWifi.ssid = ssid;
+    pendingWifi.pass = pass;
+    pendingWifi.dhcp = dhcp;
+    pendingWifi.ip = ip;
+    pendingWifi.mask = mask;
+    pendingWifi.gw = gw;
+}
+
+// Called from the main loop: once the STA is connected to the very network we
+// staged, commit it to disk. If the connect never succeeds (wrong password,
+// AP out of reach) the pending config is silently dropped and never saved.
+void wifiCommitPending()
+{
+    if (!pendingWifi.active)
+    {
+        return;
+    }
+    const bool connected = (WiFi.status() == WL_CONNECTED);
+    if (!wifiShouldCommit(pendingWifi.active, connected, WiFi.SSID().c_str(), pendingWifi.ssid.c_str()))
+    {
+        return;
+    }
+    writeWifiConfig(pendingWifi.ssid.c_str(), pendingWifi.pass.c_str(), pendingWifi.dhcp,
+                    pendingWifi.ip.c_str(), pendingWifi.mask.c_str(), pendingWifi.gw.c_str());
+    pendingWifi.active = false;
+    printLogMsg("WiFi: saved '" + pendingWifi.ssid + "' after successful connection");
+}
 
 void handleSaveParams()
 {
@@ -39,13 +107,8 @@ void handleSaveParams()
             {
                 const uint8_t mode = serverWeb.arg(coordMode).toInt();
                 DEBUG_PRINTLN(mode);
-                if (mode <= 2 && mode >= zero)
+                if (mode <= 1 && mode >= zero)
                 {
-                    if (mode == 1)
-                    {
-                        DEBUG_PRINTLN("mode == 1");
-                        wifiWebSetupInProgress = true;
-                    }
                     doc[coordMode] = static_cast<uint8_t>(mode);
                     DEBUG_PRINTLN("doc[coordMode]");
                 }
@@ -171,36 +234,50 @@ void handleSaveParams()
         break;
         case API_PAGE_WIFI:
         {
-            configFile = LittleFS.open(configFileWifi, FILE_READ);
-            deserializeJson(doc, configFile);
-            configFile.close();
-            doc["ssid"] = serverWeb.arg("WIFISSID");
-            doc["pass"] = serverWeb.arg("WIFIpassword");
-            const char *dhcpWiFi = "dhcpWiFi";
-            if (serverWeb.arg(dhcpWiFi) == on)
+            const String ssidArg = serverWeb.arg("WIFISSID");
+            const String passArg = serverWeb.arg("WIFIpassword");
+            const bool dhcp = (serverWeb.arg("dhcpWiFi") == on);
+            const String ipArg = serverWeb.arg("ipAddress");
+            const String maskArg = serverWeb.arg("ipMask");
+            const String gwArg = serverWeb.arg("ipGW");
+
+            const WifiSaveMode mode = wifiSaveMode(ssidArg.c_str(), ConfigSettings.ssid);
+
+            if (mode == WifiSaveMode::Forget)
             {
-                doc[dhcpWiFi] = 1;
+                // Forget: clear the saved network and drop any active STA link.
+                writeWifiConfig("", "", dhcp, ipArg.c_str(), maskArg.c_str(), gwArg.c_str());
+                pendingWifi.active = false;
+                WiFi.disconnect();
+                if (ConfigSettings.apStarted)
+                {
+                    WiFi.mode(WIFI_AP_STA);
+                }
+                else
+                {
+                    WiFi.mode(WIFI_STA);
+                }
+                break;
+            }
+
+            if (mode == WifiSaveMode::SaveNow)
+            {
+                // The saved network itself is being tweaked (IP settings etc.):
+                // persist immediately, no validation needed.
+                writeWifiConfig(ssidArg.c_str(), passArg.c_str(), dhcp, ipArg.c_str(), maskArg.c_str(), gwArg.c_str());
+                pendingWifi.active = false;
             }
             else
             {
-                doc[dhcpWiFi] = 0;
+                // NEW network: stage it in RAM, connect, and only commit to disk
+                // once the STA link to it actually succeeds (see wifiCommitPending).
+                // A wrong password or unreachable AP can never become the saved
+                // network this way.
+                wifiStagePending(ssidArg.c_str(), passArg.c_str(), dhcp, ipArg.c_str(), maskArg.c_str(), gwArg.c_str());
+                printLogMsg("WiFi: staged '" + ssidArg + "' pending connect");
             }
-            doc["ip"] = serverWeb.arg("ipAddress");
-            doc["mask"] = serverWeb.arg("ipMask");
-            doc["gw"] = serverWeb.arg("ipGW");
-            configFile = LittleFS.open(configFileWifi, FILE_WRITE);
-            serializeJson(doc, configFile);
-            configFile.close();
-            WiFi.persistent(false);
-            if (ConfigSettings.apStarted)
-            {
-                WiFi.mode(WIFI_AP_STA);
-            }
-            else
-            {
-                WiFi.mode(WIFI_STA);
-            }
-            WiFi.begin(serverWeb.arg("WIFISSID").c_str(), serverWeb.arg("WIFIpassword").c_str());
+
+            connectWifiSta(ssidArg.c_str(), passArg.c_str(), dhcp, ipArg.c_str(), maskArg.c_str(), gwArg.c_str());
         }
         break;
         case API_PAGE_ZHA_Z2M:

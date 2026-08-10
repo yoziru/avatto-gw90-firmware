@@ -4,6 +4,8 @@
 #include <ETH.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <esp_chip_info.h>
+#include <esp_mac.h>
 
 #include "config.h"
 #include "web.h"
@@ -70,14 +72,11 @@ JsonDocument getRootData()
     const char *operationalMode = "operationalMode";
     switch (ConfigSettings.coordinator_mode)
     {
-    case CoordinatorMode::USB:
-        doc[operationalMode] = "Zigbee-to-USB";
+    case CoordinatorMode::PASSTHROUGH:
+        doc[operationalMode] = "Zigbee-to-Serial";
         break;
-    case CoordinatorMode::WIFI:
-        doc[operationalMode] = "Zigbee-to-WiFi";
-        break;
-    case CoordinatorMode::LAN:
-        doc[operationalMode] = "Zigbee-to-Ethernet";
+    case CoordinatorMode::NETWORK:
+        doc[operationalMode] = "Zigbee-to-Network";
         break;
 
     default:
@@ -152,9 +151,9 @@ JsonDocument getRootData()
 
     const unsigned long nowMs = millis();
     const unsigned long zbSilence = nowMs - zbGetLastRxMs();
-    if (ConfigSettings.coordinator_mode == CoordinatorMode::USB)
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH)
     {
-        doc["zbStatus"] = "USB passthrough";
+        doc["zbStatus"] = "Serial passthrough";
     }
     else if (zbSilence < 15000)
     {
@@ -191,31 +190,26 @@ JsonDocument getRootData()
     const char *wifiModeAPStatus = "wifiModeAPStatus";
     const char *wifiModeAP = "wifiModeAP";
     const char *wifiDhcp = "wifiDhcp";
-    doc["wifiMac"] = String(WiFi.macAddress().c_str());
-    if (ConfigSettings.coordinator_mode == CoordinatorMode::WIFI)
+    // WiFi.macAddress() returns 00:00:00:00:00:00 when the WiFi interface is off
+    // (Ethernet-only mode). Read the burned-in base MAC from eFuse instead.
+    uint8_t baseMac[6] = {0};
+    esp_base_mac_addr_get(baseMac);
+    char wifiMacStr[18] = {0};
+    snprintf(wifiMacStr, sizeof(wifiMacStr), "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
+    doc["wifiMac"] = String(wifiMacStr);
+    if (WiFi.isConnected())
     {
+        // WiFi STA is up — either the primary link (SERIAL+keepWeb) or the
+        // NETWORK-mode fallback. Report it as an active client.
         doc[wifiEnabled] = yes;
         doc[wifiMode] = "Client";
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            String rssiWifi = String(WiFi.RSSI()) + String(" dBm");
-            doc[wifiSsid] = WiFi.SSID();
-            doc[wifiRssi] = rssiWifi;
-            doc[wifiConnected] = "Connected to " + WiFi.SSID();
-            doc[wifiIp] = WiFi.localIP().toString();
-            doc[wifiMask] = WiFi.subnetMask().toString();
-            doc[wifiGate] = WiFi.gatewayIP().toString();
-        }
-        else
-        {
-            const char *connecting = "Connecting...";
-            doc["wifiSsid"] = ConfigSettings.ssid;
-            doc[wifiRssi] = connecting;
-            doc[wifiConnected] = connecting;
-            doc[wifiIp] = ConfigSettings.dhcpWiFi ? WiFi.localIP().toString() : connecting;
-            doc[wifiMask] = ConfigSettings.dhcpWiFi ? WiFi.subnetMask().toString() : connecting;
-            doc[wifiGate] = ConfigSettings.dhcpWiFi ? WiFi.gatewayIP().toString() : connecting;
-        }
+        String rssiWifi = String(WiFi.RSSI()) + String(" dBm");
+        doc[wifiSsid] = WiFi.SSID();
+        doc[wifiRssi] = rssiWifi;
+        doc[wifiConnected] = "Connected";
+        doc[wifiIp] = WiFi.localIP().toString();
+        doc[wifiMask] = WiFi.subnetMask().toString();
+        doc[wifiGate] = WiFi.gatewayIP().toString();
         if (ConfigSettings.dhcpWiFi)
         {
             doc[wifiDhcp] = on;
@@ -225,11 +219,26 @@ JsonDocument getRootData()
             doc[wifiDhcp] = off;
         }
     }
+    else if (strlen(ConfigSettings.ssid) >= 2)
+    {
+        // WiFi credentials are configured but the radio is asleep (Ethernet is
+        // the primary uplink; WiFi is only the fallback). Report the radio as
+        // off so the user knows it is not actively transmitting.
+        doc[wifiEnabled] = no;
+        doc[wifiMode] = "Client";
+        doc[wifiSsid] = ConfigSettings.ssid;
+        doc[wifiRssi] = "N/A";
+        doc[wifiConnected] = "Asleep";
+        doc[wifiIp] = off;
+        doc[wifiMask] = off;
+        doc[wifiGate] = off;
+        doc[wifiDhcp] = off;
+    }
     else
     {
         doc[wifiEnabled] = no;
-        doc[wifiConnected] = notConnected;
-        doc[wifiMode] = off;
+        doc[wifiConnected] = "Not configured";
+        doc[wifiMode] = "Client";
         doc[wifiSsid] = off;
         doc[wifiIp] = off;
         doc[wifiMask] = off;
@@ -237,6 +246,25 @@ JsonDocument getRootData()
         doc[wifiRssi] = off;
         doc[wifiDhcp] = off;
     }
+    // Report the active uplink so the user can see when WiFi fallback is used.
+    String netUplink;
+    if (ConfigSettings.connectedEther)
+    {
+        netUplink = "Ethernet";
+    }
+    else if (WiFi.isConnected())
+    {
+        netUplink = ConfigSettings.wifiFallbackActive ? "WiFi (fallback)" : "WiFi";
+    }
+    else if (ConfigSettings.apStarted)
+    {
+        netUplink = "Access Point";
+    }
+    else
+    {
+        netUplink = "None";
+    }
+    doc["netUplink"] = netUplink;
     if (ConfigSettings.apStarted)
     {
         String AP_NameString;
@@ -317,14 +345,11 @@ void handleGeneral()
 
     switch (ConfigSettings.coordinator_mode)
     {
-    case CoordinatorMode::USB:
-        doc["checkedUsbMode"] = checked;
+    case CoordinatorMode::PASSTHROUGH:
+        doc["checkedSerialMode"] = checked;
         break;
-    case CoordinatorMode::WIFI:
-        doc["checkedWifiMode"] = checked;
-        break;
-    case CoordinatorMode::LAN:
-        doc["checkedLanMode"] = checked;
+    case CoordinatorMode::NETWORK:
+        doc["checkedNetworkMode"] = checked;
         break;
 
     default:

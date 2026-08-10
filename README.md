@@ -6,7 +6,7 @@ Firmware for the **AVATTO GW90-PoE-Ti** Zigbee/Thread PoE dongle. Bridges a **TI
 
 | Component | Detail |
 |-----------|--------|
-| MCU | ESP32-SOLO1 (single-core Xtensa LX6, 160 MHz) |
+| MCU | ESP32-D0WDR2-V3 (dual-core Xtensa LX6, 240 MHz, 2 MB PSRAM) — verified via eFuse; earlier docs said "ESP32-SOLO1 single-core 160 MHz", which is incorrect |
 | Zigbee | TI CC2652P (Zigbee 3.0 / Thread) |
 | Ethernet | LAN8720 PHY (RMII), **PoE powered** |
 | Flash | 16 MB (Dual OTA: 2 × 6 MB app + 4 MB spiffs) |
@@ -17,7 +17,7 @@ Pin mapping in `src/config.h`, architecture docs in `ARCHITECTURE.md`.
 
 ```bash
 mise run setup        # Install deps (uv sync + build group)
-mise run build        # Build prod-solo (default)
+mise run build        # Build prod (default)
 mise run build:debug  # Debug build (-DDEBUG)
 mise run test         # Run native unit tests (Unity)
 mise run lint         # Static analysis via cppcheck (fails on high-severity defects)
@@ -59,9 +59,8 @@ No syslog/telnet/UDP log forwarding.
 
 | Mode | Value | Description |
 |------|-------|-------------|
-| **LAN** | 0 | Zigbee over Ethernet TCP socket (port 6638) |
-| **WiFi** | 1 | Zigbee over WiFi TCP socket |
-| **USB** | 2 | CC2652P direct to USB host |
+| **Network** | 0 | Zigbee over TCP socket (port 6638). Ethernet primary, automatic WiFi STA fallback when Ethernet drops, soft AP as last resort |
+| **Serial** | 1 | CC2652P direct to USB host (serial passthrough) |
 
 Configure at `http://<ip>/general`.
 
