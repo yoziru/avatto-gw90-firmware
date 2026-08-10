@@ -266,9 +266,9 @@ void handleApi()
         break;
         case API_GET_LOG:
         {
-            String result;
-            result = logPrint();
-            serverWeb.send(HTTP_CODE_OK, contTypeText, result);
+            // logPrint() returns a reused String (the console polls every
+            // second); send it directly so it isn't copied into a new buffer.
+            serverWeb.send(HTTP_CODE_OK, contTypeText, logPrint());
         }
         break;
         case API_CMD:

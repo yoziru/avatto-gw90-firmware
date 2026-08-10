@@ -15,6 +15,7 @@ uint8_t temprature_sens_read();
 
 float getCPUtemp(bool clear = false);
 void tempSensorLoop();
+void tempSetCalibrated(float raw);
 
 void zigbeeRouterRejoin();
 void zigbeeEnableBSL();

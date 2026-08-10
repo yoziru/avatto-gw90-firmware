@@ -93,6 +93,11 @@ static const uint8_t kTempSampleCount = 5;
 
 static float cachedTemp = 0.0f;
 static uint32_t lastTempReadMs = 0;
+// Set by a consumer (status page / MQTT) when the cached value is stale. The
+// radio is only powered up for a read while this is set - with no page open
+// and MQTT off, the temp is never refreshed (no 30 ms loop spikes, no 2.4 GHz
+// noise near the Zigbee coordinator).
+static bool tempRequested = false;
 
 enum class TempReadStage : uint8_t {
     Idle,       // no read in progress
@@ -158,10 +163,11 @@ static float readTempSync(bool clear)
   return result;
 }
 
-// Kick off a background read if the cache is stale. Never blocks.
+// Kick off a background read, but only when a consumer has asked for a fresh
+// value (see getCPUtemp). Never blocks.
 static void tempSensorRefresh()
 {
-  if (tempStage != TempReadStage::Idle)
+  if (tempStage != TempReadStage::Idle || !tempRequested)
   {
     return;
   }
@@ -231,6 +237,7 @@ void tempSensorLoop()
       uint8_t med = median5(tempSamples);
       cachedTemp = rawTempToCelsius(med) - ConfigSettings.tempOffset;
       lastTempReadMs = now;
+#ifdef DEBUG
       if (med == 0x80)
       {
         printLogMsg("CPUtemp: sensor not powered (0x80 sentinel)");
@@ -240,8 +247,10 @@ void tempSensorLoop()
         printLogMsg(String("CPUtemp raw=") + String(tempSamples[0], HEX) + ".." + String(tempSamples[4], HEX) +
                     " t=" + String(cachedTemp));
       }
+#endif
     }
     tempStage = TempReadStage::Idle;
+    tempRequested = false; // the read was delivered to the cache
     break;
   }
 }
@@ -258,10 +267,26 @@ float getCPUtemp(bool clear)
     lastTempReadMs = millis();
     return raw;
   }
-  // Normal path: never block the caller. Kick off a background refresh if the
-  // cache is stale and return whatever we have.
+  // Normal path: never block the caller. If the cache is stale, mark that a
+  // fresh reading is wanted and let the async state machine (tempSensorLoop)
+  // do the radio power-up/sample/teardown in the background; return the cached
+  // value either way. The request flag is the only thing that makes the radio
+  // cycle happen - no page open and MQTT off means the temp stays quiet.
+  if (cachedTemp == 0.0f || (millis() - lastTempReadMs) >= kTempReadIntervalMs)
+  {
+    tempRequested = true;
+  }
   tempSensorRefresh();
   return cachedTemp;
+}
+
+// Cache the offset-adjusted value after boot-time calibration (called by
+// loadSystemVar). Without this the first page view would show the raw die temp
+// (~71 °C on this sealed PoE gateway) until the first on-demand refresh runs.
+void tempSetCalibrated(float raw)
+{
+  cachedTemp = raw - ConfigSettings.tempOffset;
+  lastTempReadMs = millis();
 }
 
 void zigbeeRouterRejoin()

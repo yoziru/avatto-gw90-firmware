@@ -3,6 +3,6 @@
 
 void logPush(char c);
 void logClear();
-String logPrint();
+String &logPrint();
 
 #endif
