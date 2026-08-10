@@ -48,7 +48,7 @@ void initLan()
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, LOW);
   delay(200);
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, HIGH);
-  // No delay here — ETH.begin() starts the EMAC clock immediately
+  // No delay here - ETH.begin() starts the EMAC clock immediately
 
   if (ETH.begin(ETH_TYPE_1, ETH_ADDR_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_POWER_PIN_ALTERNATIVE_1, ETH_CLK_MODE_1))
   {
@@ -169,7 +169,7 @@ void handleTmrNetworkOverseer()
             // No WiFi credentials configured: no point attempting STA, go
             // straight to the last-resort AP config recovery.
             ConfigSettings.wifiFallbackActive = true;
-            Serial.println(F("[OVERSEER] ETH down, no WiFi creds — starting AP"));
+            Serial.println(F("[OVERSEER] ETH down, no WiFi creds - starting AP"));
             startAP(true);
           }
         }
@@ -191,7 +191,7 @@ void handleTmrNetworkOverseer()
           // WiFi was up before but dropped, or still connecting: retry STA.
           connectWifi();
         }
-        // else: AP is the active recovery channel — idle until ETH returns.
+        // else: AP is the active recovery channel - idle until ETH returns.
       }
     }
     break;

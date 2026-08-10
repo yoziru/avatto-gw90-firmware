@@ -1,5 +1,6 @@
 <script language="javascript">
   checkLatestESPrelease();
+  startStatusRefresh(5000);
 </script>
 <div id="main">
   <div class="row">
@@ -135,9 +136,31 @@
                 <td>WiFi Access Point Status:</td>
                 <td data-replace="wifiModeAPStatus"></td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
+    <div class="col-sm-12 col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header">
+          <img src="icon_zigbee_info.svg" class="title_icon_style" />
+          <span>Zigbee connection</span>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <tbody>
               <tr>
-                <td>Connection Duration:</td>
+                <td>Connection:</td>
+                <td data-replace="z2mConnected"></td>
+              </tr>
+              <tr>
+                <td>Client IP:</td>
+                <td data-replace="z2mClientIp"></td>
+              </tr>
+              <tr>
+                <td>Connected for:</td>
                 <td data-replace="connectedSocket"></td>
               </tr>
               <tr>

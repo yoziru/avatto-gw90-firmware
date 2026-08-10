@@ -27,6 +27,7 @@ void socketClientConnected(int client)
       mqttPublishIo("socket", "ON");
     }
     ConfigSettings.connectedSocket[client] = true;
+    ConfigSettings.connectedClientIp[client] = ::client[client].remoteIP();
     ConfigSettings.connectedClients++;
   }
 }
