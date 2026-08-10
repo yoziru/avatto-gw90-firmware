@@ -198,7 +198,7 @@ void zbCheck()
 //
 // IMPORTANT: this must stay observation-only. Probing the coordinator with
 // BSL-mode commands (zbGetStatus/zbSendCommand) on the shared Serial2 line would
-// corrupt live ZNP frames and break connectivity — do not reintroduce that.
+// corrupt live ZNP frames and break connectivity - do not reintroduce that.
 void zbHealthCheck()
 {
     if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH)

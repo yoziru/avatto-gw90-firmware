@@ -35,7 +35,7 @@ void factory_initLan()
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, LOW);
   delay(200);
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, HIGH);
-  // No delay — EMAC clock starts inside ETH.begin()
+  // No delay - EMAC clock starts inside ETH.begin()
 
   if (ETH.begin(ETH_TYPE_1, ETH_ADDR_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_POWER_PIN_ALTERNATIVE_1, ETH_CLK_MODE_1))
   {

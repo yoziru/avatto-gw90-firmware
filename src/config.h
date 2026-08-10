@@ -87,6 +87,7 @@ struct ConfigSettingsStruct
     int refreshLogs;                   // Logs refresh interval
     char hostname[50];                 // Hostname
     bool connectedSocket[MAX_SOCKET_CLIENTS];  // Socket connected
+    IPAddress connectedClientIp[MAX_SOCKET_CLIENTS];  // Socket client IP
     int connectedClients;              // Connected clients
     unsigned long socketTime;          // Socket time
     int tempOffset;                    // Temperature offset

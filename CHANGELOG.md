@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Feature: the status page now has a **Zigbee connection** card showing the live link between the coordinator and its client (Z2M, ZHA, or the USB host in Serial mode): connection state (Connected / Not connected / USB passthrough), client IP, connected-for duration, coordinator status, and auto-reset count. The card auto-refreshes every 5 s via `/status`; it works for both Zigbee2MQTT and ZHA (both use the TCP socket) and degrades gracefully in Serial mode. The "Connection Duration" row moved here from Device Status and is renamed "Connected for".
+- Fix: values sent through the `respValuesArr` HTTP header (status-page `data-replace` fields) are ASCII-only — an em dash placeholder rendered as mojibake (`â€"`) in the browser. Use an ASCII `-` for not-applicable values instead. Also replaced the remaining em dashes across the source with ASCII hyphens for consistency.
+
 - Build: stop auto-incrementing the patch version on every build. `tools/gen_version.py` now reads `tools/version` read-only (only the Release workflow bumps it) and appends `-dirty` when the working tree is dirty; version logic consolidated into `tools/version_util.py` shared by `gen_version.py` and `build.py`. Removes `version_increment_pre.py`, `version_increment_post.py`, and the `.version_no_increment` marker logic. Version reverted to `1.0.7`.
 
 - Fix: the on-board temperature read was frozen at exactly 53.3°C — the ESP32 TSENS returns the fixed `0x80` sentinel whenever the RF PHY (shared SAR ADC) isn't actually powered. On ESP-IDF 5.x `esp_wifi_start()` alone leaves the radio in modem-sleep, so now the read forces the radio fully on (scan + `setSleep(false)`), takes a median of 5 samples, then tears it back down. Results are cached for 15 s so the 60 s MQTT heartbeat and page reloads don't power the radio every call (2.4 GHz noise near the Zigbee coordinator).

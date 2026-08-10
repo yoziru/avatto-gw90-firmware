@@ -126,7 +126,7 @@ static uint8_t median5(uint8_t s[5])
   return s[2];
 }
 
-// Synchronous read — only used by boot-time calibration (getCPUtemp(true)),
+// Synchronous read - only used by boot-time calibration (getCPUtemp(true)),
 // where blocking is fine because setup() is still running and nothing else
 // needs the loop.
 static float readTempSync(bool clear)
@@ -253,7 +253,7 @@ float getCPUtemp(bool clear)
   DEBUG_PRINTLN(F("getCPUtemp"));
   if (clear)
   {
-    // Boot-time calibration only — a synchronous blocking read is acceptable
+    // Boot-time calibration only - a synchronous blocking read is acceptable
     // here because setup() hasn't started serving yet.
     float raw = readTempSync(true);
     cachedTemp = raw;

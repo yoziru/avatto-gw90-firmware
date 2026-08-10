@@ -199,7 +199,7 @@ function fillFileTable(files) {
 	const filelist = getEl("filelist");
 	files.forEach((elem) => {
 		const row = document.createElement("tr");
-		const size = (elem.size !== undefined && elem.size !== null) ? elem.size + "B" : "—";
+		const size = (elem.size !== undefined && elem.size !== null) ? elem.size + "B" : "-";
 		row.innerHTML = "<td class='filename'><a href='#config_file' title='" + elem.filename + "' onclick=\"readfile('" + elem.filename + "');\">" + elem.filename + "</a></td><td>" + size + "</td>";
 		filelist.appendChild(row);
 	});
@@ -1028,12 +1028,12 @@ function WifiDhcpDsbl(state) {
 			if (d && d.connected) {
 				if (note) note.style.display = "none";
 				if (vals) vals.style.display = "";
-				setText("wifiCurIp", d.ip || "—");
-				setText("wifiCurMask", d.mask || "—");
-				setText("wifiCurGw", d.gw || "—");
+				setText("wifiCurIp", d.ip || "-");
+				setText("wifiCurMask", d.mask || "-");
+				setText("wifiCurGw", d.gw || "-");
 			} else {
 				// WiFi is asleep (Ethernet primary) or still connecting: no live
-				// values to show — say so instead of printing "—".
+				// values to show - say so instead of printing "-".
 				if (note) note.style.display = "";
 				if (vals) vals.style.display = "none";
 			}
@@ -1152,6 +1152,41 @@ function MqttInputDsbl(state) {
 function WgInputDsbl(state) {
 	["WgLocalAddr", "WgLocalPrivKey", "WgEndAddr", "WgEndPubKey", "WgEndPort"].forEach(id => { const e = getEl(id); if (e) e.disabled = state; });
 	const div = getEl("div_show5"); if (div) div.style.display = state ? "none" : "";
+}
+
+let statusRefreshTimer = null;
+const statusRefreshKeys = ["z2mConnected", "z2mClientIp", "connectedSocket", "zbStatus", "zbAutoResets", "connectedSocketStatus", "uptime"];
+
+// Live-refresh of the status page: poll /status (JSON of getRootData) and update
+// the data-replace cells in place, without reloading the whole page.
+function refreshStatusData() {
+	if (!getQ("[data-replace='z2mLink']")) {
+		if (statusRefreshTimer) { clearInterval(statusRefreshTimer); statusRefreshTimer = null; }
+		return;
+	}
+	fetch("/status", { cache: "no-store" }).then(r => r.json()).then(values => {
+		statusRefreshKeys.forEach(key => {
+			if (values[key] === undefined) return;
+			const valueToSet = String(values[key]);
+			const isIpValue = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(valueToSet);
+			getQA("[data-replace='" + key + "']").forEach(elem => {
+				const elemType = elem.nodeName.toLowerCase();
+				if (elemType === "input" || elemType === "select" || elemType === "textarea" || elemType === "option") return;
+				if (isIpValue) {
+					elem.innerHTML = '<a href="http://' + valueToSet + '">' + valueToSet + '</a>';
+				} else {
+					const pill = statusPill(valueToSet);
+					if (pill) elem.innerHTML = pill;
+					else elem.textContent = valueToSet;
+				}
+			});
+		});
+	}).catch(() => {});
+}
+
+function startStatusRefresh(intervalMs) {
+	if (statusRefreshTimer) clearInterval(statusRefreshTimer);
+	statusRefreshTimer = setInterval(refreshStatusData, intervalMs);
 }
 
 function statusPill(value) {

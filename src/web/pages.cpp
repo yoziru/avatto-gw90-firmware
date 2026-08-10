@@ -165,6 +165,45 @@ JsonDocument getRootData()
     }
     doc["zbAutoResets"] = String(zbGetAutoResetCount());
 
+    // Zigbee link between the coordinator and the client (Z2M / ZHA / USB host).
+    // The gateway is a transparent bridge: the Zigbee network itself lives in the
+    // client app, so we surface the state of the link we actually manage.
+    const char *dash = "-"; // shown when a value is not applicable (headers are ASCII-only)
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH)
+    {
+        doc["z2mConnected"] = "USB passthrough";
+        doc["z2mClientIp"] = dash;
+        doc["z2mClientCount"] = dash;
+        doc[connectedSocket] = dash;
+    }
+    else
+    {
+        if (ConfigSettings.connectedClients > 0)
+        {
+            doc["z2mConnected"] = "Connected";
+            IPAddress clientIp;
+            bool foundIp = false;
+            for (int i = 0; i < MAX_SOCKET_CLIENTS; i++)
+            {
+                if (ConfigSettings.connectedSocket[i] && ConfigSettings.connectedClientIp[i] != IPAddress(0, 0, 0, 0))
+                {
+                    clientIp = ConfigSettings.connectedClientIp[i];
+                    foundIp = true;
+                    break;
+                }
+            }
+            doc["z2mClientIp"] = foundIp ? clientIp.toString() : String("Unknown");
+            doc["z2mClientCount"] = String(ConfigSettings.connectedClients);
+        }
+        else
+        {
+            doc["z2mConnected"] = "Not connected";
+            doc["z2mClientIp"] = dash;
+            doc["z2mClientCount"] = dash;
+            doc[connectedSocket] = dash;
+        }
+    }
+
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 
@@ -199,7 +238,7 @@ JsonDocument getRootData()
     doc["wifiMac"] = String(wifiMacStr);
     if (WiFi.isConnected())
     {
-        // WiFi STA is up — either the primary link (SERIAL+keepWeb) or the
+        // WiFi STA is up - either the primary link (SERIAL+keepWeb) or the
         // NETWORK-mode fallback. Report it as an active client.
         doc[wifiEnabled] = yes;
         doc[wifiMode] = "Client";
