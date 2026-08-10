@@ -5,7 +5,6 @@
 #include <CircularBuffer.hpp>
 #include "version.h"
 
-// #define DEBUG
 // ESP32 PINS TO CONTROL LAN8720
 #define ETH_CLK_MODE_1                ETH_CLOCK_GPIO17_OUT       // 8720 clock pin: GPIO17 outputs clock
 #define ETH_POWER_PIN_ALTERNATIVE_1   5                          // 8720 reset pin
@@ -96,7 +95,6 @@ struct ConfigSettingsStruct
     char webPass[50];                  // Web server password
     bool disableLedUSB;                // Disable LED USB
     bool disableLedPwr;                // Disable LED PWR
-    // bool disablePingCtrl;
     bool disableLeds;                  // Disable LEDs
     CoordinatorMode coordinator_mode = CoordinatorMode::NETWORK;         // Coordinator mode
     bool keepWeb;                      // Keep web server
@@ -121,7 +119,6 @@ struct MqttSettingsStruct
   char user[50];
   char pass[50];
   char topic[50];
-  // bool retain;
   int interval;
   bool discovery;
   unsigned long reconnectTime;
@@ -140,15 +137,6 @@ struct WgSettingsStruct
   int endPort;
 };
 
-/*
-struct InfosStruct
-{
-  char device[8];
-  char mac[8];
-  char flash[8];
-};
-*/
-
 struct zbVerStruct
 {
   uint32_t zbRev;
@@ -165,8 +153,6 @@ typedef CircularBuffer<char, 8024> LogConsoleType;
 extern ConfigSettingsStruct ConfigSettings;
 extern MqttSettingsStruct MqttSettings;
 extern WgSettingsStruct WgSettings;
-
-// #define WL_MAC_ADDR_LENGTH 6
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.print(String(x))

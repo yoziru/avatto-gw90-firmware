@@ -29,6 +29,4 @@ void writeDefaultConfig(const char *path, JsonDocument& doc);
 void resetSettings();
 
 void setClock();
-void setTimezone(String timezone);
-
-//#define min(a, b) ((a) < (b) ? (a) : (b))
+void setTimezone(const String &timezone);

@@ -17,12 +17,7 @@
 #include "zb.h"
 #include "zb_ver.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-extern struct zbVerStruct zbVer;
-
 zbVerStruct zbVer;
-
-extern const char *tempFile;
 
 volatile unsigned long zbLastRxMs = 0;   // last time bytes were received from the coordinator
 volatile unsigned long zbClientTxMs = 0; // last time a TCP client sent bytes to the coordinator
@@ -55,19 +50,9 @@ const byte zigLed1Off[] = {cmdFrameStart, cmdLedLen, cmdLed0, cmdLed1, cmdLedInd
 const byte zigLed1On[] = {cmdFrameStart, cmdLedLen, cmdLed0, cmdLed1, cmdLedIndex, cmdLedStateOn, 0x2F};
 const byte cmdLedResp[] = {0xFE, 0x01, 0x67, 0x0A, 0x00, 0x6C};
 
-size_t lastSize = 0;
-
 CCTools CCTool(Serial2, CC2652P_RST, CC2652P_FLASH);
 
-volatile size_t zbFlashTotalSent = 0;
-volatile size_t zbFlashTotalSize = 0;
-
 bool bslActive;
-
-
-
-bool zbCheckLastCmd(void);
-
 
 void clearS2Buffer()
 {
@@ -103,9 +88,9 @@ void getZbVer()
         {
             const uint8_t zbVerLen = 11;
             byte zbVerBuf[zbVerLen];
-            for (uint8_t i = 0; i < zbVerLen; i++)
+            for (uint8_t j = 0; j < zbVerLen; j++)
             {
-                zbVerBuf[i] = Serial2.read();
+                zbVerBuf[j] = Serial2.read();
             }
             const ZbVerInfo info = decodeZbVer(zbVerBuf);
             zbVer.zbRev = info.zbRev;
@@ -115,7 +100,6 @@ void getZbVer()
             zbVer.product = info.product;
             zbVer.transportrev = info.transportrev;
 
-            Serial.write(zbVerBuf,zbVerLen);
             printLogMsg(String("[ZBVER]") + " Rev: " + zbVer.zbRev + " Maintrel: " + zbVer.maintrel + " Minorrel: " + zbVer.minorrel + " Majorrel: " + zbVer.majorrel + " Transportrev: " + zbVer.transportrev + " Product: " + zbVer.product);
             clearS2Buffer();
             break;
@@ -123,42 +107,47 @@ void getZbVer()
     }
 }
 
+// Send a Zigbee LED on/off command and wait for the coordinator's ack frame.
+// Returns true once a complete matching response (FE 67 0A ...) is observed.
+bool zbLedCommand(const byte *cmd, size_t cmdLen)
+{
+    clearS2Buffer();
+    Serial2.write(cmd, cmdLen);
+    Serial2.flush();
+    delay(400);
+    for (uint8_t i = 0; i < 5; i++)
+    {
+        if (Serial2.read() != 0xFE)
+        {                   // check for packet start
+            Serial2.read(); // skip
+            continue;
+        }
+        bool frameOk = true;
+        for (uint8_t j = 1; j < 4; j++)
+        {
+            if (Serial2.read() != cmdLedResp[j])
+            { // check if resp ok
+                frameOk = false;
+                break;
+            }
+        }
+        if (frameOk)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void zbCheck()
 {
-    // getZbChip();
-    //  Serial2.begin(115200, SERIAL_8N1, CC2652P_RXD, CC2652P_TXD); //start zigbee serial
     bool respOk = false;
     for (uint8_t i = 0; i < 12; i++)
     { // wait for zigbee start
+        respOk = zbLedCommand(zigLed1On, sizeof(zigLed1On));
+        digitalWrite(LED_USB, !digitalRead(LED_USB)); // blue led flashing mean wait for zigbee resp
         if (respOk)
             break;
-        clearS2Buffer();
-        Serial2.write(zigLed1On, sizeof(zigLed1On));
-        Serial2.flush();
-        delay(400);
-        for (uint8_t i = 0; i < 5; i++)
-        {
-            if (Serial2.read() != 0xFE)
-            {                   // check for packet start
-                Serial2.read(); // skip
-            }
-            else
-            {
-                for (uint8_t i = 1; i < 4; i++)
-                {
-                    if (Serial2.read() != cmdLedResp[i])
-                    { // check if resp ok
-                        respOk = false;
-                        break;
-                    }
-                    else
-                    {
-                        respOk = true;
-                    }
-                }
-            }
-        }
-        digitalWrite(LED_USB, !digitalRead(LED_USB)); // blue led flashing mean wait for zigbee resp
     }
     delay(500);
     if (!respOk)
@@ -234,46 +223,23 @@ void zbHealthCheck()
 
 void zbLedToggle()
 {
-    bool respOk = false;
-    clearS2Buffer();
     if (ConfigSettings.zbLedState == 0)
     {
         printLogMsg("[ZB] LED toggle ON");
-        Serial2.write(zigLed1On, sizeof(zigLed1On));
+        if (zbLedCommand(zigLed1On, sizeof(zigLed1On)))
+        {
+            printLogMsg("[ZB] LED toggle OK");
+            ConfigSettings.zbLedState = true;
+        }
     }
     else
     {
         printLogMsg("[ZB] LED toggle OFF");
-        Serial2.write(zigLed1Off, sizeof(zigLed1Off));
-    }
-    Serial2.flush();
-    delay(400);
-    for (uint8_t i = 0; i < 5; i++)
-    {
-        if (Serial2.read() != 0xFE)
-        {                   // check for packet start
-            Serial2.read(); // skip
-        }
-        else
+        if (zbLedCommand(zigLed1Off, sizeof(zigLed1Off)))
         {
-            for (uint8_t i = 1; i < 4; i++)
-            {
-                if (Serial2.read() != cmdLedResp[i])
-                { // check if resp ok
-                    respOk = false;
-                    break;
-                }
-                else
-                {
-                    respOk = true;
-                }
-            }
+            printLogMsg("[ZB] LED toggle OK");
+            ConfigSettings.zbLedState = false;
         }
-    }
-    if (respOk)
-    {
-        printLogMsg("[ZB] LED toggle OK");
-        ConfigSettings.zbLedState = !ConfigSettings.zbLedState;
     }
 }
 
@@ -289,29 +255,13 @@ void postParse()
 
 void parseCallback(uint32_t address, uint8_t len, uint8_t *data, size_t currentPosition, size_t _totalSize)
 {
-    // DEBUG_PRINT(".");
-
-     // Print each parsed record for debugging purposes
-   /* DEBUG_PRINT("Address: 0x");
-    DEBUG_PRINT(String(address, HEX));
-    DEBUG_PRINT(", Length: 0x");
-    DEBUG_PRINTLN(String(len, HEX));
-
-    for (uint8_t i = 0; i < len; i++)
-    {
-        DEBUG_PRINT("0x");
-        DEBUG_PRINT(String(data[i], HEX));
-        DEBUG_PRINT(" ");
-    }
-    DEBUG_PRINTLN(""); */
-
-    // if (currentPosition - lastSize > 12500)
-    // {
-    //     lastSize = currentPosition;
-    //     float percent = ((float)currentPosition / _totalSize) * 100.0;
-    //     sendEvent("ZB_FW_prgs", sizeof("ZB_FW_prgs"), String(percent));
-    //     DEBUG_PRINTLN(String("ZB_FW_prgs") + String(" | ") + String(percent) + String("%"));
-    // }
+    // IntelHex parse hook. Progress is reported by checkFwHex() / runFlash();
+    // this callback is intentionally a no-op.
+    (void)address;
+    (void)len;
+    (void)data;
+    (void)currentPosition;
+    (void)_totalSize;
 }
 
 int8_t runFlash(const char *hexFilePath,uint32_t binsize)
@@ -394,6 +344,13 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
             // Parse current line address and data length
             uint16_t lineAddr = strtol(line.substring(3, 7).c_str(), nullptr, 16);
             uint8_t lineDataLen = strtol(line.substring(1, 3).c_str(), nullptr, 16);
+            // A single record bigger than the send buffer would overflow
+            // dataBuffer[] below - refuse the file instead of corrupting RAM.
+            if (lineDataLen > sizeof(dataBuffer))
+            {
+                printLogMsg("[ZB_FLASH] HEX record exceeds buffer size, aborting");
+                goto flash_quit;
+            }
             uint32_t fullAddr = extendedAddr + lineAddr;
             // Initialize on first record
             if (firstRecord)
@@ -642,22 +599,13 @@ int8_t checkFwHex(const char *tempFile) // check Zigbee FW file using IntelHEX, 
 
 void zbInit()
 {
-
-    // zbCheck();
-    // getZbVer();
     if (CCTool.begin())
     {
-
-        // CCTool.cmdGetChipId();
         String zb_chip = CCTool.detectChipInfo();
         DEBUG_PRINTLN(zb_chip);
         printLogMsg(String("[ZBCHIP] ") + zb_chip);
         zbVer.chipID = zb_chip;
-        // zigbeeRestart();
         CCTool.restart();
-        // delay(5000);
-
-        // getZbVer();
     }
     else
     {
@@ -665,13 +613,6 @@ void zbInit()
         printLogMsg(String("[ZBCHIP] ") + msg);
         DEBUG_PRINTLN(msg);
     }
-}
-
-
-
-void zbBegin(void)
-{
-    CCTool.begin();
 }
 
 /************************************************************************** */
@@ -684,7 +625,6 @@ bool zbWaitForAck(uint32_t timeout)
         if (Serial2.available() >= 1)
         {
             uint8_t received = Serial2.read();
-            //Serial.printf("zbWaitForAck: 0x%2x\n",received);
             if (received == 0xcc)
             {
                 return true;
@@ -715,34 +655,35 @@ bool zbSendCommand(uint8_t cmd, uint8_t *data, uint8_t len,uint8_t timeout)
 {
     if(len > 252)return false;
 
-    unsigned int i = 0;
+    byte cmd_buf[255] = {0}; // 3 header bytes + max 252 payload
 
-    byte cmd_buf[len + 3]={0};
-
-    cmd_buf[0] = len + 3;   
+    cmd_buf[0] = len + 3;
     cmd_buf[1] = zbGenChksum(cmd,data,len);
     cmd_buf[2] = cmd;
 
-    for (i = 0; i < len; i++)
+    for (unsigned int i = 0; i < len; i++)
     {
         cmd_buf[i + 3] = data[i];
     }
 
     Serial2.write(cmd_buf, len + 3);
-    //Serial.write(cmd_buf, len + 3);
 
     return zbWaitForAck(1);
 }
 
-uint32_t zbGetResponseData(uint8_t *data,uint8_t timeout)
+// Read a ZNP response frame into `data` (capacity `dataLen`). Returns 1 on a
+// checksum-valid frame, 0 on timeout/corruption. The payload size announced in
+// the frame header is clamped to the caller's buffer to avoid stack corruption
+// from a malformed coordinator response.
+static uint32_t zbGetResponseData(uint8_t *data, uint8_t dataLen, uint8_t timeout)
 {
     unsigned int i = 0;
     byte checksum = 0;
 
+    if (data == NULL || dataLen < 2)
+        return 0;
+
     uint32_t numPayloadBytes = 0;
-
-    if(data==NULL)return 0;
-
     unsigned long startMillis = millis();
 
     while (millis() - startMillis < timeout * 1000)
@@ -751,15 +692,19 @@ uint32_t zbGetResponseData(uint8_t *data,uint8_t timeout)
         {
             data[i++] = Serial2.read();
         }
-        if(i == 2)break;
+        if (i == 2)
+            break;
     }
 
-    if(i < 2)return 0;
+    if (i < 2)
+        return 0;
 
-    numPayloadBytes = data[0] -2;
+    numPayloadBytes = data[0] - 2;
+    if (numPayloadBytes > dataLen)
+    {
+        numPayloadBytes = dataLen; // clamp to the caller's buffer
+    }
     checksum = data[1];
-
-    //Serial.write(data,i);
 
     i = 0;
     while (millis() - startMillis < timeout * 1000)
@@ -768,13 +713,14 @@ uint32_t zbGetResponseData(uint8_t *data,uint8_t timeout)
         {
             data[i++] = Serial2.read();
         }
-        if(i == numPayloadBytes)break;
+        if (i == numPayloadBytes)
+            break;
     }
 
-    if(i < numPayloadBytes)return 0;
+    if (i < numPayloadBytes)
+        return 0;
 
-    // Serial.write(data,i+2);
-    if(checksum != zbGenChksum(0,data,numPayloadBytes))
+    if (checksum != zbGenChksum(0, data, numPayloadBytes))
     {
         zbSendCmdResponse(false);
         return 0;
@@ -783,13 +729,14 @@ uint32_t zbGetResponseData(uint8_t *data,uint8_t timeout)
     return 1;
 }
 
-bool zbGetStatus(uint8_t *status,uint32_t timeout)
+bool zbGetStatus(uint8_t *status, uint8_t statusLen, uint32_t timeout)
 {
-    if(status == NULL)return false;
+    if (status == NULL)
+        return false;
 
-    if(zbSendCommand(0x23,0,0,timeout))
+    if (zbSendCommand(0x23, 0, 0, timeout))
     {
-        if(zbGetResponseData(status,timeout))
+        if (zbGetResponseData(status, statusLen, timeout))
         {
             return true;
         }
@@ -800,9 +747,8 @@ bool zbGetStatus(uint8_t *status,uint32_t timeout)
 bool zbCheckLastCmd(void)
 {
     uint8_t stat[10] = {0};
-    if(zbGetStatus(stat,1))
+    if (zbGetStatus(stat, sizeof(stat), 1))
     {
-        //Serial.printf("zbCheckLastCmd: %02X\n",stat[0]);
         return (stat[0] == 0x40);
     }
     return false;
@@ -833,7 +779,7 @@ bool zbCheckLastCmd(void)
     Serial.printf("send start\n");
     if(zbSendCommand(0x21,buf,8,2))
     {
-        if(zbGetStatus(buf,1))
+        if(zbGetStatus(buf, sizeof(buf), 1))
         {
             //Serial.printf("flash read status: %02X\n",buf[0]);
             return (buf[0] == 0x40);
@@ -864,66 +810,4 @@ bool zbEraseFlash(uint32_t start,uint32_t size)
     return false;
 }
 
-
-size_t getHexBinSize(File hexFile)
-{
-    //File hexFile = LittleFS.open(hexFilePath, "r");
-    if (!hexFile)
-    {
-        DEBUG_PRINTLN(F("Failed to open hex file"));
-        printLogMsg("[HEX_SIZE] Failed to open hex file");
-        return 0;
-    }
-
-    //return 360448;   // CC2652 fixed BIN size
-
-    uint32_t maxAddress = 0;
-    uint32_t extendedAddr = 0;
-    
-    while (hexFile.available())
-    {
-        String line = hexFile.readStringUntil('\n');
-        line.trim();
-        
-        if (line.length() > 0 && line[0] == ':')
-        {
-            // Skip end-of-file record
-            if (line == ":00000001FF")
-            {
-                break;
-            }
-            
-            // Parse record type
-            uint8_t recordType = strtol(line.substring(7, 9).c_str(), nullptr, 16);
-            
-            if (recordType == 0x00) // Data record
-            {
-                uint16_t address = strtol(line.substring(3, 7).c_str(), nullptr, 16);
-                uint8_t dataLen = strtol(line.substring(1, 3).c_str(), nullptr, 16);
-                uint32_t fullAddress = extendedAddr + address;
-                uint32_t endAddress = fullAddress + dataLen;
-                
-                if (endAddress > maxAddress)
-                {
-                    maxAddress = endAddress;
-                }
-            }
-            else if (recordType == 0x02) // Extended segment address record
-            {
-                extendedAddr = strtol(line.substring(9, 13).c_str(), nullptr, 16) << 4;
-            }
-            else if (recordType == 0x04) // Extended linear address record
-            {
-                extendedAddr = strtol(line.substring(9, 13).c_str(), nullptr, 16) << 16;
-            }
-        }
-    }
-    
-    //hexFile.close();
-    
-    DEBUG_PRINTLN(String("[HEX_SIZE] BIN size: ") + String(maxAddress) + " bytes");
-    printLogMsg(String("[HEX_SIZE] ") + String(maxAddress) + " bytes");
-    
-    return maxAddress;
-}
 

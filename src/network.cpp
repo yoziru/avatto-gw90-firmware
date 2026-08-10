@@ -15,6 +15,7 @@
 #include "log.h"
 #include "etc.h"
 #include "zb.h"
+#include "wifi_save_logic.h"
 
 IPAddress apIP(192, 168, 1, 1);
 DNSServer dnsServer;
@@ -116,7 +117,10 @@ void startServers(bool usb)
   Serial.print(F("[SRV] connectedEther=")); Serial.println(ConfigSettings.connectedEther);
   Serial.print(F("[SRV] WiFi.isConnected=")); Serial.println(WiFi.isConnected());
   Serial.print(F("[SRV] apStarted=")); Serial.println(ConfigSettings.apStarted);
-  initWebServer();
+  if (!ConfigSettings.disableWeb)
+  {
+    initWebServer();
+  }
   if (!usb)
     startSocketServer();
   startAP(false);
@@ -202,23 +206,26 @@ void handleTmrNetworkOverseer()
       {
         tmrNetworkOverseer.stop();
         startServers(true);
+        break;
       }
-      else
-      {
-        initLan();
-        if (tmrNetworkOverseer.counter() > 6)
-        { // 3sec for lan
-          if (ConfigSettings.connectedEther)
-          {
-            tmrNetworkOverseer.stop();
-            startServers(true);
-          }
-          else
-          {                            // no network interfaces
-            tmrNetworkOverseer.stop(); // stop timer
-            startAP(true);
-          }
+      if (tmrNetworkOverseer.counter() > 6)
+      { // 3sec for lan
+        if (ConfigSettings.connectedEther)
+        {
+          tmrNetworkOverseer.stop();
+          startServers(true);
         }
+        else
+        {                            // no network interfaces
+          tmrNetworkOverseer.stop(); // stop timer
+          startAP(true);
+        }
+        break;
+      }
+      if (tmrNetworkOverseer.counter() == 4)
+      { // Bring Ethernet up once. Re-running ETH.begin() on every tick re-init'd
+        // the LAN8720 PHY and flapped the link.
+        initLan();
       }
     }
     break;
@@ -320,15 +327,6 @@ void startAP(const bool start)
       return;
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
-    // String AP_NameString;
-    // getDeviceID(AP_NameString);
-
-    // char AP_NameChar[AP_NameString.length() + 1];
-    // memset(AP_NameChar, 0, AP_NameString.length() + 1);
-
-    // for (int i = 0; i < AP_NameString.length(); i++){
-    //   AP_NameChar[i] = AP_NameString.charAt(i);
-    // }
 
     Serial.println("[startAP] Starting AP mode...");
     WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
@@ -348,7 +346,6 @@ void startAP(const bool start)
     dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     dnsServer.start(53, "*", apIP);
     WiFi.setSleep(false);
-    // ConfigSettings.wifiAPenblTime = millis();
     startServers();
     ConfigSettings.apStarted = true;
   }
@@ -356,18 +353,17 @@ void startAP(const bool start)
 
 void connectWifi()
 {
-  static uint8_t timeout = 0;
-  if (WiFi.status() == WL_IDLE_STATUS && timeout < 20)
-  { // connection in progress
-    DEBUG_PRINTLN(F("[connectWifi] WL_IDLE_STATUS"));
-    timeout++;
-    return;
-  }
-  else
+  // Throttle: while the radio is mid-connect (WL_IDLE_STATUS) don't re-issue
+  // WiFi.begin() on every overseer tick. A timestamp replaces the old static
+  // attempt counter, which persisted across callers and re-armed indefinitely.
+  static unsigned long lastBeginMs = 0;
+  const unsigned long now = millis();
+  if (!wifiShouldBeginConnect(WiFi.status() == WL_IDLE_STATUS, (uint32_t)(now - lastBeginMs)))
   {
-    timeout = 0;
-    DEBUG_PRINTLN(F("[connectWifi] timeout"));
+    return; // connection attempt already in progress
   }
+  lastBeginMs = now;
+
   if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
   {
     DEBUG_PRINTLN(F("[connectWifi] Ok SSID & PASS"));

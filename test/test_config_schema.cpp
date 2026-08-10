@@ -135,7 +135,7 @@ static void test_wg_config_schema(void) {
     JsonDocument doc;
     doc["enable"] = 1;
     doc["localAddr"] = "10.0.0.2";
-    doc["localIP"] = "privatekey123";
+    doc["localPrivKey"] = "privatekey123";
     doc["endAddr"] = "vpn.example.com";
     doc["endPubKey"] = "pubkey123";
     doc["endPort"] = 51820;
@@ -148,6 +148,7 @@ static void test_wg_config_schema(void) {
 
     TEST_ASSERT_EQUAL_INT(1, parsed["enable"].as<int>());
     TEST_ASSERT_EQUAL_STRING("10.0.0.2", parsed["localAddr"].as<const char *>());
+    TEST_ASSERT_EQUAL_STRING("privatekey123", parsed["localPrivKey"].as<const char *>());
 }
 
 static void test_config_file_paths(void) {

@@ -8,9 +8,6 @@
 #include "zb.h"
 #include "bridge.h"
 
-extern volatile unsigned long zbLastRxMs;
-extern volatile unsigned long zbClientTxMs;
-
 WiFiClient client[MAX_SOCKET_CLIENTS];
 
 void socketClientConnected(int client)
@@ -50,65 +47,45 @@ void socketClientDisconnected(int client)
   }
 }
 
-void printRecvSocket(size_t bytes_read, uint8_t net_buf[BUFFER_SIZE])
+void printRecvSocket(size_t bytes_read, const uint8_t *net_buf)
 {
-  char output_sprintf[3];
-  if (bytes_read > 0)
+  if (bytes_read == 0)
   {
-    String tmpTime;
-    String buff = "";
-    unsigned long timeLog = millis();
-    tmpTime = String(timeLog, DEC);
-    logPush('[');
-    for (int j = 0; j < tmpTime.length(); j++)
-    {
-      logPush(tmpTime[j]);
-    }
-    logPush(']');
-    logPush(' ');
-    logPush('-');
-    logPush('>');
-
-    for (int i = 0; i < bytes_read; i++)
-    {
-      sprintf(output_sprintf, "%02x", net_buf[i]);
-      logPush(' ');
-      logPush(output_sprintf[0]);
-      logPush(output_sprintf[1]);
-    }
-    logPush('\n');
+    return;
   }
+  // Hex dump into the web-console ring buffer. sprintf() is far too heavy for
+  // the bridge hot path, so use a nibble lookup table instead.
+  static const char hexDigits[] = "0123456789abcdef";
+  printLogTime();
+  logPush(' ');
+  logPush('-');
+  logPush('>');
+
+  for (size_t i = 0; i < bytes_read; i++)
+  {
+    logPush(' ');
+    logPush(hexDigits[net_buf[i] >> 4]);
+    logPush(hexDigits[net_buf[i] & 0x0F]);
+  }
+  logPush('\n');
 }
 
-void printSendSocket(size_t bytes_read, uint8_t serial_buf[BUFFER_SIZE])
+void printSendSocket(size_t bytes_read, const uint8_t *serial_buf)
 {
-  char output_sprintf[3];
-  String tmpTime;
-  String buff = "";
-  unsigned long timeLog = millis();
-  tmpTime = String(timeLog, DEC);
-  logPush('[');
-  for (int j = 0; j < tmpTime.length(); j++)
+  if (bytes_read == 0)
   {
-    logPush(tmpTime[j]);
+    return;
   }
-  logPush(']');
+  static const char hexDigits[] = "0123456789abcdef";
+  printLogTime();
   logPush(' ');
   logPush('<');
   logPush('-');
-  for (int i = 0; i < bytes_read; i++)
+  for (size_t i = 0; i < bytes_read; i++)
   {
-    // if (serial_buf[i] == 0x01)
-    //{
-    // }
-    sprintf(output_sprintf, "%02x", serial_buf[i]);
     logPush(' ');
-    logPush(output_sprintf[0]);
-    logPush(output_sprintf[1]);
-    // if (serial_buf[i] == 0x03)
-    // {
-
-    //}
+    logPush(hexDigits[serial_buf[i] >> 4]);
+    logPush(hexDigits[serial_buf[i] & 0x0F]);
   }
   logPush('\n');
 }
@@ -160,11 +137,9 @@ void processSocketBridge()
     if (client[cln])
     {
       socketClientConnected(cln);
-      while (client[cln].available())
+      while (client[cln].available() && net_bytes_read < BUFFER_SIZE)
       { // read from LAN
-        net_buf[net_bytes_read] = client[cln].read();
-        if (net_bytes_read < BUFFER_SIZE - 1)
-          net_bytes_read++;
+        net_buf[net_bytes_read++] = client[cln].read();
       } // send to Zigbee
       if (net_bytes_read > 0)
       {
@@ -184,11 +159,9 @@ void processSocketBridge()
   if (Serial2.available())
   {
     zbLastRxMs = millis();
-    while (Serial2.available())
+    while (Serial2.available() && serial_bytes_read < BUFFER_SIZE)
     { // read from Zigbee
-      serial_buf[serial_bytes_read] = Serial2.read();
-      if (serial_bytes_read < BUFFER_SIZE - 1)
-        serial_bytes_read++;
+      serial_buf[serial_bytes_read++] = Serial2.read();
     }
     // send to LAN
     for (byte cln = 0; cln < MAX_SOCKET_CLIENTS; cln++)
@@ -198,6 +171,5 @@ void processSocketBridge()
     }
     // print to web console
     printSendSocket(serial_bytes_read, serial_buf);
-    serial_bytes_read = 0;
   }
 }

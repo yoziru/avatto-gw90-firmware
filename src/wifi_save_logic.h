@@ -55,4 +55,13 @@ inline bool wifiShouldCommit(bool pendingActive, bool connected, const char *con
     return strcmp(connectedSsid, pendingSsid) == 0;
 }
 
+// Decide whether to (re)issue WiFi.begin(). While the radio is mid-connect
+// (WL_IDLE_STATUS) and the last attempt is recent, the caller must NOT restart
+// the connection - that would hammer the AP on every overseer tick. A stuck
+// in-progress attempt older than the throttle window is retried.
+inline bool wifiShouldBeginConnect(bool connecting, uint32_t lastBeginAgeMs) noexcept
+{
+    return !(connecting && lastBeginAgeMs < 20000);
+}
+
 #endif

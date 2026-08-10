@@ -18,7 +18,7 @@ String logPrint()
   if (logConsole.isEmpty()) {
     return "";
   } else {
-    for (decltype(logConsole)::index_t i = 0; i < logConsole.size() - 1; i++) {
+    for (decltype(logConsole)::index_t i = 0; i < logConsole.size(); i++) {
       buff += logConsole[i];
     }
     return buff;

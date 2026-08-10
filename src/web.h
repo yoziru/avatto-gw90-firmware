@@ -40,12 +40,12 @@ enum API_PAGE_t : uint8_t
 void handleEvents();
 void initWebServer();
 void webServerHandleClient();
-void sendEvent(const char *event, const uint8_t evsz, const String data);
+void sendEvent(const char *event, const uint8_t evsz, const String &data);
 void sendGzip(const char *contentType, const uint8_t content[], uint16_t contentLen);
 String urlDecode(String input);
 bool checkAuth();
 void printLogTime();
-void printLogMsg(String msg);
+void printLogMsg(const String &msg);
 
 void handleApi();
 void handleZigbeeBSL();
@@ -72,6 +72,6 @@ void progressFunc(unsigned int progress, unsigned int total);
 void getEspUpdate(String esp_fw_url);
 void runEspUpdateFirmware(uint8_t *data, size_t len);
 
-#define UPD_FILE "https://github.com/AVATTO-smart/avatto-gw90-firmware/releases/latest/download/AVATTO-GW90-Ti.bin"
+#define UPD_FILE "https://github.com/yoziru/avatto-gw90-firmware/releases/latest/download/AVATTO-GW90-Ti.bin"
 
 #endif

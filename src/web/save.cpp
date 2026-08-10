@@ -10,10 +10,6 @@
 #include "net.h"
 #include "wifi_save_logic.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-extern struct MqttSettingsStruct MqttSettings;
-extern struct WgSettingsStruct WgSettings;
-
 extern bool loadConfigMqtt();
 extern bool loadConfigWg();
 
@@ -211,7 +207,7 @@ void handleSaveParams()
             deserializeJson(doc, configFile);
             configFile.close();
             doc["localAddr"] = serverWeb.arg("WgLocalAddr");
-            doc["localIP"] = serverWeb.arg("WgLocalPrivKey");
+            doc["localPrivKey"] = serverWeb.arg("WgLocalPrivKey");
             doc["endAddr"] = serverWeb.arg("WgEndAddr");
             doc["endPubKey"] = serverWeb.arg("WgEndPubKey");
             doc["endPort"] = serverWeb.arg("WgEndPort");
@@ -295,7 +291,7 @@ void handleSaveParams()
                 doc[baud] = 115200;
             }
             const char *port = "port";
-            if (serverWeb.hasArg(baud))
+            if (serverWeb.hasArg(port))
             {
                 doc[port] = serverWeb.arg(port);
             }
@@ -380,7 +376,6 @@ void handleSaveParams()
             {
                 doc[timeZoneName] = serverWeb.arg(timeZoneName);
             }
-            configFile = LittleFS.open(configFileGeneral, FILE_WRITE);
             configFile = LittleFS.open(configFileGeneral, FILE_WRITE);
             serializeJson(doc, configFile);
             configFile.close();

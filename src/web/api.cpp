@@ -27,10 +27,7 @@
 #include "webh/PAGE_MQTT.html.gz.h"
 #include "webh/PAGE_WG.html.gz.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-extern struct zbVerStruct zbVer;
-extern struct MqttSettingsStruct MqttSettings;
-extern struct WgSettingsStruct WgSettings;
+extern zbVerStruct zbVer;
 
 void handleZigbeeBSL()
 {
@@ -94,8 +91,8 @@ void handleApi()
     }
     else
     {
-        const uint8_t action = serverWeb.arg(action).toInt();
-        switch (action)
+        const uint8_t actionId = serverWeb.arg(action).toInt();
+        switch (actionId)
         {
         case API_FLASH_ZB:
         {
@@ -185,16 +182,20 @@ void handleApi()
                 WiFiClient *stream = http.getStreamPtr();
                 uint8_t buff[1024];
                 uint32_t downloaded = 0;
-                unsigned long startTime = millis();
+                unsigned long lastDataMs = millis();
                 unsigned long lastProgressTime = 0;
-                int noDataCount = 0;
                 uint8_t percent = 0;
+                // getSize() returns -1/0 when the server omits Content-Length;
+                // then we download until the stream ends instead of trying to
+                // compute percentages (which would divide by zero).
+                const bool knownSize = (fwSize > 0);
 
                 while (http.connected() || stream->available())
                 {
                     size_t available = stream->available();
 
-                    if(downloaded >= fwSize)break;
+                    if (knownSize && downloaded >= (uint32_t)fwSize)
+                        break;
 
                     if (available > 0)
                     {
@@ -209,9 +210,10 @@ void handleApi()
                         {
                             fwFile.write(buff, bytesRead);
                             downloaded += bytesRead;
+                            lastDataMs = millis();
 
                             unsigned long now = millis();
-                            if ((now - lastProgressTime > 500) || (downloaded % 10240 == 0)) {
+                            if (knownSize && ((now - lastProgressTime > 500) || (downloaded % 10240 == 0))) {
                                 percent = ((float)downloaded / fwSize) * 100;
                                 sendEvent(tagZB_FW_download, sizeof(tagZB_FW_download), String(percent));
                                 lastProgressTime = now;
@@ -220,7 +222,7 @@ void handleApi()
                     }
                     else
                     {
-                        if (millis() - startTime > 200000) {
+                        if (millis() - lastDataMs > 200000) {
                             Serial.println("Download timeout!");
                             sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Download timeout!");
                             fwFile.close();
@@ -240,10 +242,13 @@ void handleApi()
                 fwFile.close();
                 http.end();
 
-                if(fwSize == downloaded)
+                if (!knownSize || (int32_t)downloaded == fwSize)
                 {
-                    percent = ((float)downloaded / fwSize) * 100;
-                    sendEvent(tagZB_FW_download, sizeof(tagZB_FW_download), String(percent));
+                    if (knownSize)
+                    {
+                        percent = ((float)downloaded / fwSize) * 100;
+                        sendEvent(tagZB_FW_download, sizeof(tagZB_FW_download), String(percent));
+                    }
 
                     sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Download complete!");
                     sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), String("Total size: ") + String(downloaded) + " bytes");
@@ -357,30 +362,6 @@ void handleApi()
             serverWeb.send(HTTP_CODE_OK, contTypeJson, result);
         }
         break;
-        case API_SEND_HEX:
-        {
-            String result = wrongArgs;
-            const char *argSize = "size";
-            const char *argHex = "hex";
-            DEBUG_PRINTLN(F("[send_hex]"));
-            if (serverWeb.hasArg(argHex) && serverWeb.hasArg(argSize))
-            {
-                result = ok;
-                DEBUG_PRINTLN(F("try..."));
-                DEBUG_PRINTLN(serverWeb.arg(argHex).c_str());
-                uint8_t size = serverWeb.arg(argSize).toInt();
-                const uint16_t maxHexSize = 512;
-                if (size > maxHexSize) {
-                    serverWeb.send(HTTP_CODE_OK, contTypeText, "size too big");
-                    break;
-                }
-                uint8_t resp[maxHexSize];
-                memset(resp, 0, maxHexSize);
-                hex2bin(resp, serverWeb.arg(argHex).c_str());
-            }
-            serverWeb.send(HTTP_CODE_OK, contTypeText, result);
-        }
-        break;
         case API_GET_FILE:
         {
             String result = wrongArgs;
@@ -390,7 +371,10 @@ void handleApi()
                 String filename = "/config/" + serverWeb.arg(argFilename);
                 File file = LittleFS.open(filename, "r");
                 if (!file)
-                    return;
+                {
+                    serverWeb.send(HTTP_CODE_NOT_FOUND, contTypeText, "not found");
+                    break;
+                }
                 result = "";
                 while (file.available())
                 {

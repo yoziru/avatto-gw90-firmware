@@ -1,12 +1,22 @@
 #include <Arduino.h>
 #include <WebServer.h>
 #include <NetworkClient.h>
+#include "config.h"
 #include "web.h"
 
 NetworkClient eventsClient;
 
 void handleEvents()
 {
+    // An unauthenticated client must not be able to observe firmware-flash
+    // progress, nor take over the single global SSE slot. EventSource can't
+    // send custom headers, but browsers replay cached HTTP-auth credentials
+    // for the origin, so an already-logged-in session keeps working; anyone
+    // else gets a 401 and the frontend falls back to polling mode.
+    if (!checkAuth())
+    {
+        return; // 401 already sent by checkAuth()
+    }
     eventsClient = serverWeb.client();
     if (eventsClient)
     {
@@ -20,14 +30,13 @@ void handleEvents()
     }
 }
 
-void sendEvent(const char *event, const uint8_t evsz, const String data)
+void sendEvent(const char *event, const uint8_t evsz, const String &data)
 {
     if (eventsClient)
     {
-        char evnmArr[10 + evsz];
-        sprintf(evnmArr, "event: %s\n", event);
-        eventsClient.print(evnmArr);
-        eventsClient.print(String("data: ") + data + "\n\n");
+        (void)evsz; // sizeof(event) hint, not needed for printf
+        eventsClient.printf("event: %s\n", event);
+        eventsClient.printf("data: %s\n\n", data.c_str());
         eventsClient.flush();
     }
 }
