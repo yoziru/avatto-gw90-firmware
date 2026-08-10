@@ -478,9 +478,9 @@ PlatformIO executes the following pipeline via `extra_scripts` configuration:
 
 #### Pre-build
 
-1. **`tools/version_increment_pre.py`**
-   - Reads version number from `tools/version`
-   - Auto-increments patch version (unless `.version_no_increment` marker file exists)
+1. **`tools/gen_version.py`**
+   - Reads version number from `tools/version` (constant, never modified by builds)
+   - Appends `-dirty` when the working tree has uncommitted changes
    - Generates `src/version.h` (containing `VERSION` and `BUILD_TIMESTAMP` macros)
 
 2. **`tools/webfilesbuilder/build_html.py`**
@@ -503,9 +503,8 @@ PlatformIO executes the following pipeline via `extra_scripts` configuration:
 
 - Version number stored in `tools/version` text file
 - Format: `major.minor.patch` (e.g. `1.0.1`)
-- Auto-increments by +1 (patch) on each build, unless:
-  - `tools/.version_no_increment` file exists (skip entirely)
-  - `tools/.version_no_increment_update_date` file exists (don't increment but update timestamp)
+- Builds never modify it — only the `Release` workflow (via `scripts/release.sh`) bumps `tools/version`
+- `tools/gen_version.py` appends `-dirty` to `VERSION` in `src/version.h` when the working tree has uncommitted changes, so local builds are distinguishable from clean CI/release builds
 
 ### 9.4 Skipping Web Build
 

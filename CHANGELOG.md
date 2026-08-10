@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Build: stop auto-incrementing the patch version on every build. `tools/gen_version.py` now reads `tools/version` read-only (only the Release workflow bumps it) and appends `-dirty` when the working tree is dirty; version logic consolidated into `tools/version_util.py` shared by `gen_version.py` and `build.py`. Removes `version_increment_pre.py`, `version_increment_post.py`, and the `.version_no_increment` marker logic. Version reverted to `1.0.7`.
+
 - Fix: the on-board temperature read was frozen at exactly 53.3°C — the ESP32 TSENS returns the fixed `0x80` sentinel whenever the RF PHY (shared SAR ADC) isn't actually powered. On ESP-IDF 5.x `esp_wifi_start()` alone leaves the radio in modem-sleep, so now the read forces the radio fully on (scan + `setSleep(false)`), takes a median of 5 samples, then tears it back down. Results are cached for 15 s so the 60 s MQTT heartbeat and page reloads don't power the radio every call (2.4 GHz noise near the Zigbee coordinator).
 - Fix: the temp read is now **non-blocking** — it runs as a state machine in `loop()` (`tempSensorLoop`) instead of `delay(1200)` inside the web/MQTT handlers, which previously froze the web server, Zigbee socket bridge and MQTT together for ~1.3 s on every cold read. Page loads stay ~40 ms even on a cold cache; boot-time calibration keeps a synchronous read (nothing else runs during setup).
 - Fix: restore the on-board temperature **auto-calibration** (offset against a ~30 °C reference, stored in `/config/system.json` on first boot) so the reported die temp reads sensibly.

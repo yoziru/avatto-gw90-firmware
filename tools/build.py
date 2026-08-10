@@ -3,7 +3,11 @@ from subprocess import call
 Import("env")
 import shutil
 import os
+import sys
 from glob import glob
+
+sys.path.insert(0, os.path.join(env.subst("$PROJECT_DIR"), "tools"))
+from version_util import read_version  # noqa: E402
 
 def after_build(source, target, env):
     os.makedirs('bin', exist_ok=True)
@@ -26,13 +30,7 @@ def after_build(source, target, env):
     
     exit_code = call("python tools/merge_bin_esp.py --output_folder ./bin --output_name AVATTO-GW90-Ti.bin --bin_path bin/bootloader_dio_40m.bin bin/partitions.bin bin/firmware.bin --bin_address 0x1000 0x8000 0x10000", shell=True)
     
-    VERSION_FILE = 'tools/version'
-    try:
-        with open(VERSION_FILE) as FILE:
-            VERSION_NUMBER = FILE.readline().strip()
-    except:
-        print('No version file found')
-        VERSION_NUMBER = '0.0.0'
+    VERSION_NUMBER = read_version()
 
     NEW_NAME_FULL = 'bin/AVATTO-GW90-Ti_v'+VERSION_NUMBER+'.full.bin'
     NEW_NAME = 'bin/AVATTO-GW90-Ti.bin'
