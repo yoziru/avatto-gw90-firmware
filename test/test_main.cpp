@@ -9,6 +9,9 @@ extern void run_zones_tests(void);
 extern void run_ip_utils_tests(void);
 extern void run_zb_ver_tests(void);
 extern void run_wifi_save_logic_tests(void);
+extern void run_config_utils_tests(void);
+extern void run_ha_discovery_tests(void);
+extern void run_profiling_tests(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -24,5 +27,8 @@ int main(int argc, char **argv) {
     run_ip_utils_tests();
     run_zb_ver_tests();
     run_wifi_save_logic_tests();
+    run_config_utils_tests();
+    run_ha_discovery_tests();
+    run_profiling_tests();
     return UNITY_END();
 }

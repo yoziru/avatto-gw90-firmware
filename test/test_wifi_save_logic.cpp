@@ -67,6 +67,28 @@ static void test_persistence_flag_consistency(void)
     TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::Forget));
 }
 
+// --- Connect throttle: don't restart an in-progress connect ---
+
+static void test_connect_in_progress_recently_not_restarted(void)
+{
+    TEST_ASSERT_FALSE(wifiShouldBeginConnect(true, 0));   // just began
+    TEST_ASSERT_FALSE(wifiShouldBeginConnect(true, 5000)); // 5s in
+    TEST_ASSERT_FALSE(wifiShouldBeginConnect(true, 19999));
+}
+
+static void test_stuck_connect_is_retried_after_throttle(void)
+{
+    TEST_ASSERT_TRUE(wifiShouldBeginConnect(true, 20000)); // at the boundary
+    TEST_ASSERT_TRUE(wifiShouldBeginConnect(true, 25000));
+}
+
+static void test_not_connecting_always_begins(void)
+{
+    // Disconnected/associated states must (re)issue begin on the next tick.
+    TEST_ASSERT_TRUE(wifiShouldBeginConnect(false, 0));
+    TEST_ASSERT_TRUE(wifiShouldBeginConnect(false, 60000));
+}
+
 void run_wifi_save_logic_tests(void)
 {
     RUN_TEST(test_new_network_is_connect_first);
@@ -76,4 +98,7 @@ void run_wifi_save_logic_tests(void)
     RUN_TEST(test_short_ssid_forgets);
     RUN_TEST(test_commit_requires_matching_connection);
     RUN_TEST(test_persistence_flag_consistency);
+    RUN_TEST(test_connect_in_progress_recently_not_restarted);
+    RUN_TEST(test_stuck_connect_is_retried_after_throttle);
+    RUN_TEST(test_not_connecting_always_begins);
 }

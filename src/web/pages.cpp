@@ -6,12 +6,14 @@
 #include <HTTPClient.h>
 #include <esp_chip_info.h>
 #include <esp_mac.h>
+#include <esp_heap_caps.h>
 
 #include "config.h"
 #include "web.h"
 #include "etc.h"
 #include "zb.h"
 #include "zones.h"
+#include "profiling.h"
 #include "version.h"
 
 #include "webh/PAGE_ROOT.html.gz.h"
@@ -25,14 +27,21 @@
 #include "webh/PAGE_MQTT.html.gz.h"
 #include "webh/PAGE_WG.html.gz.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-extern struct zbVerStruct zbVer;
-extern struct MqttSettingsStruct MqttSettings;
-extern struct WgSettingsStruct WgSettings;
+extern zbVerStruct zbVer;
 
-JsonDocument getRootData()
+namespace
 {
-    JsonDocument doc;
+// Reused across page/status requests so the (several-KiB) document pool is
+// allocated once and never freed, instead of being churned on every 5 s
+// status poll - that alloc/free cycle was the main source of heap
+// fragmentation on this gateway. clear() keeps the pool capacity.
+JsonDocument s_rootData;
+} // namespace
+
+JsonDocument &getRootData()
+{
+    s_rootData.clear();
+    JsonDocument &doc = s_rootData;
 
     char verArr[48];
     const char *env = STRINGIFY(BUILD_ENV_NAME);
@@ -55,12 +64,12 @@ JsonDocument getRootData()
     {
         if (ConfigSettings.connectedClients > 1)
         {
-            doc[connectedSocketStatus] = "Yes, " + String(ConfigSettings.connectedClients) + "connection";
+            doc[connectedSocketStatus] = "Yes, " + String(ConfigSettings.connectedClients) + " connections";
             doc[connectedSocket] = readableTime;
         }
         else
         {
-            doc[connectedSocketStatus] = "Yes, " + String(ConfigSettings.connectedClients) + " connections";
+            doc[connectedSocketStatus] = "Yes, " + String(ConfigSettings.connectedClients) + " connection";
             doc[connectedSocket] = readableTime;
         }
     }
@@ -132,6 +141,20 @@ JsonDocument getRootData()
     doc["espFreq"] = String(ESP.getCpuFreqMHz());
     doc["espHeapFree"] = String(ESP.getFreeHeap() / 1024);
     doc["espHeapSize"] = String(ESP.getHeapSize() / 1024);
+#ifdef BUILD_DEBUG
+    // Loop-cycle latency (min / EMA "typical" / max over the current minute)
+    // and heap fragmentation. Debug-build only - prod carries no profiler.
+    const LoopStats loopStats = profilingGetStats();
+    doc["loopMinUs"] = loopStats.cycles ? String(loopStats.minUs) : String(0);
+    doc["loopAvgUs"] = loopStats.cycles ? String(loopStats.emaUs) : String(0);
+    doc["loopMaxUs"] = loopStats.cycles ? String(loopStats.maxUs) : String(0);
+    const size_t heapLargest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    const size_t heapFree = ESP.getFreeHeap();
+    const int heapFragPct = (heapFree > 0) ? (int)(100 - (100ULL * heapLargest / heapFree)) : 0;
+    doc["espHeapMinFree"] = String(ESP.getMinFreeHeap() / 1024);
+    doc["espHeapLargest"] = String(heapLargest / 1024);
+    doc["espHeapFrag"] = String(heapFragPct);
+#endif
     if (zbVer.zbRev > 0)
     {
         doc["zigbeeFwRev"] = String(zbVer.zbRev);
@@ -348,15 +371,21 @@ JsonDocument getRootData()
 void handleRoot()
 {
     String result;
-    JsonDocument doc = getRootData();
+    JsonDocument &doc = getRootData();
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);
 }
 
 void handleStatus()
 {
-    String result;
-    JsonDocument doc;
+    // Reused across polls so the ~1.4 KiB JSON body String isn't allocated and
+    // freed every 5 s (this is the /status hot path). Arduino String keeps the
+    // reserved capacity across `= ""`.
+    static String result;
+    if (result.length() == 0)
+    {
+        result.reserve(2048);
+    }
 
     if (ConfigSettings.webAuth)
     {
@@ -372,7 +401,8 @@ void handleStatus()
         }
     }
 
-    doc = getRootData();
+    JsonDocument &doc = getRootData();
+    result = "";
     serializeJsonPretty(doc, result);
     serverWeb.send(HTTP_CODE_OK, contTypeJson, result);
 }
@@ -581,7 +611,7 @@ void handleSysTools()
 void handleAbout()
 {
     String result;
-    JsonDocument doc;
+    JsonDocument &doc = getRootData();
 
     doc["firmwareVersion"] = String(VERSION);
     String buildTimestamp = String(BUILD_TIMESTAMP);
@@ -597,7 +627,6 @@ void handleAbout()
     }
 
     doc["buildDate"] = buildDate;
-    doc["espModel"] = String(ESP.getChipModel());
 
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);

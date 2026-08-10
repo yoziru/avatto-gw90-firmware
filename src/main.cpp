@@ -21,6 +21,10 @@
 #include "zb.h"
 #include "version.h"
 
+#ifdef BUILD_DEBUG
+#include "profiling.h"
+#endif
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -28,9 +32,7 @@
 #undef ETH_CLK_MODE
 #endif
 
-// volatile bool btnFlag = false;
 volatile uint8_t btnFlag = 0;
-bool updWeb = false;
 
 void handleLongBtn();
 void setupCoordinatorMode();
@@ -38,7 +40,6 @@ void setupCoordinatorMode();
 Ticker tmrBtnLongPress(handleLongBtn, 1000, 0, MILLIS);
 
 extern CCTools CCTool;
-// MDNSResponder MDNS; don't need?
 
 #ifdef BUILD_FACTORY_TEST
 #include "factory.h"
@@ -254,11 +255,6 @@ void setupCoordinatorMode()
   default:
     break;
   }
-  if (!ConfigSettings.disableWeb && (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH || ConfigSettings.keepWeb))
-  {
-    updWeb = true;
-    Serial.println(F("[MODE] Web server enabled (updWeb=true)"));
-  }
   if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH && ConfigSettings.keepWeb)
   {
     Serial.println(F("[MODE] SERIAL+keepWeb: trying connectWifi()"));
@@ -273,7 +269,7 @@ void setup()
   // so LAN8720 POR never fires. A 350ms delay at startup lets strapping pins settle.
   delay(350);
 
-  Serial.begin(115200); // todo ifdef DEBUG
+  Serial.begin(115200);
   delay(500);
   Serial.println("\n\n========== DEVICE STARTING ==========");
   Serial.println("Firmware version: " VERSION);
@@ -413,6 +409,10 @@ void setup()
 
 void loop(void)
 {
+#ifdef BUILD_DEBUG
+  const uint64_t loopStartUs = profilingLoopBegin();
+#endif
+
   if (btnFlag)
   {
     if (!digitalRead(BTN))
@@ -438,17 +438,11 @@ void loop(void)
   tmrZbHealth.update();
   tempSensorLoop();     // non-blocking async temp read (no 1.3s stall in handlers)
   wifiCommitPending(); // commit a staged wifi save once the STA link is up
-  if (updWeb)
-  {
-    webServerHandleClient();
-  }
-  else
-  {
-    if (ConfigSettings.connectedClients == 0)
-    {
-      webServerHandleClient();
-    }
-  }
+  // Serve the web server whenever it has been started. handleClient() is a
+  // no-op when disableWeb/serial-only means it never ran; the old
+  // "only when no socket clients" gate deprioritized the UI behind the bridge
+  // for no benefit and made disableWeb ineffective.
+  webServerHandleClient();
 
   if (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH)
   {
@@ -466,6 +460,10 @@ void loop(void)
   }
 
   delay(1); // yield to the RTOS scheduler; prevents a 100% CPU busy-spin
+
+#ifdef BUILD_DEBUG
+  profilingLoopTick(loopStartUs);
+#endif
 }
 
 

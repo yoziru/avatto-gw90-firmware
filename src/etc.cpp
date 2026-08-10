@@ -13,8 +13,6 @@
 #include "etc.h"
 #include "zones.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-
 extern CCTools CCTool;
 
 const char *coordMode = "coordMode";         // coordMode node name
@@ -66,16 +64,16 @@ void getReadableTime(String &readableTime, unsigned long beginTime)
   readableTime += String(seconds) + "";
 }
 
+// TSENS raw value -> degrees Celsius.
+static float rawTempToCelsius(uint8_t raw)
+{
+  return (raw - 32) / 1.8f;
+}
+
 float readtemp(bool clear)
 {
-  if (clear == true)
-  {
-    return (temprature_sens_read() - 32) / 1.8;
-  }
-  else
-  {
-    return (temprature_sens_read() - 32) / 1.8 - ConfigSettings.tempOffset;
-  }
+  const float c = rawTempToCelsius(temprature_sens_read());
+  return clear ? c : c - ConfigSettings.tempOffset;
 }
 
 // The ESP32 TSENS shares the SAR ADC with the RF PHY. On ESP-IDF 5.x the radio
@@ -147,7 +145,7 @@ static float readTempSync(bool clear)
         samples[i] = temprature_sens_read();
         delay(20);
       }
-      result = (median5(samples) - 32) / 1.8f;
+      result = rawTempToCelsius(median5(samples));
       WiFi.scanDelete();
       esp_wifi_stop();
       WiFi.mode(WIFI_OFF);
@@ -231,7 +229,7 @@ void tempSensorLoop()
     }
     {
       uint8_t med = median5(tempSamples);
-      cachedTemp = (med - 32) / 1.8f - ConfigSettings.tempOffset;
+      cachedTemp = rawTempToCelsius(med) - ConfigSettings.tempOffset;
       lastTempReadMs = now;
       if (med == 0x80)
       {
@@ -333,28 +331,6 @@ void getDeviceID(char *arr)
   sprintf(arr, "%s-%s", deviceModel, buf);
 }
 
-// void writeDefaultConfig(const char *path, String StringConfig)
-// {
-//   DEBUG_PRINTLN(path);
-//   DEBUG_PRINTLN(F("failed open. try to write defaults"));
-//   DEBUG_PRINTLN(StringConfig);
-
-//   JsonDocument doc;
-//   deserializeJson(doc, StringConfig);
-
-//   File configFile = LittleFS.open(path, FILE_WRITE);
-//   if (!configFile)
-//   {
-//     DEBUG_PRINTLN(F("failed write"));
-//     //return false;
-//   }
-//   else
-//   {
-//     serializeJson(doc, configFile);
-//   }
-//   configFile.close();
-// }
-
 void writeDefaultConfig(const char *path, JsonDocument &doc)
 {
   DEBUG_PRINTLN(path);
@@ -402,36 +378,18 @@ void resetSettings()
 
 void setClock()
 {
+  // Configure NTP. configTime() returns immediately - the sync happens in the
+  // background, and the timezone is applied below. The old code blocked the
+  // whole loop (web server, socket bridge, MQTT) for up to 60 s waiting for
+  // the sync on every link-up event.
   configTime(0, 0, "pool.ntp.org", "time.google.com");
 
-  DEBUG_PRINT(F("Waiting for NTP time sync: "));
-  int startTryingTime = millis();
-  DEBUG_PRINTLN(startTryingTime);
-  startTryingTime = startTryingTime / 1000;
-  time_t nowSecs = time(nullptr);
-  DEBUG_PRINTLN(nowSecs);
-  while ((nowSecs - startTryingTime) < 60)
-  {
-    delay(500);
-    DEBUG_PRINT(F("."));
-    yield();
-    nowSecs = time(nullptr);
-  }
-
-  DEBUG_PRINTLN();
-  struct tm timeinfo;
-  localtime_r(&nowSecs, &timeinfo);
-  DEBUG_PRINT(F("Current GMT time: "));
-  DEBUG_PRINT(asctime(&timeinfo));
-
-  char *zoneToFind = const_cast<char *>("Europe/Kiev");
-  if (ConfigSettings.timeZone)
+  const char *zoneToFind = "Europe/Kiev";
+  if (ConfigSettings.timeZone[0] != '\0')
   {
     zoneToFind = ConfigSettings.timeZone;
   }
   const char *gmtOffset = getGmtOffsetForZone(zoneToFind);
-
-  String timezone = "EET-2EEST,M3.5.0/3,M10.5.0/4";
 
   if (gmtOffset != nullptr)
   {
@@ -439,8 +397,7 @@ void setClock()
     DEBUG_PRINT(zoneToFind);
     DEBUG_PRINT(F(" is "));
     DEBUG_PRINTLN(gmtOffset);
-    timezone = gmtOffset;
-    setTimezone(timezone);
+    setTimezone(gmtOffset);
   }
   else
   {
@@ -450,12 +407,20 @@ void setClock()
   }
 }
 
-void setTimezone(String timezone)
+void setTimezone(const String &timezone)
 {
   DEBUG_PRINTLN(F("Setting Timezone"));
-  setenv("TZ", timezone.c_str(), 1); //  Now adjust the TZ.  Clock settings are adjusted to show the new local time
+  setenv("TZ", timezone.c_str(), 1); // Now adjust the TZ. Clock settings are adjusted to show the new local time
   tzset();
+
+  // If NTP hasn't synced yet, time() is still 0 - don't log a misleading
+  // "Thu Jan 1 1970" local time to the web console.
   time_t nowSecs = time(nullptr);
+  if (nowSecs < 100000000)
+  {
+    DEBUG_PRINTLN(F("NTP not synced yet - local time unavailable"));
+    return;
+  }
   struct tm timeinfo;
   localtime_r(&nowSecs, &timeinfo);
 

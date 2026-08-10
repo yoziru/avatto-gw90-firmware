@@ -19,10 +19,7 @@
 #include "webh/PAGE_LOADER.html.gz.h"
 #include "webh/PAGE_LOGOUT.html.gz.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-extern struct zbVerStruct zbVer;
-extern struct MqttSettingsStruct MqttSettings;
-extern struct WgSettingsStruct WgSettings;
+extern zbVerStruct zbVer;
 
 WebServer serverWeb(80);
 
@@ -80,18 +77,19 @@ bool checkAuth()
 
 void printLogTime()
 {
-    String tmpTime;
-    unsigned long timeLog = millis();
-    tmpTime = String(timeLog, DEC);
+    // Runs on every bridged frame and every log line - never allocate a String
+    // here. A bounded snprintf into the stack is allocation-free.
+    char timeBuf[12];
+    const int tlen = snprintf(timeBuf, sizeof(timeBuf), "%lu", (unsigned long)millis());
     logPush('[');
-    for (int j = 0; j < tmpTime.length(); j++)
+    for (int j = 0; j < tlen; j++)
     {
-        logPush(tmpTime[j]);
+        logPush(timeBuf[j]);
     }
     logPush(']');
 }
 
-void printLogMsg(String msg)
+void printLogMsg(const String &msg)
 {
     printLogTime();
     logPush(' ');

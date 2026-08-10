@@ -50,6 +50,41 @@
     <div class="col-sm-12 col-md-6 mb-4">
       <div class="card">
         <div class="card-header">
+          <img src="icon_zigbee_info.svg" class="title_icon_style" />
+          <span>Zigbee connection</span>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <tbody>
+              <tr>
+                <td>Connection:</td>
+                <td data-replace="z2mConnected"></td>
+              </tr>
+              <tr>
+                <td>Client IP:</td>
+                <td data-replace="z2mClientIp"></td>
+              </tr>
+              <tr>
+                <td>Connected for:</td>
+                <td data-replace="connectedSocket"></td>
+              </tr>
+              <tr>
+                <td>Coordinator status:</td>
+                <td data-replace="zbStatus"></td>
+              </tr>
+              <tr>
+                <td>Coordinator auto-resets:</td>
+                <td data-replace="zbAutoResets"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-12 col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header">
           <img src="icon_header_ethernet.svg" class="title_icon_style" />
           <span>Ethernet</span>
         </div>
@@ -135,98 +170,6 @@
               <tr>
                 <td>WiFi Access Point Status:</td>
                 <td data-replace="wifiModeAPStatus"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-sm-12 col-md-6 mb-4">
-      <div class="card">
-        <div class="card-header">
-          <img src="icon_zigbee_info.svg" class="title_icon_style" />
-          <span>Zigbee connection</span>
-        </div>
-        <div class="card-body">
-          <table class="table">
-            <tbody>
-              <tr>
-                <td>Connection:</td>
-                <td data-replace="z2mConnected"></td>
-              </tr>
-              <tr>
-                <td>Client IP:</td>
-                <td data-replace="z2mClientIp"></td>
-              </tr>
-              <tr>
-                <td>Connected for:</td>
-                <td data-replace="connectedSocket"></td>
-              </tr>
-              <tr>
-                <td>Coordinator status:</td>
-                <td data-replace="zbStatus"></td>
-              </tr>
-              <tr>
-                <td>Coordinator auto-resets:</td>
-                <td data-replace="zbAutoResets"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-sm-12 col-md-6 mb-4">
-      <div class="card">
-        <div class="card-header">
-          <img src="icon_header_hardware.svg" class="title_icon_style" />
-          <span>Device information</span>
-        </div>
-        <div class="card-body">
-          <table class="table">
-            <tbody>
-              <tr>
-                <td>Zig-Star Model:</td>
-                <td data-replace="hwRev"></td>
-              </tr>
-              <tr>
-                <td>ESP32 Firmware Version:</td>
-                <td data-replace="VERSION"></td>
-              </tr>
-              <tr>
-                <td>ESP32 Hardware Version:</td>
-                <td data-replace="espModel"></td>
-              </tr>
-
-              <tr>
-                <td>ESP32 Frequency:</td>
-                <td>
-                  <span data-replace="espCores"></span> Cores @
-                  <span data-replace="espFreq"></span> MHz
-                </td>
-              </tr>
-              <tr>
-                <td>ESP32 Flash Size:</td>
-                <td>
-                  <span data-replace="espFlashSize"></span> Mb,
-                  <span data-replace="espFlashType"></span>
-                </td>
-              </tr>
-              <tr>
-                <td>ESP32 Memory (Free/Total):</td>
-                <td>
-                  <span data-replace="espHeapFree"></span> /
-                  <span data-replace="espHeapSize"></span> KiB
-                </td>
-              </tr>
-              <tr>
-                <td>CC2652P Hardware Version:</td>
-                <td data-replace="zigbeeHwRev"></td>
-              </tr>
-              <tr>
-                <td>CC2652P Firmware Version:</td>
-                <td data-replace="zigbeeFwRev"></td>
               </tr>
             </tbody>
           </table>

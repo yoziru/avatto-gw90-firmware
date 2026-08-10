@@ -11,18 +11,16 @@
 #include "web.h"
 #include "zb.h"
 
-extern struct ConfigSettingsStruct ConfigSettings;
-
 void checkFwHexTask(void *param)
 {
-    const char *tempFile = static_cast<const char *>(param);
+    const char *hexFilePath = static_cast<const char *>(param);
     Serial.println("\n[ZB_FW_TASK] Starting firmware validation task...");
 
     sendEvent("ZB_FW_info", sizeof("ZB_FW_info"), "Validating firmware...");
 
     esp_task_wdt_reset();
 
-    if (0 == checkFwHex(tempFile)) {
+    if (0 == checkFwHex(hexFilePath)) {
         sendEvent("ZB_FW_info", sizeof("ZB_FW_info"), "Update done!");
     } else {
         sendEvent("ZB_FW_err", sizeof("ZB_FW_err"), "Update failed!");
