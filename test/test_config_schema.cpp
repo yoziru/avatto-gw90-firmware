@@ -162,19 +162,15 @@ static void test_config_file_paths(void) {
 
 // Coordinator mode enum values from config.h
 static void test_coordinator_mode_values(void) {
-    const uint8_t COORDINATOR_MODE_LAN = 0;
-    const uint8_t COORDINATOR_MODE_WIFI = 1;
-    const uint8_t COORDINATOR_MODE_USB = 2;
+    const uint8_t COORDINATOR_MODE_NETWORK = 0;
+    const uint8_t COORDINATOR_MODE_PASSTHROUGH = 1;
 
     JsonDocument doc;
-    doc["coordMode"] = COORDINATOR_MODE_LAN;
+    doc["coordMode"] = COORDINATOR_MODE_NETWORK;
     TEST_ASSERT_EQUAL_INT(0, doc["coordMode"].as<int>());
 
-    doc["coordMode"] = COORDINATOR_MODE_WIFI;
+    doc["coordMode"] = COORDINATOR_MODE_PASSTHROUGH;
     TEST_ASSERT_EQUAL_INT(1, doc["coordMode"].as<int>());
-
-    doc["coordMode"] = COORDINATOR_MODE_USB;
-    TEST_ASSERT_EQUAL_INT(2, doc["coordMode"].as<int>());
 }
 
 // API page enum values from web.h

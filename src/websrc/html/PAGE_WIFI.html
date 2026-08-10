@@ -3,392 +3,412 @@
       <div class="card mb-4">
         <div class="card-header">
           <img src="icon_wifi_config.svg" class="title_icon_style" />
-          <span>Connection</span>
+          <span>Wi-Fi</span>
         </div>
         <div class="card-body">
-          <div class="row">
-            <div class="mb-2 col-sm-12 col-md-6">
-              <div class="gauge-wrapper">
-                <!-- Outer glow -->
-                <div class="outer-glow"></div>
-
-                <!-- Outer progress ring -->
-                <svg class="progress-ring" width="140" height="140">
-                  <defs>
-                    <linearGradient
-                      id="ringGradient"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stop-color="#ffcc80" />
-                      <stop offset="100%" stop-color="#ff9800" />
-                    </linearGradient>
-                  </defs>
-                  <!-- Background gray ring -->
-                  <circle
-                    class="progress-ring__bg"
-                    stroke-width="12"
-                    fill="transparent"
-                    r="60"
-                    cx="70"
-                    cy="70"
-                  />
-                  <!-- Dynamic progress ring -->
-                  <circle
-                    class="progress-ring__circle"
-                    stroke="url(#ringGradient)"
-                    stroke-width="16"
-                    fill="transparent"
-                    r="60"
-                    cx="70"
-                    cy="70"
-                  />
-                </svg>
-
-                <!-- Inner ball -->
-                <div class="inner-ball">
-                  <div class="wave-layer"></div>
-                  <div class="percent-num"></div>
+          <div class="wifi-section-title">Your Network</div>
+          <div class="wifi-list">
+            <div class="wifi-item wifi-current" id="wifiYourRow" style="display:none">
+              <div class="wifi-row-main">
+                <span class="wifi-signal" id="wifiYourSignal"></span>
+                <span class="wifi-name" id="wifiYourName"></span>
+                <span class="wifi-check" id="wifiYourCheck"></span>
+                <button
+                  type="button"
+                  class="wifi-info"
+                  id="wifiInfoBtn"
+                  title="IP settings"
+                  onclick="wifiToggleInfo()"
+                ></button>
+              </div>
+              <div class="wifi-ip-panel" id="wifiIpPanel" style="display:none">
+                <div class="wifi-ip-title">IP Settings</div>
+                <div class="wifi-ip-row">
+                  <div class="form-check form-switch">
+                    <input
+                      data-replace="dchp"
+                      class="form-check-input"
+                      id="dhcpWiFi"
+                      type="checkbox"
+                      role="switch"
+                      name="dhcpWiFi"
+                      onclick="WifiDhcpDsbl(this.checked)"
+                    />
+                    <label class="form-check-label" for="dhcpWiFi">DHCP</label>
+                  </div>
                 </div>
+
+                <!-- Live values shown when DHCP is on and connected -->
+                <div class="wifi-ip-current" id="wifiIpCurrent" style="display:none">
+                  <div class="wifi-ip-note" id="wifiIpAsleep" style="display:none">
+                    WiFi is asleep (Ethernet is the active uplink) — live IP
+                    appears here when WiFi is used.
+                  </div>
+                  <div id="wifiIpCurrentValues">
+                    <div class="wifi-ip-detail"><span>IP Address</span><strong id="wifiCurIp">—</strong></div>
+                    <div class="wifi-ip-detail"><span>Subnet Mask</span><strong id="wifiCurMask">—</strong></div>
+                    <div class="wifi-ip-detail"><span>Router</span><strong id="wifiCurGw">—</strong></div>
+                  </div>
+                </div>
+
+                <div class="wifi-ip-static" id="wifiIpStatic">
+                  <div class="wifi-ip-row">
+                    <label for="WifiIp">IP Address</label>
+                    <input
+                      data-replace="ip"
+                      class="form-control form-control-sm"
+                      id="WifiIp"
+                      type="text"
+                      name="ipAddress"
+                      placeholder="192.168.x.x"
+                    />
+                  </div>
+                  <div class="wifi-ip-row">
+                    <label for="WifiMask">Subnet Mask</label>
+                    <input
+                      data-replace="mask"
+                      class="form-control form-control-sm"
+                      id="WifiMask"
+                      type="text"
+                      name="ipMask"
+                      placeholder="255.255.255.0"
+                    />
+                  </div>
+                  <div class="wifi-ip-row">
+                    <label for="WifiGateway">Default Gateway</label>
+                    <input
+                      data-replace="gw"
+                      type="text"
+                      class="form-control form-control-sm"
+                      id="WifiGateway"
+                      name="ipGW"
+                      placeholder="192.168.x.x"
+                    />
+                  </div>
+                </div>
+                <div class="wifi-ip-actions">
+                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiSaveIp()">Save</button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="wifiForget()">Forget This Network</button>
+                </div>
+                <div class="wifi-ip-status" id="wifiIpStatus"></div>
               </div>
             </div>
-            <div class="mb-2 col-sm-12 col-md-6">
-              <div class="collapse" id="collapseWifiPass">
-                <div class="card card-body">
-                  <div class="mb-2">
-                    <label for="WIFISSID">SSID</label>
-                    <input
-                      data-replace="ssid"
-                      class="form-control"
-                      id="WIFISSID"
-                      type="text"
-                      name="WIFISSID"
-                      value=""
-                      minlength="2"
-                      required
-                    />
-                  </div>
-                  <div class="mb-2">
-                    <label for="WIFIpassword">Password</label>
-                    <input
-                      data-replace="passWifi"
-                      class="form-control"
-                      id="WIFIpassword"
-                      type="password"
-                      name="WIFIpassword"
-                      minlength="8"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
+            <div class="wifi-item wifi-placeholder" id="wifiYourEmpty">
+              <span class="wifi-name">No network configured</span>
             </div>
           </div>
-          <div class="save-row">
-            <button
-              type="button"
-              id="wifiScanBtn"
-              class="btn btn-outline-primary"
-              onclick="getWifiList()"
-            >
-              Scan Wi-Fi
+
+          <div class="wifi-section-title wifi-other-title">Other Networks</div>
+          <div class="wifi-list" id="wifiList">
+            <div class="wifi-item wifi-placeholder">
+              <span class="wifi-name">No networks yet.</span>
+            </div>
+          </div>
+
+          <div class="wifi-join-other">
+            <button type="button" class="btn btn-link btn-sm" onclick="wifiShowOther()">
+              Join Other Network…
             </button>
           </div>
-          <div class="row">
-            <div class="mb-2 col-sm-12">
-              <table class="table table-hover" style="word-break: break-word; overflow-wrap: break-word;">
-                <thead>
-                  <tr>
-                    <th scope="col" style="max-width: 150px;">SSID</th>
-                    <th scope="col" style="max-width: 100px; white-space: nowrap;">Security</th>
-                    <th scope="col" style="max-width: 80px; white-space: nowrap;">Channel</th>
-                    <th scope="col" style="max-width: 80px; white-space: nowrap;">RSSI</th>
-                  </tr>
-                </thead>
-                <tbody id="wifiTable">
-                  <tr id="wifiScanPreloader" class="visually-hidden">
-                    <td colspan="4" style="word-break: break-word; overflow-wrap: break-word;">
-                      <div class="progress">
-                        <div
-                          class="progress-bar progress-bar-striped progress-bar-animated"
-                          role="progressbar"
-                          aria-label="Animated striped example"
-                          aria-valuenow="100"
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                          style="width: 100%"
-                        ></div>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="text-muted">
-                    <td colspan="4" class="text-center" style="padding: 1rem;">No Wi-Fi networks yet. Tap "Scan Wi-Fi" to search.</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="wifi-other collapse" id="wifiOtherForm">
+            <div class="wifi-other-inner">
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                id="otherSsid"
+                placeholder="Network name"
+                autocomplete="off"
+              />
+              <input
+                type="password"
+                class="form-control form-control-sm"
+                id="otherPass"
+                placeholder="Password"
+                autocomplete="off"
+              />
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiJoinOther()">
+                Join
+              </button>
+              <span class="wifi-join-status" id="wifiOtherStatus"></span>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="card mb-4">
-        <div class="card-header">
-          <img src="icon_wifi_config.svg" class="title_icon_style" />
-          <span>IP Settings</span>
+          <!-- hidden fields: filled by the iOS-style list so the existing save flow keeps working -->
+          <input type="hidden" id="WIFISSID" name="WIFISSID" data-replace="ssid" />
+          <input type="hidden" id="WIFIpassword" name="WIFIpassword" data-replace="passWifi" />
         </div>
-        <div class="card-body">
-          <div class="mb-2 form-check form-switch">
-            <input
-              data-replace="dchp"
-              class="form-check-input"
-              id="dhcpWiFi"
-              type="checkbox"
-              role="switch"
-              name="dhcpWiFi"
-              onclick="WifiDhcpDsbl(this.checked)"
-            />
-            <label class="form-check-label" for="dhcpWiFi">DHCP</label>
-          </div>
-          <div class="row">
-            <div class="mb-2 col-sm-12 col-md-6">
-              <label for="WifiIp">IP</label>
-              <input
-                data-replace="ip"
-                class="form-control"
-                id="WifiIp"
-                type="text"
-                name="ipAddress"
-                placeholder="192.168.x.x"
-              />
-            </div>
-            <div class="mb-2 col-sm-12 col-md-6">
-              <label for="WifiMask">Subnet Mask</label>
-              <input
-                data-replace="mask"
-                class="form-control"
-                id="WifiMask"
-                type="text"
-                name="ipMask"
-                placeholder="255.255.255.0"
-              />
-            </div>
-            <div class="mb-2 col-sm-12 col-md-6">
-              <label for="WifiGateway">Default Gateway</label>
-              <input
-                data-replace="gw"
-                type="text"
-                class="form-control"
-                id="WifiGateway"
-                name="ipGW"
-                placeholder="192.168.x.x"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="save-row">
-        <button
-          type="submit"
-          class="btn btn-outline-primary"
-          name="save"
-        >
-          Save
-        </button>
       </div>
     </form>
 </div>
 <style>
-  :root {
-    --primary-color: #ffb131;
-    --percent: 0; /* Target percentage */
-    /* Circumference calculation: 2 * Math.PI * 90(radius) = 565.48 */
-    --circumference: 376.99;
+  /* ===== iOS-style network list ===== */
+  .wifi-section-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0.9rem 0.25rem 0.4rem;
   }
-
-  .gauge-wrapper {
-    position: relative;
-    /* width: 300px; */
-    height: 190px;
+  .wifi-section-title:first-child { margin-top: 0; }
+  .wifi-other-title {
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: space-between;
   }
 
-  /* Outer decorative glow - adds breathing effect */
-  .outer-glow {
-    position: absolute;
-    width: 160px;
-    height: 160px;
+  /* Self-contained scanning spinner (independent of Bootstrap) */
+  .wifi-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--text-light);
+    border-top-color: var(--accent);
     border-radius: 50%;
-    background: radial-gradient(
-      circle,
-      transparent 60%,
-      rgba(255, 177, 49, 0.15) 100%
-    );
-    animation: pulse 3s infinite ease-in-out;
+    animation: wifi-spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes wifi-spin { to { transform: rotate(360deg); } }
+  .wifi-scanning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
   }
 
-  /* SVG container rotation - makes gradient flow */
-  .progress-ring {
-    transform: rotate(-90deg);
-    filter: drop-shadow(0 0 8px rgba(255, 177, 49, 0.3));
-  }
-
-  /* Background color ring */
-  .progress-ring__bg {
-    stroke: #fff1dc;
-  }
-
-  /* Progress ring animation */
-  .progress-ring__circle {
-    stroke-dasharray: var(--circumference);
-    stroke-dashoffset: var(--circumference); /* Initially empty */
-    stroke-linecap: round;
-    transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1);
-    /* Flow light effect animation */
-    animation: drawIn 2s forwards ease-out;
-  }
-
-  /* Inner ball container */
-  .inner-ball {
-    position: absolute;
-    width: 96px;
-    height: 96px;
-    background-color: #fff;
-    border-radius: 50%;
+  .wifi-list {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow:
-      inset 0 0 20px rgba(0, 0, 0, 0.05),
-      0 10px 20px rgba(255, 152, 0, 0.2);
-    z-index: 5;
+    background: var(--bg-card);
   }
 
-  /* Wave layer */
-  .wave-layer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: calc(var(--percent) * 1%);
-    background: linear-gradient(to top, #ff9800, #ffb131);
+  .wifi-item {
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.15s ease;
+  }
+  .wifi-item:last-child { border-bottom: none; }
+  .wifi-item:hover { background: var(--bg-muted); }
+  .wifi-item.wifi-current { background: var(--accent-light); }
+  .wifi-item.wifi-placeholder { cursor: default; }
+  .wifi-item.wifi-placeholder:hover { background: var(--bg-card); }
+  /* Expanded rows and their inner panels are not clickable rows */
+  .wifi-item.open,
+  .wifi-item.open:hover { cursor: default; background: inherit; }
+  .wifi-item.open .wifi-connect,
+  .wifi-ip-panel { cursor: default; }
+  .wifi-ip-panel input[type="text"],
+  .wifi-ip-panel input[type="password"] { cursor: text; user-select: text; }
+  .wifi-ip-panel label,
+  .wifi-ip-panel button { cursor: pointer; }
+
+  .wifi-row-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
   }
 
-  /* Wave core animation (principle: rotating irregular mask) */
-  .wave-layer::before,
-  .wave-layer::after {
-    content: "";
-    position: absolute;
-    width: 180px;
-    height: 180px;
-    left: 50%;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 43%; /* Key: irregular circle */
+  /* 3-bar signal strength icon (iOS style) */
+  .wifi-signal {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    width: 20px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .wifi-signal .bar {
+    width: 4px;
+    border-radius: 1px;
+    background: var(--text-light);
+  }
+  .wifi-signal .bar.b1 { height: 6px; }
+  .wifi-signal .bar.b2 { height: 10px; }
+  .wifi-signal .bar.b3 { height: 14px; }
+  .wifi-signal .bar.on { background: var(--accent); }
+
+  .wifi-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: var(--text-main);
   }
 
-  .wave-layer::before {
-    bottom: 90%;
-    transform: translate(-50%, 0) rotate(0deg);
-    animation: rotateWave 8s infinite linear;
+  .wifi-check {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success);
   }
 
-  .wave-layer::after {
-    bottom: 85%;
-    background-color: rgba(255, 255, 255, 0.4);
-    transform: translate(-50%, 0) rotate(0deg);
-    animation: rotateWave 12s infinite linear;
+  /* Fixed-size (i) button — water.css adds 30px padding + 6px margins to all
+     buttons, so force padding:0/margin:0 + explicit flex-basis for a circle. */
+  .wifi-info {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-muted);
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.8rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    vertical-align: middle;
+  }
+  .wifi-info::after { content: "i"; }
+  .wifi-info:hover { background: var(--border-color); }
+
+  .wifi-lock,
+  .wifi-open {
+    flex-shrink: 0;
+    display: inline-flex;
+    color: var(--text-muted);
+  }
+  .wifi-lock svg,
+  .wifi-open svg {
+    width: 14px;
+    height: 14px;
   }
 
-  .percent-num {
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #fff;
-    font-size: 20px;
-    font-weight: bold;
-    font-family: "Arial";
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 10;
+  .wifi-chev {
+    flex-shrink: 0;
+    color: var(--text-light);
+    font-size: 1.1rem;
+    line-height: 1;
   }
 
-  /* --- Animation definitions --- */
+  /* Expanded join row (slides in below the tapped network) */
+  .wifi-connect {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem 0.85rem 2.6rem;
+    flex-wrap: wrap;
+  }
+  .wifi-item.open .wifi-connect { display: flex; }
+  .wifi-connect input {
+    flex: 1;
+    min-width: 0;
+  }
+  .wifi-connect .btn { flex-shrink: 0; }
+  .wifi-join-status {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+  }
+  .wifi-join-status.ok { color: var(--success); }
+  .wifi-join-status.err { color: var(--danger); }
 
-  /* 1. Outer ring draw-in animation */
-  @keyframes drawIn {
-    to {
-      /* Formula: circumference - (percentage * circumference / 100) */
-      stroke-dashoffset: calc(
-        var(--circumference) - (var(--percent) * var(--circumference) / 100)
-      );
-    }
+  /* Inline IP settings panel (revealed by the info button) */
+  .wifi-ip-panel {
+    border-top: 1px solid var(--border-light);
+    padding: 0.75rem 1rem 0.9rem;
+    background: var(--bg-card);
+  }
+  .wifi-ip-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+  }
+  .wifi-ip-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .wifi-ip-row label {
+    width: 110px;
+    flex-shrink: 0;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+  .wifi-ip-row input[type="text"] { flex: 1; }
+  .wifi-ip-current {
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .wifi-ip-detail {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 0.15rem 0;
+  }
+  .wifi-ip-detail span { color: var(--text-muted); }
+  .wifi-ip-detail strong { font-weight: 600; color: var(--text-main); }
+  .wifi-ip-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    padding: 0.1rem 0;
+  }
+  .wifi-ip-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+  .wifi-ip-status {
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+  }
+  .wifi-ip-status.ok { color: var(--success); }
+  .wifi-ip-status.err { color: var(--danger); }
+
+  .wifi-join-other {
+    margin-top: 0.75rem;
+    text-align: left;
+  }
+  .wifi-join-other .btn { padding-left: 0; }
+
+  .wifi-other-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-muted);
+    border-radius: var(--radius-lg);
+  }
+  .wifi-other-inner input {
+    flex: 1 1 140px;
+    min-width: 120px;
   }
 
-  /* 2. Wave rotation animation */
-  @keyframes rotateWave {
-    from {
-      transform: translate(-50%, 0) rotate(0deg);
-    }
-    to {
-      transform: translate(-50%, 0) rotate(360deg);
-    }
-  }
-
-  /* 3. Overall breathing pulse animation */
-  @keyframes pulse {
-    0%,
-    100% {
-      transform: scale(1);
-      opacity: 0.5;
-    }
-    50% {
-      transform: scale(1.05);
-      opacity: 0.8;
-    }
-  }
-  /* Progress ring transition effect */
-  .progress-ring__circle {
-    /* ... previous code ... */
-    transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Inner wave height transition effect */
-  .wave-layer {
-    /* ... previous code ... */
-    transition: height 2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* WiFi table mobile device adaptation - supports line wrapping */
-  #wifiTable td {
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    max-width: 150px;
-  }
-
-  /* Further optimization for mobile screens */
   @media (max-width: 768px) {
-    #wifiTable td {
-      max-width: 80px;
-      font-size: 0.875rem;
-      padding: 0.35rem !important;
-    }
-    
-    #wifiTable th {
-      max-width: 80px;
-      font-size: 0.75rem;
-      padding: 0.35rem !important;
-    }
+    .wifi-row-main { padding: 0.65rem 0.85rem; }
+    .wifi-connect { padding-left: 2.3rem; }
+    .wifi-name { font-size: 0.95rem; }
   }
 
-  [data-theme="dark"] .progress-ring__bg { stroke: #3a3a5a; }
-  [data-theme="dark"] .inner-ball { background-color: #2a2a4a; box-shadow: 0 10px 20px rgba(255,152,0,0.1); }
-  [data-theme="dark"] .percent-num { color: var(--text-main); }
-  [data-theme="dark"] .wave-layer::before { background-color: rgba(42,42,74,0.8); }
-  [data-theme="dark"] .wave-layer::after { background-color: rgba(42,42,74,0.4); }
+  [data-theme="dark"] .wifi-list { background: var(--bg-card); border-color: var(--border-color); }
+  [data-theme="dark"] .wifi-item.wifi-current { background: rgba(245, 166, 35, 0.12); }
+  [data-theme="dark"] .wifi-other-inner,
+  [data-theme="dark"] .wifi-info { background: #2a2a4a; }
+  [data-theme="dark"] .wifi-ip-panel { background: var(--bg-card); }
+  [data-theme="dark"] .wifi-ip-current { border-color: var(--border-color); }
+  [data-theme="dark"] .wifi-signal .bar.on { background: var(--accent); }
 </style>
-

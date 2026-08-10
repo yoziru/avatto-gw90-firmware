@@ -7,24 +7,24 @@ description = "Install project dependencies (uv sync + build group)"
 run = "uv sync --group build"
 
 [tasks.build]
-description = "Build prod-solo firmware"
+description = "Build prod firmware"
 depends = ["setup"]
-run = "uv run pio run -e prod-solo -t clean && uv run pio run -e prod-solo"
+run = "uv run pio run -e prod -t clean && uv run pio run -e prod"
 
 [tasks."build:debug"]
-description = "Build debug-solo firmware"
+description = "Build debug firmware"
 depends = ["setup"]
-run = "uv run pio run -e debug-solo -t clean && uv run pio run -e debug-solo"
+run = "uv run pio run -e debug -t clean && uv run pio run -e debug"
 
 [tasks.flash]
-description = "Flash prod-solo firmware (set UPLOAD_PORT env var)"
+description = "Flash prod firmware (set UPLOAD_PORT env var)"
 depends = ["setup", "build"]
-run = "uv run pio run -e prod-solo -t upload --upload-port ${UPLOAD_PORT:-/dev/cu.usbserial-XXXX}"
+run = "uv run pio run -e prod -t upload --upload-port ${UPLOAD_PORT:-/dev/cu.usbserial-XXXX}"
 
 [tasks."flash:debug"]
-description = "Flash debug-solo firmware (set UPLOAD_PORT env var)"
+description = "Flash debug firmware (set UPLOAD_PORT env var)"
 depends = ["setup", "build:debug"]
-run = "uv run pio run -e debug-solo -t upload --upload-port ${UPLOAD_PORT:-/dev/cu.usbserial-XXXX}"
+run = "uv run pio run -e debug -t upload --upload-port ${UPLOAD_PORT:-/dev/cu.usbserial-XXXX}"
 
 [tasks.monitor]
 description = "Open serial monitor (set MONITOR_PORT env var)"
@@ -49,12 +49,12 @@ run = "uv run pio test -e native"
 [tasks.lint]
 description = "Static analysis with cppcheck (fails on high-severity defects)"
 depends = ["setup"]
-run = "uv run pio check -e prod-solo --fail-on-defect high"
+run = "uv run pio check -e prod --fail-on-defect high --skip-packages"
 
 [tasks."lint:full"]
 description = "Static analysis with cppcheck, medium+ gate (skips platform packages)"
 depends = ["setup"]
-run = "uv run pio check -e prod-solo --fail-on-defect medium --skip-packages"
+run = "uv run pio check -e prod --fail-on-defect medium --skip-packages"
 
 [tasks."flash:ota"]
 description = "Flash over network OTA (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS for web auth)"

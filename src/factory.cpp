@@ -37,7 +37,7 @@ void factory_initLan()
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, HIGH);
   // No delay — EMAC clock starts inside ETH.begin()
 
-  if (ETH.begin(ETH_ADDR_1, ETH_POWER_PIN_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_TYPE_1, ETH_CLK_MODE_1, ETH_POWER_PIN_ALTERNATIVE_1))
+  if (ETH.begin(ETH_TYPE_1, ETH_ADDR_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_POWER_PIN_ALTERNATIVE_1, ETH_CLK_MODE_1))
   {
     Serial.println(F("[LAN] ETH.begin() SUCCESS"));
     Serial.println(F("[LAN] Using DHCP"));
@@ -489,13 +489,14 @@ void factory_test(void)
   if (foundTestAP)
   {
     // Pass RSSI value as parameter to task (via pointer cast)
-    xTaskCreate(
+    xTaskCreatePinnedToCore(
         testTaskFunction,
         "TestTask",
         4096,
         (void *)(intptr_t)testAP_RSSI,  // Pass RSSI value
         5,
-        &xTestTaskHandle
+        &xTestTaskHandle,
+        0
     );
     Serial.println("[FACTORY] Test task created successfully");
     Serial.println("[FACTORY] Entering factory test mode...");

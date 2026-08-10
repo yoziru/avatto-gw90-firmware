@@ -26,7 +26,6 @@ extern struct WgSettingsStruct WgSettings;
 
 WebServer serverWeb(80);
 
-bool wifiWebSetupInProgress = false;
 bool opened = false;
 File fwFile;
 
@@ -250,12 +249,13 @@ void initWebServer()
                 DEBUG_PRINTLN("Total file size: " + String(upload.totalSize));
 
                 Serial.println("[ZB_FW] Validating and flashing firmware...");
-                xTaskCreate(checkFwHexTask,
+                xTaskCreatePinnedToCore(checkFwHexTask,
                             "CheckFWHex",
                             8192,
                             (void *)tempFile,
                             3,
-                            NULL);
+                            NULL,
+                            0);
             }
         });
 

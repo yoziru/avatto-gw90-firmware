@@ -2,27 +2,27 @@
 
 ## Project Overview
 
-ESP32-SOLO1 firmware for the AVATTO GW90-TI Zigbee Gateway. Bridges a TI CC2652P Zigbee coordinator to the network (Ethernet/WiFi/USB) for use with Home Assistant (ZHA/Zigbee2MQTT).
+ESP32 firmware for the AVATTO GW90-TI Zigbee Gateway. Bridges a TI CC2652P Zigbee coordinator to the network (Ethernet/WiFi/USB) for use with Home Assistant (ZHA/Zigbee2MQTT).
+
+> **Hardware correction:** The AVATTO GW90-TI is built on a **dual-core ESP32-D0WDR2-V3** (2 cores, 2 MB PSRAM), verified via the chip's eFuse (`espModel`/`espCores` in the web status). Older docs said "ESP32-SOLO1 single-core" — that was wrong and drove an entire platform-pinning saga based on a single-core chip that isn't present.
 
 ## Build System
 
 | Tool | Details |
 |------|---------|
-| **Platform** | `tasmota/platform-espressif32 @ 2023.07.00` (Solo1) / `espressif32 @ 6.4.0` (dev board) |
+| **Platform** | `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core) |
 | **Framework** | Arduino for ESP32 |
-| **Default env** | `prod-solo` |
+| **Default env** | `prod` |
 | **Flash size** | 16MB |
 | **Partitions** | Dual OTA (2×6MB app partitions + 4MB spiffs) |
 
-### CRITICAL: Platform Version Constraint
-
-The ESP32-SOLO1 board requires `tasmota/platform-espressif32 @ 2023.07.00`. Versions after `2023.08.00` break HTTPS (`WiFiClientSecure`). The `espressif32 @ 6.4.0` platform does not support the `esp32-solo1` board. This is documented with extensive trial logs in `platformio.ini:12-22`.
+> **Why this platform:** it ships the vanilla espressif Arduino Core 3.3.8, so `NetworkClientSecure`/HTTPS and `HTTPClient` work out of the box, and the underlying IDF 5.5.4 provides the `esp_netif` APIs the Tinkerforge WireGuard fork needs. The tasmota fork strips TLS (`CONFIG_MBEDTLS_TLS_DISABLED=y`), so it cannot do HTTPS firmware downloads.
 
 ## Build & Flash Commands
 
 ```bash
-mise run build           # Build prod-solo (default)
-mise run build:debug     # Build debug-solo
+mise run build           # Build prod (default)
+mise run build:debug     # Build debug
 mise run flash           # Serial flash (set UPLOAD_PORT env var)
 mise run flash:debug     # Debug flash (set UPLOAD_PORT env var)
 mise run flash:ota       # OTA flash over network (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS)
@@ -33,6 +33,8 @@ mise run monitor         # Serial monitor (set MONITOR_PORT env var)
 mise run clean           # Clean artifacts
 mise run setup           # uv sync --group build
 ```
+
+> **Note:** `pio check` needs `--skip-packages` — cppcheck 2.21 cannot parse the GCC 14.2 toolchain's `type_traits` header (a tool limitation, not a project defect). Both `mise run lint` and the CI lint job already pass `--skip-packages`.
 
 Set `UPLOAD_PORT=/dev/cu.usbserial-XXXX` before flashing.
 
@@ -110,11 +112,12 @@ tools/
 
 | Mode | Value | Behavior |
 |------|-------|----------|
-| LAN | 0 | Zigbee over Ethernet TCP socket (default port 6638) |
-| WiFi | 1 | Zigbee over WiFi TCP socket |
-| USB | 2 | GPIO33 HIGH, CC2652P direct to USB host |
+| Network | 0 | Zigbee over TCP socket (port 6638). Ethernet primary → automatic WiFi STA fallback → AP last resort |
+| Serial | 1 | GPIO33 HIGH, CC2652P direct to USB host (serial passthrough) |
 
-## Pin Mapping (ESP32-SOLO1)
+Network mode is the default. If Ethernet drops, the overseer automatically brings up the configured WiFi STA as a secondary uplink; when Ethernet returns it switches back and turns WiFi off (less RF noise). If both fail, a soft AP starts for config recovery. Serial mode's "Keep Network & Web" checkbox keeps one channel alive (WiFi → Ethernet → AP).
+
+## Pin Mapping (ESP32-D0WDR2-V3)
 
 | Function | GPIO | Notes |
 |----------|------|-------|
@@ -122,8 +125,8 @@ tools/
 | CC2652P_FLASH | 32 | BSL mode entry |
 | CC2652P_RXD | 36 | Serial2 RX |
 | CC2652P_TXD | 4 | Serial2 TX |
-| BTN | 35 | Short=USB toggle, Long2s=LED, Long4s=BSL |
-| MODE_SWITCH | 33 | HIGH=USB passthrough |
+| BTN | 35 | Short=Serial toggle, Long2s=LED, Long4s=BSL |
+| MODE_SWITCH | 33 | HIGH=serial passthrough |
 | LED_USB | 12 | Red |
 | LED_PWR | 14 | Blue |
 | ETH_MDC/MDIO/CLK | 23/18/17 | LAN8720 RMII |
@@ -151,7 +154,7 @@ tools/
 ## Release Flow
 
 1. **Manual builds**: `mise run build` auto-increments the patch version in `tools/version`; output in `bin/`: OTA binary + full flash binary.
-2. **Automated releases**: trigger the `Release` workflow on GitHub (Actions → Release → Run workflow) with `patch`/`minor`/`major` (or explicit `X.Y.Z`). It bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds `prod-solo` with the version pinned, and creates a GitHub release with the firmware attached. Local script: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
+2. **Automated releases**: trigger the `Release` workflow on GitHub (Actions → Release → Run workflow) with `patch`/`minor`/`major` (or explicit `X.Y.Z`). It bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds `prod` with the version pinned, and creates a GitHub release with the firmware attached. Local script: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
 3. Update `manifest.json` for ESP Web Tools — done automatically by the release workflow.
 
 ## Web Frontend
@@ -171,8 +174,8 @@ Keep `CHANGELOG.md` up to date with every meaningful change. Follow the existing
 
 ## Known Issues
 
-- **HTTPS on Solo1**: Only works with `tasmota/platform-espressif32 @ 2023.07.00`. Newer versions break `WiFiClientSecure`.
 - **LAN8720 PHY**: GPIO5 must be toggled LOW→HIGH before `ETH.begin()` or it fails after `ESP.restart()`.
-- **No tests**: No test framework exists in the project.
+- **cppcheck vs GCC 14.2**: `pio check` without `--skip-packages` fails parsing the toolchain's `type_traits` (cppcheck 2.21 limitation). Always use `--skip-packages`.
+- **Native tests**: `mise run test` runs the Unity suite (native env). Only pure logic is testable (no hardware deps).
 - **CPU temp**: Requires WiFi to be active; `getCPUtemp()` temporarily enables WiFi to read.
 - **Version auto-increment**: Patch version bumps every build. Create `tools/.version_no_increment` to skip.

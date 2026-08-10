@@ -72,10 +72,10 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Build prod-solo firmware
+      - name: Build prod firmware
         run: |
           touch tools/.version_no_increment
-          pio run -e prod-solo
+          pio run -e prod
 
       - name: Create GitHub release
         env:

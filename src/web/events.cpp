@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <WebServer.h>
+#include <NetworkClient.h>
 #include "web.h"
 
-WiFiClient eventsClient;
+NetworkClient eventsClient;
 
 void handleEvents()
 {

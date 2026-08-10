@@ -35,10 +35,10 @@
 
 ## 1. Project Overview
 
-This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked and customized from the open-source project `mercenaruss/uzg-firmware`. The core function bridges a **CC2652P Zigbee coordinator** to the network (LAN/WiFi/USB) via the ESP32, making it usable by Home Assistant (ZHA/Zigbee2MQTT) and other smart home platforms.
+This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked and customized from the open-source project `mercenaruss/uzg-firmware`. The core function bridges a **CC2652P Zigbee coordinator** to the network (Ethernet/WiFi) via the ESP32, making it usable by Home Assistant (ZHA/Zigbee2MQTT) and other smart home platforms.
 
 **Main Features:**
-- Three coordinator operating modes: LAN (Ethernet), WiFi, USB direct
+- Two coordinator operating modes: Network (Ethernet + WiFi STA fallback + AP recovery), Serial (USB passthrough)
 - Embedded web management interface (network, serial, security, MQTT configuration, etc.)
 - MQTT integration with Home Assistant auto-discovery
 - WireGuard VPN tunnel support
@@ -54,7 +54,7 @@ This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked a
 
 | Component | Model | Description |
 |-----------|-------|-------------|
-| Main MCU | **ESP32-SOLO1** | Single-core Xtensa LX6, 160MHz |
+| Main MCU | **ESP32-D0WDR2-V3** | Dual-core Xtensa LX6, 240MHz, 2MB embedded PSRAM |
 | Zigbee Coordinator | **CC2652P** | TI, supports Zigbee 3.0 |
 | Ethernet PHY | **LAN8720** | Connected via RMII interface |
 | Flash | **16MB** | External SPI Flash |
@@ -68,8 +68,8 @@ This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked a
 | CC2652P_RXD | GPIO 36 | Zigbee serial RX | Serial2 receive |
 | CC2652P_TXD | GPIO 4 | Zigbee serial TX | Serial2 transmit |
 | BTN | GPIO 35 | User button | Input, falling-edge interrupt |
-| MODE_SWITCH | GPIO 33 | USB/serial mode switch | Output, HIGH=USB mode |
-| LED_USB | GPIO 12 | Red LED | USB mode indicator |
+| MODE_SWITCH | GPIO 33 | Serial mode switch | Output, HIGH=serial passthrough |
+| LED_USB | GPIO 12 | Red LED | Serial mode indicator |
 | LED_PWR | GPIO 14 | Blue LED | Power indicator |
 | ETH_MDC | GPIO 23 | LAN8720 MDC | Ethernet management |
 | ETH_MDIO | GPIO 18 | LAN8720 MDIO | Ethernet management |
@@ -89,20 +89,15 @@ This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked a
 
 - **IDE**: PlatformIO (VSCode plugin)
 - **Framework**: Arduino for ESP32
-- **ESP32 Platform**:
-  - **Production (Solo)**: `tasmota/platform-espressif32 @ 2023.07.00` — verified stable on ESP32-SOLO1
-  - **Standard ESP32 dev board**: `espressif32 @ 6.4.0`
-
-> ⚠️ Platform version selection is critical! Detailed version test history is documented in `platformio.ini`. Do not upgrade the platform version casually.
+- **ESP32 Platform**: `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core)
 
 ### 3.2 Environment Variables
 
 | Environment | Description |
 |-------------|-------------|
-| `prod-solo` | **Default production build**, ESP32-SOLO1, 160MHz, 16MB Flash |
-| `debug-solo` | Solo debug build, enables `-DDEBUG` macro |
-| `prod` | Standard ESP32 dev board production build |
-| `debug` | Standard ESP32 debug build |
+| `prod` | **Default production build**, 240MHz, 16MB Flash |
+| `debug` | Debug build, enables `-DDEBUG` macro |
+| `factory-test` | Factory test build, enables `-DBUILD_FACTORY_TEST` |
 
 ### 3.3 Build Parameters
 
@@ -468,10 +463,10 @@ If any configuration fails to load, it tries to create a default config; repeate
 pio run -e prod-solo
 
 # Debug build
-pio run -e debug-solo
+pio run -e debug
 
 # Upload firmware
-pio run -e prod-solo -t upload
+pio run -e prod -t upload
 
 # Serial monitor
 pio device monitor

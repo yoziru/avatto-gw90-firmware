@@ -1,5 +1,5 @@
-#ifndef NETWORK_H_
-#define NETWORK_H_
+#ifndef NET_H_
+#define NET_H_
 
 #include <WiFi.h>
 #include <DNSServer.h>
@@ -19,9 +19,10 @@ void startSocketServer();
 void wgBegin();
 void startServers(bool usb = false);
 void handleTmrNetworkOverseer();
-void NetworkEvent(WiFiEvent_t event);
+void NetworkEvent(arduino_event_id_t event);
 void startAP(const bool start);
 void connectWifi();
+void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw);
 void mDNS_start();
 
 #endif

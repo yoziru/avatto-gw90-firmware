@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
-#include <WiFiClientSecure.h>
+#include <NetworkClientSecure.h>
 #include <LittleFS.h>
 #include <Update.h>
 #include <WiFi.h>
@@ -66,7 +66,7 @@ void getEspUpdate(String esp_fw_url)
 {
     DEBUG_PRINTLN("getEspUpdate: " + esp_fw_url);
     HTTPClient clientWeb;
-    WiFiClientSecure client;
+    NetworkClientSecure client;
     client.setInsecure();
     clientWeb.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     clientWeb.begin(client, esp_fw_url);

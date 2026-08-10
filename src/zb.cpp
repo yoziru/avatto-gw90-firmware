@@ -201,9 +201,9 @@ void zbCheck()
 // corrupt live ZNP frames and break connectivity — do not reintroduce that.
 void zbHealthCheck()
 {
-    if (ConfigSettings.coordinator_mode == CoordinatorMode::USB)
+    if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH)
     {
-        return; // USB passthrough: nothing to monitor
+        return; // Serial passthrough: nothing to monitor
     }
 
     const unsigned long now = millis();
@@ -227,7 +227,7 @@ void zbHealthCheck()
     {
         printLogMsg("[ZBH] Coordinator hung, resetting...");
         missCount = 0;
-        zbAutoResets++;
+        zbAutoResets = static_cast<uint32_t>(zbAutoResets + 1);
         zigbeeRestart();
     }
 }

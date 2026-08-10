@@ -4,10 +4,11 @@
 #include <Arduino.h>
 #include <WebServer.h>
 #include <FS.h>
+#include <NetworkClient.h>
 #include "encoding.h"
 
 extern WebServer serverWeb;
-extern WiFiClient eventsClient;
+extern NetworkClient eventsClient;
 
 extern const char *contTypeTextHtml;
 extern const char *contTypeTextJs;
@@ -21,7 +22,6 @@ extern const char *tempFile;
 
 extern int totalLength;
 extern int currentLength;
-extern bool wifiWebSetupInProgress;
 
 enum API_PAGE_t : uint8_t
 {
@@ -65,6 +65,7 @@ void handleAbout();
 
 void handleSaveParams();
 void handleSavefile();
+void wifiCommitPending();
 
 void checkFwHexTask(void *param);
 void progressFunc(unsigned int progress, unsigned int total);

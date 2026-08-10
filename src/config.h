@@ -36,19 +36,18 @@
 
 constexpr int16_t overseerInterval = 5 * 1000; // check lan or wifi connection every 5sec
 constexpr uint8_t overseerMaxRetry = 4;       // 5x4 = 20sec for PHY stability
+constexpr uint8_t wifiFallbackMaxRetry = 6;   // 5x6 = 30sec more before last-resort AP
 constexpr uint8_t LED_USB = 12;                // RED
 constexpr uint8_t LED_PWR = 14;                // BLUE
 constexpr uint8_t MAX_SOCKET_CLIENTS = 5;
 
 enum class CoordinatorMode : uint8_t
 {
-  LAN = 0,               // LAN mode
-  WIFI = 1,              // WiFi mode
-  USB = 2                // USB mode
+  NETWORK = 0,           // Ethernet primary, WiFi STA fallback, AP last resort
+  PASSTHROUGH = 1        // Serial passthrough to USB host
 };
 
 extern const char *coordMode;// coordMode node name
-extern const char *prevCoordMode;// prevCoordMode node name
 extern const char *configFileSystem;
 extern const char *configFileWifi;
 extern const char *configFileEther;
@@ -98,11 +97,12 @@ struct ConfigSettingsStruct
     bool disableLedPwr;                // Disable LED PWR
     // bool disablePingCtrl;
     bool disableLeds;                  // Disable LEDs
-    CoordinatorMode coordinator_mode = CoordinatorMode::LAN;          // Coordinator mode
-    CoordinatorMode prevCoordinator_mode = CoordinatorMode::LAN;      // Coordinator previous mode
+    CoordinatorMode coordinator_mode = CoordinatorMode::NETWORK;         // Coordinator mode
     bool keepWeb;                      // Keep web server
     bool apStarted;                    // AP started
-    bool wifiWebSetupInProgress;       // WiFi web setup in progress
+    bool wifiFallbackActive;           // WiFi STA fallback in progress (NETWORK mode)
+    bool wifiFallbackHadConnection;    // WiFi STA reached a connected state this fallback
+    bool serversStarted;               // Web + socket servers already started once
     bool fwEnabled;                    // Firmware update enabled
     IPAddress fwIp;                    // Firmware update IP
 

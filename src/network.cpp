@@ -4,14 +4,13 @@
 #include <FS.h>
 #include <LittleFS.h>
 #include <Ticker.h>
-#include <esp_wifi.h>
 #include <ETH.h>
 #include <ESPmDNS.h>
 #include <DNSServer.h>
 #include <WireGuard-ESP32.h>
 
 #include "config.h"
-#include "network.h"
+#include "net.h"
 #include "web.h"
 #include "log.h"
 #include "etc.h"
@@ -51,7 +50,7 @@ void initLan()
   digitalWrite(ETH_POWER_PIN_ALTERNATIVE_1, HIGH);
   // No delay here — ETH.begin() starts the EMAC clock immediately
 
-  if (ETH.begin(ETH_ADDR_1, ETH_POWER_PIN_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_TYPE_1, ETH_CLK_MODE_1, ETH_POWER_PIN_ALTERNATIVE_1))
+  if (ETH.begin(ETH_TYPE_1, ETH_ADDR_1, ETH_MDC_PIN_1, ETH_MDIO_PIN_1, ETH_POWER_PIN_ALTERNATIVE_1, ETH_CLK_MODE_1))
   {
     Serial.println(F("[LAN] ETH.begin() SUCCESS"));
     if (!ConfigSettings.dhcp)
@@ -82,9 +81,14 @@ void wgBegin()
 {
   if (!wg.is_initialized())
   {
-    //printLogMsg(String("Initializing WireGuard interface..."));
+    // WireGuard-ESP32-Arduino (Tinkerforge fork) requires an explicit subnet,
+    // local port and gateway. Match the legacy behavior: /32 host subnet,
+    // port 51820, no gateway.
     if (!wg.begin(
             WgSettings.localIP,
+            IPAddress(255, 255, 255, 255),
+            51820,
+            IPAddress(0, 0, 0, 0),
             WgSettings.localPrivKey,
             WgSettings.endAddr,
             WgSettings.endPubKey,
@@ -103,6 +107,11 @@ void wgBegin()
 
 void startServers(bool usb)
 {
+  if (ConfigSettings.serversStarted)
+  {
+    return;
+  }
+  ConfigSettings.serversStarted = true;
   Serial.print(F("[SRV] startServers() called, usb=")); Serial.println(usb);
   Serial.print(F("[SRV] connectedEther=")); Serial.println(ConfigSettings.connectedEther);
   Serial.print(F("[SRV] WiFi.isConnected=")); Serial.println(WiFi.isConnected());
@@ -124,34 +133,20 @@ void handleTmrNetworkOverseer()
 {
   switch (ConfigSettings.coordinator_mode)
   {
-  case CoordinatorMode::WIFI:
-    DEBUG_PRINT(F("WiFi.status = "));
-    DEBUG_PRINTLN(WiFi.status());
-    if (WiFi.isConnected())
-    {
-      DEBUG_PRINTLN(F("WIFI CONNECTED"));
-      startServers();
-      tmrNetworkOverseer.stop();
-    }
-    else
-    {
-      if (tmrNetworkOverseer.counter() > overseerMaxRetry)
-      {
-        DEBUG_PRINTLN(F("WIFI counter overflow"));
-        startAP(true);
-        connectWifi();
-      }
-    }
-    break;
-  case CoordinatorMode::LAN:
-    Serial.print(F("[OVERSEER] LAN check: connectedEther="));
-    Serial.print(ConfigSettings.connectedEther);
-    Serial.print(F(" counter="));
-    Serial.println(tmrNetworkOverseer.counter());
+  case CoordinatorMode::NETWORK:
     if (ConfigSettings.connectedEther)
     {
-      DEBUG_PRINTLN(F("LAN CONNECTED"));
-      Serial.println(F("[OVERSEER] LAN connected! Starting servers..."));
+      // Ethernet is the preferred uplink. If we failed over to WiFi STA,
+      // tear it down again (less RF noise, ETH is back).
+      if (ConfigSettings.wifiFallbackActive)
+      {
+        ConfigSettings.wifiFallbackActive = false;
+        ConfigSettings.wifiFallbackHadConnection = false;
+        Serial.println(F("[OVERSEER] ETH recovered, stopping WiFi fallback"));
+        startAP(false);   // tear down AP + DNS if it was the last resort
+        WiFi.disconnect();
+        WiFi.mode(WIFI_OFF);
+      }
       startServers();
       tmrNetworkOverseer.stop();
     }
@@ -159,17 +154,48 @@ void handleTmrNetworkOverseer()
     {
       if (tmrNetworkOverseer.counter() > overseerMaxRetry)
       {
-        DEBUG_PRINTLN(F("LAN counter overflow"));
-        Serial.print(F("[OVERSEER] LAN timeout! counter="));
-        Serial.print(tmrNetworkOverseer.counter());
-        Serial.print(F(" > maxRetry="));
-        Serial.println(overseerMaxRetry);
-        Serial.println(F("[OVERSEER] Starting AP as fallback..."));
-        startAP(true);
+        if (!ConfigSettings.wifiFallbackActive)
+        {
+          if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
+          {
+            // Ethernet down: try WiFi STA as a secondary uplink before AP.
+            ConfigSettings.wifiFallbackActive = true;
+            Serial.println(F("[OVERSEER] ETH down, trying WiFi STA fallback"));
+            connectWifi();
+            // keep the overseer running so we notice when ETH comes back
+          }
+          else
+          {
+            // No WiFi credentials configured: no point attempting STA, go
+            // straight to the last-resort AP config recovery.
+            ConfigSettings.wifiFallbackActive = true;
+            Serial.println(F("[OVERSEER] ETH down, no WiFi creds — starting AP"));
+            startAP(true);
+          }
+        }
+        else if (WiFi.isConnected())
+        {
+          ConfigSettings.wifiFallbackHadConnection = true;
+          startServers();
+          // keep the overseer running to catch ETH recovery
+        }
+        else if (!ConfigSettings.apStarted && !ConfigSettings.wifiFallbackHadConnection &&
+                 tmrNetworkOverseer.counter() > overseerMaxRetry + wifiFallbackMaxRetry)
+        {
+          // WiFi STA never connected during this fallback: last-resort AP.
+          Serial.println(F("[OVERSEER] WiFi fallback failed, starting AP"));
+          startAP(true);
+        }
+        else if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
+        {
+          // WiFi was up before but dropped, or still connecting: retry STA.
+          connectWifi();
+        }
+        // else: AP is the active recovery channel — idle until ETH returns.
       }
     }
     break;
-  case CoordinatorMode::USB:
+  case CoordinatorMode::PASSTHROUGH:
     if (tmrNetworkOverseer.counter() > 3)
     { // 10 seconds for wifi connect
       if (WiFi.isConnected())
@@ -202,7 +228,7 @@ void handleTmrNetworkOverseer()
   }
 }
 
-void NetworkEvent(WiFiEvent_t event)
+void NetworkEvent(arduino_event_id_t event)
 {
   Serial.print(F("[NET_EVENT] Event ID: "));
   Serial.println(event);
@@ -236,13 +262,12 @@ void NetworkEvent(WiFiEvent_t event)
     Serial.println(F("[ETH_EVENT] ETH Disconnected"));
     Serial.print(F("[ETH_EVENT] coordinator_mode=")); Serial.println(static_cast<uint8_t>(ConfigSettings.coordinator_mode));
     ConfigSettings.connectedEther = false;
-    if (tmrNetworkOverseer.state() == STOPPED && ConfigSettings.coordinator_mode == CoordinatorMode::LAN)
+    if (tmrNetworkOverseer.state() == STOPPED && ConfigSettings.coordinator_mode == CoordinatorMode::NETWORK)
     {
       Serial.println(F("[ETH_EVENT] Restarting overseer for LAN mode"));
       tmrNetworkOverseer.start();
     }
     break;
-  case SYSTEM_EVENT_ETH_STOP:
   case ARDUINO_EVENT_ETH_STOP:
     Serial.println(F("[ETH_EVENT] ETH Stopped"));
     ConfigSettings.connectedEther = false;
@@ -284,14 +309,7 @@ void startAP(const bool start)
     Serial.println("[startAP] AP already started");
     if (!start)
     {
-      if (ConfigSettings.coordinator_mode != CoordinatorMode::WIFI)
-      {
-        WiFi.softAPdisconnect(true);    // off wifi
-      }
-      else
-      {
-        WiFi.mode(WIFI_STA);
-      }
+      WiFi.softAPdisconnect(true);    // off wifi
       dnsServer.stop();
       ConfigSettings.apStarted = false;
     }
@@ -300,7 +318,7 @@ void startAP(const bool start)
   {
     if (!start)
       return;
-    WiFi.mode(WIFI_AP_STA); // WIFI_AP_STA for possible wifi scan in wifi mode
+    WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
     // String AP_NameString;
     // getDeviceID(AP_NameString);
@@ -350,48 +368,54 @@ void connectWifi()
     timeout = 0;
     DEBUG_PRINTLN(F("[connectWifi] timeout"));
   }
-  WiFi.persistent(false);
-  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
   if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
   {
     DEBUG_PRINTLN(F("[connectWifi] Ok SSID & PASS"));
-    if (ConfigSettings.apStarted)
-    {
-      // DEBUG_PRINTLN(F("[connectWifi] WiFi.mode(WIFI_AP_STA)"));
-      // WiFi.mode(WIFI_AP_STA);
-    }
-    else
-    {
-      DEBUG_PRINTLN(F("[connectWifi] WiFi.mode(WIFI_STA)"));
-      WiFi.mode(WIFI_STA);
-    }
-    delay(100);
-
-    WiFi.begin(ConfigSettings.ssid, ConfigSettings.password);
-    WiFi.setSleep(false);
-    DEBUG_PRINTLN(F("[connectWifi] WiFi.begin"));
-
-    if (!ConfigSettings.dhcpWiFi)
-    {
-      IPAddress ip_address = parse_ip_address(ConfigSettings.ipAddressWiFi);
-      IPAddress gateway_address = parse_ip_address(ConfigSettings.ipGWWiFi);
-      IPAddress netmask = parse_ip_address(ConfigSettings.ipMaskWiFi);
-      WiFi.config(ip_address, gateway_address, netmask);
-      DEBUG_PRINTLN(F("[connectWifi] WiFi.config"));
-    }
-    else
-    {
-      DEBUG_PRINTLN(F("[connectWifi] Try DHCP"));
-    }
+    connectWifiSta(ConfigSettings.ssid, ConfigSettings.password, ConfigSettings.dhcpWiFi,
+                   ConfigSettings.ipAddressWiFi, ConfigSettings.ipMaskWiFi, ConfigSettings.ipGWWiFi);
   }
   else
   {
-    if (!(ConfigSettings.coordinator_mode == CoordinatorMode::USB && ConfigSettings.keepWeb))
+    if (!(ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH && ConfigSettings.keepWeb))
     { // dont start ap in keepWeb
       DEBUG_PRINTLN(F("[connectWifi] NO SSID & PASS"));
       startAP(true);
       DEBUG_PRINTLN(F("[connectWifi] setupWifiAP"));
     }
+  }
+}
+
+// Shared STA bring-up used by the overseer (connectWifi) and by the wifi save
+// handler when applying/validating new credentials. Keeps the AP alive if it
+// is running, applies a static IP when DHCP is off.
+void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw)
+{
+  WiFi.persistent(false);
+  if (ConfigSettings.apStarted)
+  {
+    WiFi.mode(WIFI_AP_STA); // keep the AP alive while joining as STA
+  }
+  else
+  {
+    WiFi.mode(WIFI_STA);
+  }
+  delay(100);
+
+  WiFi.begin(ssid, pass);
+  WiFi.setSleep(false);
+  DEBUG_PRINTLN(F("[connectWifiSta] WiFi.begin"));
+
+  if (!dhcp)
+  {
+    IPAddress ip_address = parse_ip_address(ip);
+    IPAddress gateway_address = parse_ip_address(gw);
+    IPAddress netmask = parse_ip_address(mask);
+    WiFi.config(ip_address, gateway_address, netmask);
+    DEBUG_PRINTLN(F("[connectWifiSta] WiFi.config"));
+  }
+  else
+  {
+    DEBUG_PRINTLN(F("[connectWifiSta] Try DHCP"));
   }
 }
 

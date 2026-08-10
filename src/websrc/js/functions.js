@@ -215,7 +215,7 @@ function loadPage(url) {
 			break;
 		case api.pages.API_PAGE_GENERAL.str:
 			apiGetPage(api.pages.API_PAGE_GENERAL, () => {
-				if (!getEl("usbMode").checked) KeepWebDsbl(true);
+				if (!getEl("serialMode").checked) KeepWebDsbl(true);
 			});
 			break;
 		case api.pages.API_PAGE_ETHERNET.str:
@@ -235,21 +235,9 @@ function loadPage(url) {
 			break;
 		case api.pages.API_PAGE_WIFI.str:
 			apiGetPage(api.pages.API_PAGE_WIFI, () => {
-				if (getEl("WIFISSID").value.length > 1) {
-					setTimeout(() => toggleCollapse("collapseWifiPass", true), 600);
-				}
-				fetch(apiLink + api.actions.API_GET_PARAM + "&param=coordMode").then(r => r.text()).then(data => {
-					if (parseInt(data) != 1) {
-						getQA(".card").forEach(c => c.classList.add("card-disabled"));
-						const main = getEl("main");
-						if (main) {
-							const banner = el("div", { "class": "alert alert-info mb-3", role: "alert", html: "<strong>Wi-Fi mode is not active.</strong> Enable it in the <a href='/general'>General</a> settings to use Wi-Fi." });
-							main.prepend(banner);
-						}
-					}
-				});
 				if (getEl("dhcpWiFi").checked) WifiDhcpDsbl(true);
 				else WifiDhcpDsbl(false);
+				initWifiPage();
 			});
 			break;
 		case api.pages.API_PAGE_SERIAL.str:
@@ -444,6 +432,14 @@ function apiGetPage(page, doneCall) {
 					else if (mode.includes("usb")) dd.classList.add("mode-usb");
 					else dd.classList.add("mode-lan");
 				}
+			}
+
+			// WiFi configured but idle (Ethernet active): tint the fallback
+			// icon/line blue so "asleep" reads at a glance.
+			const diagram = getEl("deviceDiagram");
+			if (diagram) {
+				if (["set up", "asleep"].includes(String(values.wifiConnected || "").toLowerCase())) diagram.classList.add("wifi-ready");
+				else diagram.classList.remove("wifi-ready");
 			}
 
 			if (typeof locCall == "function") locCall();
@@ -781,16 +777,10 @@ function modalConstructor(type, params) {
 			} else {
 				let body = "New parameters saved. ";
 				if (hText) hText.textContent = "Settings saved";
-				const wifiModeEl = getEl("wifiMode");
-				if (wifiModeEl && wifiModeEl.checked) {
-					body += "You will be redirected to the Wi-Fi network selection page.";
-					if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Select Wi-Fi network", click: () => { closeModal(); loadPage("/wifi"); } }));
-				} else {
-					body += "Some settings require a reboot.";
-					if (mBtns) {
-						mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Restart manually later", click: closeModal }));
-						mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Restart now", click: () => { closeModal(); espReboot(); rebootWait(); } }));
-					}
+				body += "Some settings require a reboot.";
+				if (mBtns) {
+					mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Restart manually later", click: closeModal }));
+					mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Restart now", click: () => { closeModal(); espReboot(); rebootWait(); } }));
 				}
 				if (mBody) mBody.textContent = body;
 			}
@@ -801,95 +791,315 @@ function modalConstructor(type, params) {
 	showModal(true);
 }
 
-function WifiDhcpDsbl(state) {
-	const ids = ["WifiIp", "WifiMask", "WifiGateway"];
-	ids.forEach(id => { const e = getEl(id); if (e) e.disabled = state; });
-}
-
-function updateProgress(targetValue) {
-    const root = document.documentElement;
-    const textEl = document.querySelector(".percent-num");
-    root.style.setProperty("--percent", targetValue);
-    const duration = 2000;
-    const startTime = performance.now();
-    function animate(currentTime) {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      if (textEl) {
-        if (targetValue === 0 || (targetValue > 0 && targetValue < 100)) textEl.innerText = "Scanning";
-        else if (targetValue === 100) textEl.innerText = "Done";
-      }
-      if (progress < 1) requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
-}
-
 function getWifiList() {
-	updateProgress(0);
-	const scanBtn = getEl("wifiScanBtn");
-	if (scanBtn) scanBtn.disabled = true;
-	var timerId = setInterval(() => { updateProgress(50); }, 500);
-	toggleCollapse("collapseWifiPass", false);
-	const preloader = getEl("wifiScanPreloader");
-	const scanButton = getEl("wifiScanButton");
-	if (preloader) preloader.classList.remove(classHide);
-	if (scanButton) scanButton.classList.add(classHide);
+	const list = getEl("wifiList");
+	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name"><span class="wifi-spinner"></span> Scanning…</span></div>';
 	fetch(apiLink + api.actions.API_STARTWIFISCAN).then(() => {
 		const tmrUpdWifi = setInterval(() => {
 			fetch(apiLink + api.actions.API_WIFISCANSTATUS).then(r => r.json()).then(data => {
 				if (!data.scanDone) return;
-				if (!data.wifi) {
-					alert("WiFi networks not found");
-					clearInterval(timerId);
-					clearInterval(tmrUpdWifi);
-					if (scanBtn) scanBtn.disabled = false;
-					const wifiTable = getEl("wifiTable");
-					if (wifiTable) wifiTable.innerHTML = '<tr><td colspan="4" class="text-muted text-center" style="padding:1rem;">No Wi-Fi networks found. Tap "Scan Wi-Fi".</td></tr>';
-				} else {
-					if (data.wifi.length > 0) {
-						clearInterval(timerId);
-						updateProgress(100);
-						const wifiTable = getEl("wifiTable");
-						if (wifiTable) wifiTable.innerHTML = "";
-						data.wifi.forEach((elem) => {
-							const row = document.createElement("tr");
-							row.className = "ssidSelector";
-							row.id = elem.ssid;
-							row.innerHTML = "<td>" + elem.ssid + "</td>";
-							let encryptType = "";
-							switch (elem.secure) {
-								case 2: encryptType = "WPA"; break;
-								case 3: case 4: encryptType = "WPA2"; break;
-								case 5: encryptType = "WEP"; break;
-								case 7: encryptType = "OPEN"; break;
-								case 8: encryptType = "AUTO"; break;
-							}
-							row.innerHTML += "<td>" + encryptType + "</td><td>" + elem.channel + "</td><td>" + elem.rssi + "</td>";
-							if (wifiTable) wifiTable.appendChild(row);
-						});
-						if (preloader) preloader.classList.add(classHide);
-						clearInterval(tmrUpdWifi);
-						if (scanBtn) scanBtn.disabled = false;
-						getQA(".ssidSelector").forEach(row => {
-							row.addEventListener("click", function (e) {
-								const ssidInput = getEl("WIFISSID");
-								const passInput = getEl("WIFIpassword");
-								if (ssidInput) ssidInput.value = e.currentTarget.id;
-								if (passInput) passInput.value = "";
-								toggleCollapse("collapseWifiPass", true);
-							});
-						});
-					} else {
-						if (preloader) preloader.classList.add(classHide);
-						if (scanButton) scanButton.classList.remove(classHide);
-						if (scanBtn) scanBtn.disabled = false;
-						const wifiTable = getEl("wifiTable");
-						if (wifiTable) wifiTable.innerHTML = '<tr><td colspan="4" class="text-muted text-center" style="padding:1rem;">No Wi-Fi networks found. Tap "Scan Wi-Fi".</td></tr>';
-					}
-				}
+				clearInterval(tmrUpdWifi);
+				_wifiScanCache = data.wifi || [];
+				renderWifiList();
 			});
 		}, 2000);
 	});
+}
+
+// Turn a raw dBm value into 0-3 iOS-style signal bars.
+function wifiSignalBars(rssi) {
+	const level = rssi >= -55 ? 3 : rssi >= -67 ? 2 : rssi >= -78 ? 1 : 0;
+	let bars = "";
+	for (let i = 1; i <= 3; i++) {
+		bars += '<span class="bar b' + i + (i <= level ? " on" : "") + '"></span>';
+	}
+	return '<span class="wifi-signal">' + bars + '</span>';
+}
+
+// Map the ESP32 encryption type (wifi_auth_mode_t) to a friendly label.
+function wifiSecurityLabel(secure) {
+	switch (secure) {
+		case 2: return "WPA";
+		case 3: case 4: return "WPA2";
+		case 5: return "WEP";
+		case 7: return "OPEN";
+		case 8: return "AUTO";
+		default: return "UNKNOWN";
+	}
+}
+
+const _wifiLockSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="3" y="7.5" width="10" height="6.5" rx="1.5"/><path d="M5.5 7.5V5.5a2.5 2.5 0 0 1 5 0v2"/></svg>';
+const _wifiOpenSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 7v3.5"/><circle cx="8" cy="5.2" r="0.9" fill="currentColor" stroke="none"/></svg>';
+const _wifiChevSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M6 3.5 10.5 8 6 12.5"/></svg>';
+const _wifiCheckSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M3 8.5 6.5 12 13 4.5"/></svg>';
+
+// Last scan results, cached so forget/join can re-render without rescanning.
+let _wifiScanCache = [];
+
+// The SSID currently saved on the device (filled by data-replace on load).
+function wifiSavedSsid() {
+	return ((getEl("WIFISSID") || {}).value || "").trim();
+}
+
+// Build the FormData the backend expects for the wifi page save.
+function wifiFormData() {
+	const form = getQ("form.saveParams");
+	const fd = form ? new FormData(form) : new FormData();
+	fd.set("pageId", String(pages.API_PAGE_WIFI.num));
+	return fd;
+}
+
+// Join a network: POST the target creds, then poll the connect state. The
+// backend only commits the config after a successful connection (commit-on-
+// connect), so the saved-network UI is updated only once the link is really up.
+function wifiJoin(ssid, pass, statusEl) {
+	const fd = wifiFormData();
+	fd.set("WIFISSID", ssid);
+	fd.set("WIFIpassword", pass);
+	if (statusEl) { statusEl.className = "wifi-join-status"; statusEl.textContent = "Connecting…"; }
+	fetch("/saveParams", { method: "POST", body: fd }).catch(() => {
+		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Save failed. Check your network."; }
+	});
+	wifiPollConnect(statusEl, ssid, pass);
+}
+
+// Poll the STA connect state until it resolves, then refresh the UI.
+function wifiPollConnect(statusEl, ssid, pass) {
+	let tries = 0;
+	const tmr = setInterval(() => {
+		fetch(apiLink + api.actions.API_WIFICONNECTSTAT).then(r => r.json()).then(data => {
+			tries++;
+			if (data.connected) {
+				clearInterval(tmr);
+				if (statusEl) { statusEl.className = "wifi-join-status ok"; statusEl.textContent = "Connected"; }
+				const si = getEl("WIFISSID");
+				const pi = getEl("WIFIpassword");
+				if (si) si.value = ssid;
+				if (pi) pi.value = pass;
+				renderWifiYourNetwork();
+				renderWifiList();
+			} else if (tries >= 15) {
+				clearInterval(tmr);
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Could not connect. Check the password."; }
+			}
+		}).catch(() => {
+			if (++tries >= 15) { clearInterval(tmr); if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Connection status unavailable."; } }
+		});
+	}, 1000);
+}
+
+// Show the saved network (if any) in the "Your Network" section.
+function renderWifiYourNetwork() {
+	const saved = wifiSavedSsid();
+	const row = getEl("wifiYourRow");
+	const empty = getEl("wifiYourEmpty");
+	if (!row || !empty) return;
+	if (!saved) {
+		row.style.display = "none";
+		empty.style.display = "";
+		return;
+	}
+	row.style.display = "";
+	empty.style.display = "none";
+	const name = getEl("wifiYourName");
+	if (name) name.textContent = saved;
+	const sig = getEl("wifiYourSignal");
+	if (sig) sig.innerHTML = wifiSignalBars(-40); // connected/remembered = full bars
+	const check = getEl("wifiYourCheck");
+	if (check) check.innerHTML = _wifiCheckSvg;
+}
+
+// Render the scanned networks as an iOS-style list (from _wifiScanCache).
+// Dedupe by SSID, sort strongest first; the saved network keeps a checkmark.
+function renderWifiList() {
+	const wifiTable = getEl("wifiList");
+	if (!wifiTable) return;
+	wifiTable.innerHTML = "";
+
+	if (!_wifiScanCache || _wifiScanCache.length === 0) {
+		wifiTable.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name">No Wi-Fi networks found.</span></div>';
+		return;
+	}
+
+	const bySsid = {};
+	_wifiScanCache.forEach(n => {
+		if (!n.ssid) return;
+		const key = n.ssid;
+		if (!bySsid[key] || n.rssi > bySsid[key].rssi) bySsid[key] = n;
+	});
+
+	const saved = wifiSavedSsid();
+	const sorted = Object.keys(bySsid)
+		.map(k => bySsid[k])
+		.sort((a, b) => b.rssi - a.rssi);
+
+	sorted.forEach(n => {
+		if (saved && n.ssid === saved) return; // already shown in "Your Network"
+		const open = (n.secure === 7);
+		const item = document.createElement("div");
+		item.className = "wifi-item";
+
+		const secIcon = open
+			? '<span class="wifi-open" title="Open network">' + _wifiOpenSvg + '</span>'
+			: '<span class="wifi-lock" title="Protected · ' + wifiSecurityLabel(n.secure) + '">' + _wifiLockSvg + '</span>';
+		const currentMark = "";
+
+		item.innerHTML =
+			'<div class="wifi-row-main">' +
+				wifiSignalBars(n.rssi) +
+				'<span class="wifi-name"></span>' +
+				currentMark +
+				secIcon +
+				'<span class="wifi-chev">' + _wifiChevSvg + '</span>' +
+			'</div>' +
+			'<div class="wifi-connect">' +
+				(open ? "" : '<input type="password" class="form-control form-control-sm" placeholder="Password" autocomplete="off" />') +
+				'<button type="button" class="btn btn-outline-primary btn-sm wifi-join">' + (open ? "Join" : "Connect") + '</button>' +
+				'<span class="wifi-join-status"></span>' +
+			'</div>';
+
+		item.querySelector(".wifi-name").textContent = n.ssid;
+
+		item.addEventListener("click", function (e) {
+			if (e.target.closest(".wifi-connect")) return;
+			getQA(".wifi-item.open").forEach(o => { if (o !== item) o.classList.remove("open"); });
+			item.classList.toggle("open");
+			const pass = item.querySelector(".wifi-connect input[type='password']");
+			if (pass && item.classList.contains("open")) pass.focus();
+		});
+
+		item.querySelector(".wifi-join").addEventListener("click", function () {
+			const passInput = item.querySelector(".wifi-connect input[type='password']");
+			const pass = passInput ? passInput.value : "";
+			const statusEl = item.querySelector(".wifi-join-status");
+			if (!open && pass.length < 8) {
+				if (passInput) passInput.classList.add("is-invalid");
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Password must be at least 8 characters."; }
+				return;
+			}
+			wifiJoin(n.ssid, pass, statusEl);
+		});
+
+		wifiTable.appendChild(item);
+	});
+}
+
+function toggleCollapseIp(show) {
+	const panel = getEl("wifiIpPanel");
+	if (panel) panel.style.display = show ? "" : "none";
+}
+
+// Fetch the live STA connection info (ip/mask/gw) once; used by the info panel
+// and to reflect connected state in "Your Network".
+function wifiRefreshConnection() {
+	return fetch(apiLink + api.actions.API_WIFICONNECTSTAT)
+		.then(r => r.json())
+		.then(data => { _wifiConnInfo = data; return data; })
+		.catch(() => { _wifiConnInfo = null; return null; });
+}
+let _wifiConnInfo = null;
+
+function wifiToggleInfo() {
+	const panel = getEl("wifiIpPanel");
+	if (!panel) return;
+	const showing = panel.style.display !== "none";
+	toggleCollapseIp(!showing);
+	if (!showing) {
+		const dhcp = getEl("dhcpWiFi");
+		if (dhcp) WifiDhcpDsbl(dhcp.checked);
+	}
+}
+
+function setText(id, txt) { const e = getEl(id); if (e) e.textContent = txt; }
+
+// DHCP switch: DHCP on → show live values (or an "asleep" note when WiFi is
+// not the active link); off → show the static IP inputs. Inputs are always
+// read-only while DHCP is on.
+function WifiDhcpDsbl(state) {
+	const cur = getEl("wifiIpCurrent");
+	const stat = getEl("wifiIpStatic");
+	if (cur) cur.style.display = state ? "" : "none";
+	if (stat) stat.style.display = state ? "none" : "";
+	["WifiIp", "WifiMask", "WifiGateway"].forEach(id => { const e = getEl(id); if (e) e.disabled = state; });
+	if (state) {
+		wifiRefreshConnection().then(d => {
+			const note = getEl("wifiIpAsleep");
+			const vals = getEl("wifiIpCurrentValues");
+			if (d && d.connected) {
+				if (note) note.style.display = "none";
+				if (vals) vals.style.display = "";
+				setText("wifiCurIp", d.ip || "—");
+				setText("wifiCurMask", d.mask || "—");
+				setText("wifiCurGw", d.gw || "—");
+			} else {
+				// WiFi is asleep (Ethernet primary) or still connecting: no live
+				// values to show — say so instead of printing "—".
+				if (note) note.style.display = "";
+				if (vals) vals.style.display = "none";
+			}
+		});
+	}
+}
+
+// Save the IP settings inline (no modal). Keeps the current saved network.
+function wifiSaveIp() {
+	const fd = wifiFormData();
+	const statusEl = getEl("wifiIpStatus");
+	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = "Saving…"; }
+	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
+		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = "Saved"; }
+	}).catch(() => {
+		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = "Save failed. Check your network."; }
+	});
+}
+
+// Forget the saved network: clear config, disconnect STA, update the UI.
+function wifiForget() {
+	if (!confirm("Forget this Wi-Fi network?")) return;
+	const ssidInput = getEl("WIFISSID");
+	const pwdInput = getEl("WIFIpassword");
+	if (ssidInput) ssidInput.value = "";
+	if (pwdInput) pwdInput.value = "";
+	const fd = wifiFormData();
+	const statusEl = getEl("wifiIpStatus");
+	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = "Forgetting…"; }
+	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
+		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = "Network forgotten."; }
+		toggleCollapseIp(false);
+		renderWifiYourNetwork();
+		renderWifiList();   // drop the checkmark from the list too
+	}).catch(() => {
+		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = "Failed to forget network."; }
+	});
+}
+
+function wifiShowOther() {
+	toggleCollapse("wifiOtherForm", true);
+	const other = getEl("otherSsid");
+	if (other) other.focus();
+}
+
+function wifiJoinOther() {
+	const ssid = (getEl("otherSsid") || {}).value || "";
+	const pass = (getEl("otherPass") || {}).value || "";
+	if (ssid.length < 2) {
+		const other = getEl("otherSsid");
+		if (other) other.classList.add("is-invalid");
+		return;
+	}
+	if (pass.length < 8) {
+		const other = getEl("otherPass");
+		if (other) other.classList.add("is-invalid");
+		return;
+	}
+	wifiJoin(ssid, pass, getEl("wifiOtherStatus"));
+}
+
+// iOS-like auto behaviour: render the saved network immediately and start a
+// scan the moment the page loads (no need to press a scan button).
+function initWifiPage() {
+	renderWifiYourNetwork();
+	getWifiList();
 }
 
 function isMobile() {
@@ -948,8 +1158,9 @@ function statusPill(value) {
 	const s = String(value).trim().toLowerCase();
 	let tone = null;
 	if (s === "yes" || s === "on" || s === "connected" || s.indexOf("connected to") === 0) tone = "success";
+	else if (s === "set up" || s === "asleep") tone = "info";
 	else if (s.indexOf("connecting") === 0) tone = "warning";
-	else if (s === "no" || s === "off" || s === "not connected" || s === "not started" || s === "disconnected" || s === "ap not started") tone = "secondary";
+	else if (s === "no" || s === "off" || s === "not connected" || s === "not started" || s === "disconnected" || s === "not configured" || s === "ap not started") tone = "secondary";
 	if (!tone) return null;
 	return '<span class="status-pill ' + tone + '">' + String(value) + '</span>';
 }
