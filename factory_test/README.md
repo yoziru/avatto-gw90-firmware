@@ -3,12 +3,12 @@
 ## Overview
 
 This factory test program is used for full functional testing of the AVATTO GW90-TI Zigbee gateway on the production line.  
-The tests cover all hardware including ESP32-SOLO1 main controller, CC2652P Zigbee coordinator, LAN8720 Ethernet PHY, WiFi, LEDs, buttons, etc.
+The tests cover all hardware including the ESP32-D0WDR2-V3 main controller, CC2652P Zigbee coordinator, LAN8720 Ethernet PHY, WiFi, LEDs, buttons, etc.
 
 There are **two** factory-test modes, both documented below:
 
-1. **Inline AP-scan test** — compiled into the normal firmware (`src/main.cpp`); no host PC required.
-2. **Standalone test firmware + Python host** — separate build in this folder; driven over serial.
+1. **Inline AP-scan test** — compiled into the normal firmware (`src/factory.cpp`, gated by `BUILD_FACTORY_TEST`); no host PC required.
+2. **Standalone test firmware + Python host** — separate legacy build in this folder; driven over serial.
 
 ## Test Architecture
 
@@ -46,7 +46,7 @@ There are **two** factory-test modes, both documented below:
 
 ## Inline AP-scan test (`src/main.cpp`)
 
-This mode is compiled into the normal firmware and needs no host PC. On power-up, if the device enters factory-test mode it scans for the factory-test access point (SSID defined in `src/main.cpp`), connects to it, and verifies:
+This mode is compiled into the normal firmware and needs no host PC. On power-up, if the device enters factory-test mode it scans for the factory-test access point (SSID defined in `src/factory.cpp`), connects to it, and verifies:
 
 | # | Test Item | Method | Pass Indicator |
 |---|-----------|--------|----------------|
@@ -55,15 +55,18 @@ This mode is compiled into the normal firmware and needs no host PC. On power-up
 | 3 | Zigbee communication | ZNP comms with CC2652P | Zigbee LED (GPIO11) |
 | 4 | Button | Physical press detection | USB LED (GPIO8) for 0.5 s |
 
-**Credentials note**: the factory-test AP SSID/password are compile-time constants in `src/main.cpp` (the `factory_test()` block). They ship in the firmware binary, so they are not secrets. For production, these should be injected at build time (build flags/env) instead of hardcoded — tracked as follow-up refactor work.
+**Credentials note**: the factory-test AP SSID/password are compile-time constants in `src/factory.cpp` (the `factory_test()` block). They ship in the firmware binary, so they are not secrets. They can be overridden at build time via the `FACTORY_TEST_SSID` / `FACTORY_TEST_PASS` / `FACTORY_TEST_HOST` build flags.
 
 ## Standalone test firmware + Python host
 
 ## Build Method
 
 ```bash
-# Build factory test firmware in PlatformIO
-pio run -e factory-test-solo
+# Inline factory test (modern): build the normal firmware with the flag
+pio run -e factory-test
+
+# Standalone test firmware (legacy): follow the instructions in
+# factory_test/platformio_env.ini (independent src_dir build)
 ```
 
 ## Host PC Usage

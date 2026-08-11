@@ -26,6 +26,7 @@ mise run build:debug     # Build debug
 mise run flash           # Serial flash (set UPLOAD_PORT env var)
 mise run flash:debug     # Debug flash (set UPLOAD_PORT env var)
 mise run flash:ota       # OTA flash over network (set OTA_DEVICE_IP; optional OTA_USER/OTA_PASS)
+mise run flash:ota:debug # OTA flash of the debug/profiler build (same env vars)
 mise run test            # Native unit tests (Unity)
 mise run lint            # Static analysis via pio check/cppcheck (fails on high severity)
 mise run lint:full       # cppcheck medium+ gate (skips platform packages)
@@ -61,17 +62,24 @@ src/
 ├── main.cpp        Entry point: setup(), loop(), button/LED handling
 ├── config.h        Pin definitions, config structs, config loaders + parse_ip_address decls
 ├── config.cpp      ConfigSettings/MqttSettings/WgSettings globals + loadConfig*() + parse_ip_address()
-├── network.h/cpp   Network: initLan, WiFi/AP, mDNS, overseer, WireGuard
+├── net.h/network.cpp  Network: initLan, WiFi/AP, mDNS, overseer, WireGuard
 ├── bridge.h/cpp    TCP socket bridge: accept/forward ZNP frames over LAN
 ├── factory.h/cpp   Factory test mode (BUILD_FACTORY_TEST only)
 ├── ip_utils.h      Pure IPv4 parser (unit-testable)
-├── web.cpp         Web server (2145 lines), API, OTA, SSE events
-├── web.h           Web server declarations, UPD_FILE URL
+├── web.h           Web server declarations, API page enum, UPD_FILE URL
+├── web/            Web server split: common (routes/auth), api, pages, save, events (SSE), ota
 ├── mqtt.cpp        MQTT client, HA auto-discovery
-├── etc.cpp         Utilities: LED control, ZB reset/BSL, config, NTP
-├── zb.cpp          CC2652P management: version, BSL flashing, ZNP protocol
+├── etc.cpp         Utilities: LED control, ZB reset/BSL, config, NTP, temp sensor
+├── zb.cpp          CC2652P management: version, BSL flashing, ZNP protocol, health check
 ├── log.cpp         Circular buffer log (8024 bytes)
+├── profiling.h/cpp Loop-latency/heap profiler (BUILD_DEBUG only)
 ├── zones.h         Timezone data table
+├── checksum.h      ZNP checksum (pure)
+├── encoding.h      URL decode, hex→bin (pure)
+├── zb_ver.h        ZNP version-response decode (pure)
+├── config_utils.h  temp-offset clamp, WG private-key lookup (pure)
+├── ha_discovery.h  HA discovery entity table + message builder (pure)
+├── wifi_save_logic.h  WiFi commit-on-connect + connect throttle (pure)
 ├── websrc/         Frontend source (HTML/CSS/JS) — processed by gulp
 └── webh/           Auto-generated gzip-compressed C headers from websrc/
 
@@ -79,9 +87,10 @@ tools/
 ├── build.py                 Post-build: merge bootloader + partitions + firmware
 ├── gen_version.py           Pre-build: generate src/version.h from tools/version (read-only; -dirty when tree is dirty)
 ├── version_util.py          Shared version read + git describe helper (used by gen_version.py and build.py)
-├── webfilesbuilder/         Gulp-based web frontend build (npm install + npx gulp)
-├── flash.sh                 Manual serial flash script
-└── esptool.py               ESP flasher
+└── webfilesbuilder/         Gulp-based web frontend build (npm install + npx gulp)
+
+scripts/
+└── ota_flash.sh             Shared OTA uploader (used by flash:ota / flash:ota:debug)
 ```
 
 ## Code Conventions
@@ -154,7 +163,7 @@ Network mode is the default. If Ethernet drops, the overseer automatically bring
 
 ## Release Flow
 
-1. **Manual builds**: `mise run build` auto-increments the patch version in `tools/version`; output in `bin/`: OTA binary + full flash binary.
+1. **Manual builds**: `mise run build` reads `tools/version` as-is (never modifies it); output in `bin/`: OTA binary + full flash binary.
 2. **Automated releases**: trigger the `Release` workflow on GitHub (Actions → Release → Run workflow) with `patch`/`minor`/`major` (or explicit `X.Y.Z`). It bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds `prod` with the version pinned, and creates a GitHub release with the firmware attached. Local script: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
 3. Update `manifest.json` for ESP Web Tools — done automatically by the release workflow.
 
@@ -178,5 +187,5 @@ Keep `CHANGELOG.md` up to date with every meaningful change. Follow the existing
 - **LAN8720 PHY**: GPIO5 must be toggled LOW→HIGH before `ETH.begin()` or it fails after `ESP.restart()`.
 - **cppcheck vs GCC 14.2**: `pio check` without `--skip-packages` fails parsing the toolchain's `type_traits` (cppcheck 2.21 limitation). Always use `--skip-packages`.
 - **Native tests**: `mise run test` runs the Unity suite (native env). Only pure logic is testable (no hardware deps).
-- **CPU temp**: Requires WiFi to be active; `getCPUtemp()` temporarily enables WiFi to read.
+- **CPU temp**: The TSENS shares the SAR ADC with the RF PHY, so a real read requires powering the radio. Reads are **demand-driven** (only when the status page or MQTT asks) and **non-blocking** (state machine in `loop()`, `tempSensorLoop`); the reported value is a cache calibrated against ~30 °C (`/config/system.json`).
 - **Version is constant**: `tools/gen_version.py` reads `tools/version` as-is (no auto-increment). Only the release workflow bumps it; builds from a dirty working tree get a `-dirty` suffix (`tools/version_util.py`'s `describe()`), so they're distinguishable from clean CI/release builds.
