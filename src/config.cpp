@@ -75,6 +75,7 @@ bool loadSystemVar()
     configFile.close();
 
     ConfigSettings.tempOffset = correct;
+    tempSetCalibrated(CPUtemp); // cache the offset-adjusted value for display
     return true;
   }
 
@@ -92,6 +93,7 @@ bool loadSystemVar()
     float CPUtemp = getCPUtemp(true);
     int correct = static_cast<int>(CPUtemp - 30.0f);
     ConfigSettings.tempOffset = correct;
+    tempSetCalibrated(CPUtemp); // cache the offset-adjusted value for display
 
     JsonDocument writeDoc;
     writeDoc["tempOffset"] = correct;

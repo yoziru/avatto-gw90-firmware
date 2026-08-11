@@ -10,13 +10,17 @@ void logPush(char c)
   logConsole.push(c);
 }
 
-String logPrint()
+// The console page polls this every `refreshLogs` ms (default 1 s) - returning
+// a reused String instead of a fresh up-to-8KiB allocation per poll keeps that
+// from being the biggest allocator on the device. The buffer is fully rebuilt
+// each call and consumed synchronously by the sender, so reuse is safe.
+String &logPrint()
 {
-
-  String buff = "";
+  static String buff;
+  buff = "";
 
   if (logConsole.isEmpty()) {
-    return "";
+    return buff;
   } else {
     for (decltype(logConsole)::index_t i = 0; i < logConsole.size(); i++) {
       buff += logConsole[i];
