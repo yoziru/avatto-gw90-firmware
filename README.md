@@ -1,30 +1,30 @@
-# AVATTO GW90-PoE-Ti — ESP32 Zigbee Gateway Firmware
+# AVATTO GW90-TI — ESP32 Zigbee Gateway Firmware
 
-Firmware for the **AVATTO GW90-PoE-Ti** Zigbee/Thread PoE dongle. Bridges a **TI CC2652P** coordinator to your network over Ethernet (PoE powered), WiFi, or USB, compatible with **Home Assistant (ZHA)** and **Zigbee2MQTT**.
+Firmware for the **AVATTO GW90-TI** Zigbee PoE gateway. Bridges a **TI CC2652P** coordinator to your network over Ethernet (PoE powered) with automatic WiFi fallback, compatible with **Home Assistant (ZHA)** and **Zigbee2MQTT**.
 
 ## Hardware
 
 | Component | Detail |
 |-----------|--------|
-| MCU | ESP32-D0WDR2-V3 (dual-core Xtensa LX6, 240 MHz, 2 MB PSRAM) — verified via eFuse; earlier docs said "ESP32-SOLO1 single-core 160 MHz", which is incorrect |
-| Zigbee | TI CC2652P (Zigbee 3.0 / Thread) |
+| MCU | ESP32-D0WDR2-V3 (dual-core Xtensa LX6 @ 240 MHz, 2 MB PSRAM) — verified via eFuse; older docs said "ESP32-SOLO1 single-core" which is incorrect |
+| Zigbee | TI CC2652P (Zigbee 3.0) |
 | Ethernet | LAN8720 PHY (RMII), **PoE powered** |
 | Flash | 16 MB (Dual OTA: 2 × 6 MB app + 4 MB spiffs) |
 
-Pin mapping in `src/config.h`, architecture docs in `ARCHITECTURE.md`.
+Pin mapping in `src/config.h`, full technical reference in `ARCHITECTURE.md`.
 
 ## Quick Start
 
 ```bash
-mise run setup        # Install deps (uv sync + build group)
-mise run build        # Build prod (default)
-mise run build:debug  # Debug build (-DDEBUG)
-mise run test         # Run native unit tests (Unity)
-mise run lint         # Static analysis via cppcheck (fails on high-severity defects)
-mise run lint:full    # Stricter medium+ gate (skips platform packages)
+mise run setup            # Install deps (uv sync + build group)
+mise run build            # Build prod (default)
+mise run build:debug      # Debug build (-DDEBUG, profiler enabled)
+mise run test             # Native unit tests (Unity)
+mise run lint             # Static analysis via cppcheck (fails on high-severity defects)
+mise run lint:full        # Stricter medium+ gate (skips platform packages)
 export UPLOAD_PORT=/dev/cu.usbserial-XXXX
-mise run flash        # Serial flash (first time)
-mise run flash:ota    # OTA over network (needs OTA_DEVICE_IP, see below)
+mise run flash            # Serial flash (first time)
+mise run flash:ota        # OTA over network (needs OTA_DEVICE_IP, see below)
 ```
 
 Outputs in `bin/`:
@@ -36,6 +36,7 @@ Outputs in `bin/`:
 ```bash
 export OTA_DEVICE_IP=192.168.1.18        # IP of the gateway on your LAN
 mise run flash:ota                        # builds + uploads + waits for reboot
+mise run flash:ota:debug                  # same, but builds + flashes the debug/profiler firmware
 # Optional: pass web-auth credentials if enabled on the device
 export OTA_USER=admin OTA_PASS=secret
 ```
@@ -64,15 +65,27 @@ No syslog/telnet/UDP log forwarding.
 
 Configure at `http://<ip>/general`.
 
+## Releases
+
+Releases are cut from `main` via the GitHub **Release** workflow (`patch`/`minor`/`major` or `X.Y.Z`), which bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds prod, and attaches the firmware to a GitHub release. Local equivalent: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
+
 ## Project Structure
 
 | Path | Purpose |
 |------|---------|
-| `src/main.cpp` | Entry point, TCP bridge, network init |
-| `src/web.cpp` | Web server, API, OTA, SSE |
+| `src/main.cpp` | Entry point, button/LED handling, loop scheduler |
+| `src/network.cpp` / `net.h` | Ethernet, WiFi/AP, mDNS, overseer, WireGuard |
+| `src/bridge.cpp` | TCP socket bridge (ZNP frames over LAN, port 6638) |
+| `src/config.cpp` / `config.h` | Pins, config structs + JSON loaders |
+| `src/web/` | Web server split: `common` (routes/auth), `api`, `pages`, `save`, `events` (SSE), `ota` |
 | `src/mqtt.cpp` | MQTT client + HA auto-discovery |
-| `src/etc.cpp` | Utilities (LED, config, NTP, ZB control) |
-| `src/zb.cpp` | CC2652P management and BSL flashing |
-| `src/log.cpp` | Circular log buffer |
-| `src/websrc/` | Web frontend source (HTML/JS/CSS) |
+| `src/etc.cpp` | Utilities: LEDs, ZB reset/BSL, NTP, temp sensor |
+| `src/zb.cpp` | CC2652P management, BSL flashing, health check |
+| `src/log.cpp` | Circular log buffer (8024 B) |
+| `src/profiling.*` | Loop-latency/heap profiler (**debug build only**) |
+| `src/{checksum,encoding,ip_utils,zb_ver,zones,config_utils,ha_discovery,wifi_save_logic}.h` | Pure, unit-tested logic headers |
+| `src/websrc/` | Web frontend source (HTML/CSS/JS) |
 | `src/webh/` | Gzip-compressed web assets as C headers |
+| `test/` | Native Unity test suites |
+
+Full details: `ARCHITECTURE.md`.

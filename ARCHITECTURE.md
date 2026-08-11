@@ -1,840 +1,465 @@
-# AVATTO GW90 Zigbee Gateway Firmware — Technical Handover Document
+# AVATTO GW90-TI Zigbee Gateway — Architecture
 
-> **Project Name**: avatto-gw90-firmware (PREGW90)  
-> **Current Version**: v1.0.1  
-> **Firmware Build Date**: 2024-03-26  
-> **Base Repository**: mercenaruss/uzg-firmware (fork)  
-> **Document Date**: 2026-02-24
-
----
+> Maintained at `yoziru/avatto-gw90-firmware` · fork of `mercenaruss/uzg-firmware` · version lives in `tools/version` (releases are tagged `vX.Y.Z`)
+>
+> This document is a **map for contributors**: how the firmware is put together and where to go to make changes. If you are *deploying* a gateway — flashing, configuring, updating, troubleshooting — start with the `README`.
 
 ## Table of Contents
 
-1. [Project Overview](#1-project-overview)
+1. [Overview](#1-overview)
 2. [Hardware Platform](#2-hardware-platform)
-3. [Development Environment & Toolchain](#3-development-environment--toolchain)
-4. [Project Directory Structure](#4-project-directory-structure)
-5. [Core Source Modules](#5-core-source-modules)
+3. [Directory Structure](#3-directory-structure)
+4. [Core Source Modules](#4-core-source-modules)
+5. [Coordinator Modes](#5-coordinator-modes)
 6. [Configuration System](#6-configuration-system)
 7. [Flash Partition Table](#7-flash-partition-table)
-8. [Third-Party Library Dependencies](#8-third-party-library-dependencies)
-9. [Build Process & Automation Scripts](#9-build-process--automation-scripts)
+8. [Dependencies](#8-dependencies)
+9. [Build Process & Versioning](#9-build-process--versioning)
 10. [Web Frontend Build](#10-web-frontend-build)
-11. [Firmware Features](#11-firmware-features)
-12. [MQTT Integration](#12-mqtt-integration)
-13. [WireGuard VPN Support](#13-wireguard-vpn-support)
-14. [Zigbee Coordinator Management](#14-zigbee-coordinator-management)
-15. [OTA & Firmware Updates](#15-ota--firmware-updates)
-16. [Button & LED Interaction](#16-button--led-interaction)
-17. [Network Connection Management](#17-network-connection-management)
-18. [Debugging Methods](#18-debugging-methods)
-19. [Known Issues & Precautions](#19-known-issues--precautions)
-20. [Future Development Suggestions](#20-future-development-suggestions)
+11. [Network Management](#11-network-management)
+12. [On-board Temperature Sensor](#12-on-board-temperature-sensor)
+13. [Zigbee Coordinator Management](#13-zigbee-coordinator-management)
+14. [MQTT & Home Assistant Discovery](#14-mqtt--home-assistant-discovery)
+15. [WireGuard](#15-wireguard)
+16. [OTA & Releases](#16-ota--releases)
+17. [Profiler (Debug Build)](#17-profiler-debug-build)
+18. [Testing](#18-testing)
+19. [API Endpoints](#19-api-endpoints)
+20. [Known Issues & Precautions](#20-known-issues--precautions)
 
 ---
 
-## 1. Project Overview
+## Common contributor tasks → where to look
 
-This project is the **AVATTO GW90-TI** Zigbee gateway's ESP32 firmware, forked and customized from the open-source project `mercenaruss/uzg-firmware`. The core function bridges a **CC2652P Zigbee coordinator** to the network (Ethernet/WiFi) via the ESP32, making it usable by Home Assistant (ZHA/Zigbee2MQTT) and other smart home platforms.
+| I want to… | Start here |
+|---|---|
+| Build / test / lint / flash a device | `mise run <task>` (§9.3) |
+| Add or change a configuration option | struct + loader in `config.h`/`config.cpp`, the save handler in `web/save.cpp`, and the page in `web/pages.cpp` |
+| Change the web UI | `src/websrc/` → gulp → `src/webh/` (§10) |
+| Add an API endpoint | `web/api.cpp` (action enum + dispatch, §19) |
+| Change how ZNP frames are bridged | `bridge.cpp` |
+| Tune the coordinator health check | `zb.cpp` → `zbHealthCheck()` |
+| Add a unit test | keep the logic in a pure `*.h`, add a suite in `test/` (§18) |
+| Debug the loop / memory usage | debug build + profiler (§17), `mise run flash:ota:debug` |
+| Cut a release | `Release` workflow / `scripts/release.sh` (§16) |
 
-**Main Features:**
-- Two coordinator operating modes: Network (Ethernet + WiFi STA fallback + AP recovery), Serial (USB passthrough)
-- Embedded web management interface (network, serial, security, MQTT configuration, etc.)
+---
+
+## 1. Overview
+
+The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridges a **TI CC2652P** Zigbee coordinator to the LAN over Ethernet (primary) with automatic WiFi-STA fallback, so Home Assistant can use it with **ZHA** or **Zigbee2MQTT** over a plain TCP socket (port 6638). The ESP32 is a transparent serial↔socket bridge: the Zigbee network itself lives in the client application.
+
+**Main features:**
+
+- Two coordinator modes: **Network** (Ethernet → WiFi STA fallback → soft-AP recovery) and **Serial** (USB passthrough)
+- Embedded web UI for network/serial/security/MQTT/WireGuard configuration
 - MQTT integration with Home Assistant auto-discovery
+- CC2652P firmware flashing (BSL) with Intel HEX validation
 - WireGuard VPN tunnel support
-- CC2652P Zigbee chip firmware flashing (BSL mode)
-- mDNS service discovery
-- TCP socket passthrough (Zigbee data bridging)
+- mDNS/ZHA zeroconf service discovery
+- Passive coordinator health monitoring with auto-reset
+- Lightweight profiler in the debug build
 
 ---
 
 ## 2. Hardware Platform
 
-### 2.1 Main Components
+> The MCU was verified via eFuse (`espModel`/`espCores` in the web status): **dual-core ESP32-D0WDR2-V3**. Older docs said "ESP32-SOLO1 single-core" — that is wrong and drove an entire platform-pinning saga based on a chip that isn't present.
 
-| Component | Model | Description |
-|-----------|-------|-------------|
-| Main MCU | **ESP32-D0WDR2-V3** | Dual-core Xtensa LX6, 240MHz, 2MB embedded PSRAM |
-| Zigbee Coordinator | **CC2652P** | TI, supports Zigbee 3.0 |
-| Ethernet PHY | **LAN8720** | Connected via RMII interface |
-| Flash | **16MB** | External SPI Flash |
+| Component | Model | Notes |
+|-----------|-------|-------|
+| MCU | ESP32-D0WDR2-V3 | Dual-core Xtensa LX6 @ 240 MHz, 2 MB embedded PSRAM (see Known Issues) |
+| Zigbee | TI CC2652P | Zigbee 3.0 coordinator, ZNP protocol on Serial2 |
+| Ethernet | LAN8720 PHY | RMII, PoE powered |
+| Flash | 16 MB | Dual OTA: 2 × 6 MB app + 4 MB LittleFS |
 
-### 2.2 GPIO Pin Assignment
+### 2.1 GPIO Pin Assignment (from `src/config.h`)
 
-| Pin | GPIO | Function | Description |
-|-----|------|----------|-------------|
-| CC2652P_RST | GPIO 16 | Zigbee reset | Output, active high |
-| CC2652P_FLASH | GPIO 32 | Zigbee BSL mode | Output, used to enter flash mode |
-| CC2652P_RXD | GPIO 36 | Zigbee serial RX | Serial2 receive |
-| CC2652P_TXD | GPIO 4 | Zigbee serial TX | Serial2 transmit |
-| BTN | GPIO 35 | User button | Input, falling-edge interrupt |
-| MODE_SWITCH | GPIO 33 | Serial mode switch | Output, HIGH=serial passthrough |
-| LED_USB | GPIO 12 | Red LED | Serial mode indicator |
-| LED_PWR | GPIO 14 | Blue LED | Power indicator |
-| ETH_MDC | GPIO 23 | LAN8720 MDC | Ethernet management |
-| ETH_MDIO | GPIO 18 | LAN8720 MDIO | Ethernet management |
-| ETH_CLK | GPIO 17 | LAN8720 clock output | `ETH_CLOCK_GPIO17_OUT` |
-| ETH_PWR_ALT | GPIO 5 | LAN8720 power control | Hardware reset LAN PHY |
+| Pin | GPIO | Function |
+|-----|------|----------|
+| CC2652P_RST | 16 | Zigbee reset, active high |
+| CC2652P_FLASH | 32 | Zigbee BSL entry |
+| CC2652P_RXD | 36 | Serial2 RX |
+| CC2652P_TXD | 4 | Serial2 TX |
+| BTN | 35 | Short = mode toggle, long 2 s = LEDs, long 4 s = BSL |
+| MODE_SWITCH | 33 | HIGH = serial passthrough |
+| LED_USB | 12 | Red |
+| LED_PWR | 14 | Blue |
+| ETH_MDC / MDIO / CLK | 23 / 18 / 17 | LAN8720 RMII |
+| ETH_PWR_ALT | 5 | LAN8720 hardware reset |
 
-### 2.3 CC2652P BSL Pin
+### 2.2 CC2652P BSL
 
-- BSL verify pin: CC2652 Pin **15**
-- BSL trigger level: **LOW** (0)
+- BSL verify pin: **15**, trigger level: **LOW** (`NEED_BSL_PIN` / `NEED_BSL_LEVEL` in `config.h`)
 
 ---
 
-## 3. Development Environment & Toolchain
-
-### 3.1 IDE & Framework
-
-- **IDE**: PlatformIO (VSCode plugin)
-- **Framework**: Arduino for ESP32
-- **ESP32 Platform**: `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core)
-
-### 3.2 Environment Variables
-
-| Environment | Description |
-|-------------|-------------|
-| `prod` | **Default production build**, 240MHz, 16MB Flash |
-| `debug` | Debug build, enables `-DDEBUG` macro |
-| `factory-test` | Factory test build, enables `-DBUILD_FACTORY_TEST` |
-
-### 3.3 Build Parameters
+## 3. Directory Structure
 
 ```
-board_build.f_cpu = 160000000L      # CPU frequency 160MHz
-board_upload.flash_size = 16MB       # Flash size
-board_build.partitions = partitions.csv  # Custom partition table
-monitor_speed = 115200               # Serial monitor baud rate
-upload_speed = 460800                # Upload speed
-```
-
-### 3.4 Required Development Tools
-
-- **Node.js + npm**: Web frontend build (gulp gzip packaging)
-- **Python 3**: Build scripts (version management, firmware merging)
-- **PlatformIO Core**: Compilation and upload
-
----
-
-## 4. Project Directory Structure
-
-```
-PREGW90/
-├── bin/                          # Build output (firmware binaries)
-│   ├── AVATTO-GW90-Ti.bin        # OTA upgrade firmware
-│   ├── AVATTO-GW90-Ti_v1.0.1.full.bin  # Full firmware (bootloader + partition table)
-│   ├── bootloader_dio_40m.bin    # Bootloader
-│   └── partitions.bin            # Partition table binary
-│
-├── lib/                          # Local libraries (not PIO-registered)
-│   ├── CCTools/                  # CC2652P control library (BSL flash, reset, etc.)
-│   ├── IntelHex/                 # Intel HEX format parser (firmware flashing)
-│   └── WireGuard-ESP32/          # WireGuard VPN implementation
-│
-├── src/                          # Main source code
-│   ├── main.cpp                  # Program entry (setup/loop, config loading, mode switching)
-│   ├── config.h                  # Global config structs, pin definitions, constants
-│   ├── version.h                 # Auto-generated version header
-│   ├── web.cpp / web.h           # Web server, API, page routing
-│   ├── mqtt.cpp / mqtt.h         # MQTT client, HA auto-discovery
-│   ├── etc.cpp / etc.h           # Utility functions (LED, Zigbee control, config I/O)
-│   ├── zb.cpp / zb.h             # Zigbee firmware management (version check, BSL flash)
-│   ├── log.cpp / log.h           # Ring log buffer
-│   ├── zones.h                   # Timezone data table
-│   ├── webh/                     # Auto-generated — gzip-compressed C headers for web resources
-│   └── websrc/                   # Web frontend source (HTML/CSS/JS/images)
-│       ├── html/                 # HTML page templates
-│       ├── css/                  # Stylesheets
-│       ├── js/                   # JavaScript
-│       ├── img/                  # Icons and images
-│       └── gzipped/              # Intermediate gzip artifacts
-│
-├── tools/                        # Build tools and scripts
-│   ├── build.py                  # Post-processing script (firmware merge, naming)
-│   ├── version_increment_pre.py  # Pre-processing script (version auto-increment)
-│   ├── merge_bin_esp.py          # Firmware merge tool
-│   ├── version                   # Version number file (currently 1.0.1)
-│   ├── esptool.py                # ESP flashing tool
-│   ├── flash.sh                  # Flashing script
-│   └── webfilesbuilder/          # Web frontend build tools
-│       ├── build_html.py         # PIO pre-process: triggers npm/gulp build
-│       ├── gulpfile.js           # Gulp task configuration
-│       ├── gulp.js / gulp.meta.js
-│       └── package.json          # npm dependencies
-│
-├── debug-ui/                     # Debug Web UI emulator
-├── platformio.ini                # PlatformIO project configuration
-├── partitions.csv                # Flash partition table
-├── manifest.json                 # ESP Web Tools flash manifest
-└── CHANGELOG.md                  # Change log
+├── src/
+│   ├── main.cpp            # setup()/loop(): boot, button/LED, coordinator mode, loop scheduler
+│   ├── config.h/.cpp       # Pins, config structs, config loaders, parse_ip_address
+│   ├── net.h/network.cpp   # initLan, WiFi/AP, mDNS, overseer, WireGuard, connectWifi
+│   ├── bridge.cpp/h        # TCP socket bridge: ZNP frames over LAN (port 6638)
+│   ├── web.h               # Web handler declarations, API page enum, UPD_FILE
+│   ├── web/                # Split web server implementation
+│   │   ├── common.cpp      # WebServer instance, route registration, auth, sendGzip, log
+│   │   ├── api.cpp         # /api dispatch (actions 0-10), ZB firmware download
+│   │   ├── pages.cpp       # getRootData() + per-page handlers (root/status/general/...)
+│   │   ├── save.cpp        # /saveParams, /saveFile, wifi commit-on-connect
+│   │   ├── events.cpp      # /events SSE endpoint
+│   │   └── ota.cpp         # ESP OTA (web/URL) + ZB checkFwHexTask
+│   ├── mqtt.cpp/h          # MQTT client + HA auto-discovery
+│   ├── etc.cpp/h           # LEDs, ZB reset/BSL, device ID, config write, NTP, temp sensor
+│   ├── zb.cpp/h            # CC2652P: version, BSL flashing, ZNP commands, health check
+│   ├── log.cpp/h           # Circular log buffer (8024 B)
+│   ├── factory.cpp/h       # Factory test (BUILD_FACTORY_TEST only)
+│   ├── profiling.cpp/h     # Loop-latency/heap profiler (BUILD_DEBUG only)
+│   ├── checksum.h          # ZNP checksum (pure)
+│   ├── encoding.h          # URL decode, hex→bin (pure)
+│   ├── ip_utils.h          # IPv4 parser (pure)
+│   ├── zb_ver.h            # ZNP version-response decode (pure)
+│   ├── zones.h             # Timezone POSIX-rule table (pure)
+│   ├── config_utils.h      # temp-offset clamp, WG private-key lookup (pure)
+│   ├── ha_discovery.h      # HA discovery entity table + message builder (pure)
+│   ├── wifi_save_logic.h   # Commit-on-connect + connect-throttle logic (pure)
+│   ├── web_routes.h        # Auto-generated static asset routes
+│   ├── webh/               # Auto-generated gzip C headers from websrc/
+│   └── websrc/             # Frontend source (HTML/JS/CSS) - gulp build
+├── lib/                    # Local libs (not PIO-registered)
+│   ├── CCTools/            # CC2652P control (BSL, reset, chip detect)
+│   └── IntelHex/           # Intel HEX parser for ZB flashing
+├── tools/
+│   ├── build.py            # Post-build: merge bootloader+partitions+firmware
+│   ├── gen_version.py      # Pre-build: generate src/version.h from tools/version
+│   ├── version_util.py     # Shared version/git-describe helpers
+│   └── webfilesbuilder/    # Gulp frontend build
+├── scripts/
+│   └── ota_flash.sh        # Shared OTA upload (used by flash:ota / flash:ota:debug)
+├── test/                   # Native Unity test suites
+├── factory_test/           # Standalone factory-test firmware + Python host
+├── platformio.ini
+├── partitions.csv
+├── manifest.json           # ESP Web Tools manifest
+└── *.md                    # README / AGENTS / CHANGELOG / ARCHITECTURE
 ```
 
 ---
 
-## 5. Core Source Modules
+## 4. Core Source Modules
 
-### 5.1 `main.cpp` (1506 lines)
+### 4.1 `main.cpp` — entry point and loop scheduler
 
-**Program entry point**, contains:
+`setup()`: PHY warm-restart delay → GPIO → hard-reset check → Serial2 (Zigbee) → LittleFS → load all configs → `zbInit()` → button interrupt → `setLedsDisable` → `setupCoordinatorMode()` → MQTT setup → set the configured serial baud.
 
-| Function | Description |
-|----------|-------------|
-| `setup()` | Initialization: GPIO, Serial2(Zigbee), LittleFS, load all configs, LED setup, coordinator mode |
-| `loop()` | Main loop: button handling, timer updates, web server, TCP socket passthrough, MQTT loop |
-| `initLan()` | Initialize LAN8720 Ethernet (including hardware PHY reset) |
-| `startServers()` | Start web server, socket server, mDNS, fetch Zigbee version |
-| `setupCoordinatorMode()` | Select LAN/WiFi/USB mode based on config and start the corresponding network |
-| `handleTmrNetworkOverseer()` | Periodic network check, start AP hotspot on timeout |
-| `NetworkEvent()` | WiFi/ETH event callback handler |
-| `connectWifi()` | WiFi STA connection logic |
-| `startAP()` | Start AP hotspot (fallback or first-time configuration) |
-| `toggleUsbMode()` | USB/non-USB mode toggle (save config and restart) |
-| `loadConfig*()` | Configuration loading functions (WiFi/Ether/General/Security/Serial/MQTT/WG) |
-| `mDNS_start()` | mDNS service registration (including ZHA zeroconf info) |
+`loop()` is a **strict serial scheduler** — everything runs in one iteration, so the loop cycle time *is* the gateway's end-to-end latency:
 
-**TCP Socket Passthrough Logic** (in `loop()`):
-1. Supports up to **5** simultaneous TCP client connections (`MAX_SOCKET_CLIENTS = 5`)
-2. Read data from TCP client → write to Serial2 (CC2652P)
-3. Read data from Serial2 → broadcast to all connected TCP clients
-4. Supports IP whitelist filtering (`fwEnabled` / `fwIp`)
+1. Button/timer handling (Ticker: `tmrBtnLongPress`, `tmrNetworkOverseer`, `tmrZbHealth`)
+2. `tempSensorLoop()` — non-blocking temp state machine
+3. `wifiCommitPending()` — commit a staged WiFi save once the link is up
+4. `webServerHandleClient()`
+5. `processSocketBridge()` + `mqttLoop()` (Network mode)
+6. DNS (AP mode)
+7. `delay(1)` yield (prevents a 100% busy-spin)
 
-### 5.2 `config.h` (160 lines)
+### 4.2 `network.cpp` / `net.h`
 
-Global header file defining:
+| Function | Purpose |
+|----------|---------|
+| `initLan()` | LAN8720 bring-up (hardware PHY reset on GPIO5, `ETH.begin`, DHCP/static) |
+| `startServers()` | Start web + socket servers (once per boot), AP, mDNS, ZB version probe |
+| `handleTmrNetworkOverseer()` | 5 s uplink check; Ethernet → WiFi STA fallback → last-resort AP |
+| `NetworkEvent()` | ETH/WiFi event callback |
+| `connectWifi()` / `connectWifiSta()` | STA bring-up with a 20 s connect throttle |
+| `startAP()` | Soft-AP with captive-portal DNS (SSID = device ID, 192.168.1.1) |
+| `wgBegin()` | WireGuard tunnel bring-up |
+| `mDNS_start()` | mDNS + ZHA zeroconf (`_avatto-gw90-ti._tcp`, radio_type=znp) |
 
-- **Hardware pin macros** (GPIO)
-- **Coordinator mode enum** `COORDINATOR_MODE_t`: `LAN(0)`, `WIFI(1)`, `USB(2)`
-- **Configuration structs**:
-  - `ConfigSettingsStruct` — WiFi/Ethernet/Serial/Web/LED/firewall, etc.
-  - `MqttSettingsStruct` — MQTT server/port/auth/topic/interval
-  - `WgSettingsStruct` — WireGuard tunnel configuration
-  - `zbVerStruct` — Zigbee firmware version info
-- **Log buffer type**: `LogConsoleType` — `CircularBuffer<char, 8024>`
-- **Debug macros**: `DEBUG_PRINT` / `DEBUG_PRINTLN`
+`startServers()` skips `initWebServer()` when `disableWeb` is set — the setting now actually disables the web server.
 
-### 5.3 `web.cpp` (1944 lines)
+### 4.3 `bridge.cpp` — TCP socket bridge
 
-Web management interface, based on **ESP32 WebServer**:
+Up to `MAX_SOCKET_CLIENTS` (5) `WiFiClient`s. Each loop iteration:
 
-**Page Routing**:
-| URL | Function |
-|-----|----------|
-| `/` | Dashboard home |
-| `/general` | General settings (hostname, coordinator mode, LED, timezone) |
-| `/wifi` | WiFi configuration |
-| `/ethernet` | Ethernet configuration |
-| `/serial` | Serial configuration (baud rate, port number) |
-| `/security` | Security settings (web auth, firewall) |
-| `/mqtt` | MQTT settings |
-| `/wg` | WireGuard VPN settings |
-| `/about` | Device information |
-| `/sys-tools` | System tools (reboot, firmware upgrade, etc.) |
-| `/api` | JSON API endpoints |
+- client → Serial2: bounded read into a 256 B buffer, written to the coordinator
+- Serial2 → all clients: bounded read, broadcast
+- Per-frame hex dump to the web-console log (`printRecvSocket`/`printSendSocket`, allocation-free)
+- Optional IP whitelist when `fwEnabled`
 
-**API** (`/api`): Provides device status and configuration data in JSON format, supports page asynchronous refresh.
+`zbLastRxMs`/`zbClientTxMs` are shared with `zb.cpp` for the health check.
 
-**Web Resource Handling**: All HTML/JS/CSS/images are pre-compressed into gzip byte arrays, embedded at compile time, and served via `sendGzip()`.
+### 4.4 `config.cpp` / `config.h`
 
-**Security Features**:
-- Optional HTTP Basic Auth (`checkAuth()`)
-- IP whitelist firewall
+`ConfigSettingsStruct`, `MqttSettingsStruct`, `WgSettingsStruct`, `zbVerStruct` globals. All loaders use the shared `readJsonConfig()` helper (open → deserialize → on error log + delete the file so defaults regenerate next boot). Pure helpers live in `config_utils.h` (temp-offset clamp, WG private-key key migration).
 
-### 5.4 `mqtt.cpp` (467 lines)
+### 4.5 `web/` — web server, API, pages
 
-MQTT client based on **PubSubClient**:
+`common.cpp` owns the `WebServer serverWeb(80)` instance and registers all routes (page routes, `/api`, `/status`, `/saveParams`, `/saveFile`, `/update`, `/updateZB`, `/events`, `/logout`) plus the ~50 auto-generated static asset routes (`web_routes.h`).
 
-| Function | Description |
-|----------|-------------|
-| `mqttConnectSetup()` | Initialize MQTT connection parameters |
-| `mqttReconnect()` | Reconnect on disconnect (with LWT) |
-| `mqttPublishState()` | Publish device state (uptime, temperature, IP, mode, Zigbee firmware version, etc.) |
-| `mqttPublishDiscovery()` | Home Assistant MQTT auto-discovery (sensor/button/binary_sensor) |
-| `mqttPublishIo()` | Publish I/O state (reboot/BSL/Socket) |
-| `mqttCallback()` | Receive MQTT commands (`rst_esp`, `rst_zig`, `enbl_bsl`) |
+`pages.cpp` `getRootData()` builds the shared device-status JSON into a **reused module-level `JsonDocument`** (steady allocation, no per-poll churn). `/status` serializes it to a reused String.
 
-**MQTT Topic Structure**:
+`api.cpp` dispatches `/api?action=N` (see [API Endpoints](#19-api-endpoints)); includes the CC2652P firmware download (HTTPS via `NetworkClientSecure`, progress over SSE).
+
+`events.cpp` is a single-slot SSE endpoint (`/events`), now **auth-gated** like every other protected endpoint. `sendEvent()` writes via `printf`.
+
+`save.cpp` handles `/saveParams` (per page) and `/saveFile`. WiFi changes follow **commit-on-connect**: a *new* network is staged in RAM and only persisted after the STA link to that SSID succeeds (`wifi_save_logic.h`); tweaks to the already-saved network persist immediately.
+
+`ota.cpp` ESP OTA (web upload + URL fetch) and the CC2652P `checkFwHexTask`.
+
+### 4.6 `mqtt.cpp`
+
+PubSubClient on a WiFiClient. Topics:
+
 ```
-{topic}/avty        — Online/offline (LWT)
-{topic}/state       — Device state JSON
-{topic}/io/{name}   — I/O control state
-{topic}/cmd         — Command subscription
+{topic}/avty   — LWT online/offline
+{topic}/state  — periodic JSON state
+{topic}/io/{n} — button/binary-sensor state
+{topic}/cmd    — commands: rst_esp, rst_zig, enbl_bsl
 ```
 
-### 5.5 `etc.cpp` (373 lines)
+HA auto-discovery is generated from the **pure entity table** in `ha_discovery.h` (buttons, socket binary sensor, sensors for uptime/IP/temp/hostname/connections/mode/zbfw) — payloads are validated by unit tests.
 
-Utility function module:
+### 4.7 `etc.cpp` — utilities
 
-| Function | Description |
-|----------|-------------|
-| `zigbeeRouterRejoin()` | Zigbee router rejoin |
-| `zigbeeEnableBSL()` | Enter CC2652P BSL flash mode |
-| `zigbeeRestart()` | Restart CC2652P |
-| `getCPUtemp()` | Read ESP32 CPU temperature (requires temporary WiFi activation) |
-| `getDeviceID()` | Generate unique device ID |
-| `writeDefaultConfig()` | Write default configuration to LittleFS |
-| `resetSettings()` | Factory reset |
-| `setClock()` / `setTimezone()` | NTP time sync and timezone setting |
-| `ledPowerToggle()` / `ledUSBToggle()` | LED control |
+LEDs, `zigbeeRouterRejoin`/`zigbeeEnableBSL`/`zigbeeRestart`, `getDeviceID`, `writeDefaultConfig`, `resetSettings`, `setClock`/`setTimezone` (non-blocking NTP), and the on-board temperature state machine (see [§12](#12-on-board-temperature-sensor)).
 
-**Configuration File Path Constants** (LittleFS filesystem):
-```cpp
-/config/system.json        — System variables (temperature offset)
-/config/configWifi.json    — WiFi configuration
-/config/configEther.json   — Ethernet configuration
-/config/configGeneral.json — General settings
-/config/configSecurity.json — Security settings
-/config/configSerial.json  — Serial configuration
-/config/configMqtt.json    — MQTT configuration
-/config/configWg.json      — WireGuard configuration
-```
+### 4.8 `zb.cpp` — Zigbee coordinator
 
-### 5.6 `zb.cpp` (347 lines)
+`getZbVer()` (ZNP SYS_VERSION), `zbCheck()`/`zbLedToggle()` (shared `zbLedCommand`), `zbInit()` (chip detect via CCTools), `checkFwHex()`/`runFlash()` (Intel HEX validation + BSL flash), and the ZNP framing helpers (`zbSendCommand`, `zbGetStatus` — buffer-bounded, `zbCheckLastCmd`, `zbFlashStart`, `zbEraseFlash`, `zbSendSync`).
 
-Zigbee coordinator management:
+`zbHealthCheck()` (30 s Ticker) is **fully passive**: it only observes client↔coordinator traffic and resets the coordinator when a client is active but the coordinator is silent for 3 min (×3). It never injects frames onto the shared Serial2 line.
 
-| Function | Description |
-|----------|-------------|
-| `getZbVer()` | Get CC2652P firmware version via SYS_VERSION command |
-| `zbCheck()` | Check if Zigbee module is operational (LED blink test) |
-| `zbInit()` | Initialize Zigbee communication |
-| `checkFwHex()` | Validate uploaded HEX firmware file |
-| `runFlash()` / `programFlashFromFile()` | Flash CC2652P firmware via BSL |
-| `zbLedToggle()` | Toggle Zigbee module LED |
+### 4.9 `log.cpp`
 
-**Zigbee Communication Protocol**: Uses TI Z-Stack ZNP (Zigbee Network Processor) protocol, communicates with CC2652P via Serial2 (UART).
+`CircularBuffer<char, 8024>` ring buffer. `printLogMsg()` (web console) uses allocation-free `printLogTime()`. `logPrint()` returns a reused String for the 1 s console poll. `logClear()`.
 
-### 5.7 `log.cpp` / `log.h`
+### 4.10 `profiling.cpp` / `profiling.h` (debug only)
 
-Ring log buffer (8024 bytes), used for real-time log display on the web console.
+Loop-cycle latency (min/EMA/max) + heap fragmentation, gated behind `BUILD_DEBUG`. See [§17](#17-profiler-debug-build).
+
+---
+
+## 5. Coordinator Modes
+
+| Mode | Value | Behavior |
+|------|-------|----------|
+| **Network** | 0 | Zigbee over TCP socket (6638). Ethernet primary → auto WiFi STA fallback → soft AP last resort. |
+| **Serial** | 1 | GPIO33 HIGH, CC2652P direct to USB host (serial passthrough). "Keep Network & Web" keeps one channel alive. |
+
+Network mode is the default. The button short-press toggles between them (persisted + restart). `CoordinatorMode` is a scoped enum in `config.h`.
 
 ---
 
 ## 6. Configuration System
 
-All configuration is stored in **LittleFS** filesystem under `/config/`, in JSON format.
+All config lives in **LittleFS** under `/config/` as JSON. Each subsystem has a loader + a `writeDefaultConfig()` fallback.
 
-### 6.1 Configuration File Field Descriptions
+| File | Content |
+|------|---------|
+| `/config/system.json` | `tempOffset` calibration (see §12) |
+| `/config/configWifi.json` | `ssid`, `pass`, `dhcpWiFi`, `ip`, `mask`, `gw` |
+| `/config/configEther.json` | `dhcp`, `ip`, `mask`, `gw` |
+| `/config/configGeneral.json` | `hostname`, `disableLeds`, `refreshLogs`, `disableLedPwr`, `disableLedUSB`, `coordMode`, `keepWeb`, `timeZoneName` |
+| `/config/configSecurity.json` | `disableWeb`, `webAuth`, `webUser`, `webPass`, `fwEnabled`, `fwIp` |
+| `/config/configSerial.json` | `baud`, `port` |
+| `/config/configMqtt.json` | `enable`, `server`, `port`, `user`, `pass`, `topic`, `interval`, `discovery` |
+| `/config/configWg.json` | `enable`, `localAddr`, `localPrivKey`, `endAddr`, `endPubKey`, `endPort` |
 
-**`/config/configGeneral.json`**
-```json
-{
-    "hostname": "AVATTO-GW90-TI",
-    "disableLeds": false,
-    "refreshLogs": 1000,
-    "disableLedPwr": false,
-    "disableLedUSB": false,
-    "coordMode": 0,        // 0=LAN, 1=WiFi, 2=USB
-    "prevCoordMode": 0,
-    "keepWeb": false,       // Keep web accessible in USB mode
-    "timeZoneName": ""
-}
-```
+> The WireGuard private key is stored under `localPrivKey`; the loader still accepts the legacy `localIP` key so existing configs migrate silently.
 
-**`/config/configWifi.json`**
-```json
-{
-    "enableWiFi": 0,
-    "ssid": "",
-    "pass": "",
-    "dhcpWiFi": 1,
-    "ip": "", "mask": "", "gw": ""
-}
-```
-
-**`/config/configEther.json`**
-```json
-{
-    "dhcp": 1,
-    "ip": "", "mask": "", "gw": ""
-}
-```
-
-**`/config/configSerial.json`**
-```json
-{
-    "baud": 115200,
-    "port": 6638
-}
-```
-
-**`/config/configSecurity.json`**
-```json
-{
-    "disableWeb": 0,
-    "webAuth": 0,
-    "webUser": "admin",
-    "webPass": "",
-    "fwEnabled": 0,
-    "fwIp": ""
-}
-```
-
-**`/config/configMqtt.json`**
-```json
-{
-    "enable": 0,
-    "server": "",
-    "port": 1883,
-    "user": "mqttuser",
-    "pass": "",
-    "topic": "{deviceId}",
-    "interval": 60,
-    "discovery": 0
-}
-```
-
-**`/config/configWg.json`**
-```json
-{
-    "enable": 0,
-    "localAddr": "",
-    "localIP": "",
-    "endAddr": "",
-    "endPubKey": "",
-    "endPort": ""
-}
-```
-
-### 6.2 Configuration Loading Flow (setup)
-
-```
-loadSystemVar()        → System variables (temperature offset calibration)
-loadConfigSerial()     → Serial parameters
-loadConfigWifi()       → WiFi
-loadConfigEther()      → Ethernet
-loadConfigGeneral()    → General settings
-loadConfigSecurity()   → Security
-loadConfigMqtt()       → MQTT
-loadConfigWg()         → WireGuard
-```
-
-If any configuration fails to load, it tries to create a default config; repeated failures trigger `ESP.restart()`.
+Load order (setup): system → serial → wifi → ether → general → security → mqtt → wg. A corrupt file is deleted and defaults regenerate on the next boot.
 
 ---
 
 ## 7. Flash Partition Table
 
-**File**: `partitions.csv`
-
-| Partition | Type | Subtype | Offset | Size | Description |
-|-----------|------|---------|--------|------|-------------|
-| nvs | data | nvs | 0x9000 | 20KB | Non-Volatile Storage |
-| otadata | data | ota | 0xE000 | 8KB | OTA data |
-| app0 | app | ota_0 | 0x10000 | **6MB** | Main application partition |
-| app1 | app | ota_1 | 0x610000 | **6MB** | OTA backup partition |
-| spiffs | data | spiffs | 0xC10000 | ~4MB | LittleFS filesystem |
-
-> Total ~16MB Flash used. Supports OTA dual-partition switching for upgrades.
+| Partition | Type | Offset | Size |
+|-----------|------|--------|------|
+| nvs | data | 0x9000 | 20 KB |
+| otadata | data | 0xe000 | 8 KB |
+| app0 | app (ota_0) | 0x10000 | 6 MB |
+| app1 | app (ota_1) | 0x610000 | 6 MB |
+| spiffs | data (LittleFS) | 0xc10000 | ~4 MB |
 
 ---
 
-## 8. Third-Party Library Dependencies
-
-### 8.1 PlatformIO lib_deps
+## 8. Dependencies
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| `bblanchon/ArduinoJson` | 6.21.3 | JSON serialization/deserialization |
-| `rlogiacco/CircularBuffer` | ≥1.3.3 | Ring log buffer |
-| `plerup/EspSoftwareSerial` | 8.1.0 | Software serial (backup) |
-| `marian-craciunescu/ESP32Ping` | ≥1.7 | Ping network detection |
-| `sstaub/Ticker` | ≥4.4.0 | Non-blocking timer |
-| `knolleary/PubSubClient` | ^2.8 | MQTT client |
-| `mathieucarbou/AsyncTCP` | 3.2.5 | Async TCP (dependency) |
-| `Martin-Laclaustra/CronAlarms` | latest | Cron scheduled tasks |
+| bblanchon/ArduinoJson | 7.4.3 | JSON |
+| rlogiacco/CircularBuffer | 1.4.0 | Log ring buffer |
+| sstaub/Ticker | 4.4.0 | Timers (button, overseer, health) |
+| knolleary/PubSubClient | 2.8.0 | MQTT |
+| Tinkerforge/WireGuard-ESP32-Arduino | git | WireGuard (esp_netif/IDF 5.x) |
+| *local* `lib/CCTools` | — | CC2652P control |
+| *local* `lib/IntelHex` | — | HEX parsing |
+| *test only* throwtheswitch/Unity | 2.6.1 | Native unit tests |
 
-### 8.2 Local Libraries (lib/)
-
-| Library | Purpose |
-|---------|---------|
-| **CCTools** | CC2652P chip control (BSL entry, reset, router operations) |
-| **IntelHex** | Intel HEX firmware file parsing (Zigbee firmware flashing) |
-| **WireGuard-ESP32** | WireGuard VPN implementation for ESP32 platform |
+Platform: `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core — HTTPS works out of the box).
 
 ---
 
-## 9. Build Process & Automation Scripts
+## 9. Build Process & Versioning
 
-### 9.1 Build Commands
+### 9.1 Environments (`platformio.ini`)
+
+| Env | Notes |
+|-----|-------|
+| `prod` | Default. `-std=gnu++17`, 240 MHz, 16 MB flash, dual-OTA partitions |
+| `debug` | `-DDEBUG` + `-DBUILD_DEBUG` (enables DEBUG_PRINT + profiler) |
+| `factory-test` | `-DBUILD_FACTORY_TEST` |
+| `native` | Unity test suite on the host |
+
+### 9.2 Pipeline (`extra_scripts`)
+
+- **pre** `tools/gen_version.py` — reads `tools/version` (constant; builds never modify it), appends `-dirty` when the tree is dirty, writes `src/version.h`
+- **pre** `tools/webfilesbuilder/build_html.py` + `gen_routes.py` — gulp frontend build + static route generation
+- **post** `tools/build.py` — merges bootloader + partitions + app into `bin/AVATTO-GW90-Ti_vX.Y.Z.full.bin`, copies `bin/AVATTO-GW90-Ti.bin` (OTA)
+
+Skip the web rebuild with an empty `tools/webfilesbuilder/.no_web_update` file.
+
+### 9.3 Mise tasks
 
 ```bash
-# Default production build (ESP32-SOLO1)
-pio run -e prod-solo
-
-# Debug build
-pio run -e debug
-
-# Upload firmware
-pio run -e prod -t upload
-
-# Serial monitor
-pio device monitor
+mise run build            # prod
+mise run build:debug      # debug (profiler enabled)
+mise run test             # native unit tests
+mise run lint             # pio check (cppcheck), high-severity gate
+mise run lint:full        # medium+ gate
+mise run flash            # serial (UPLOAD_PORT)
+mise run flash:debug      # debug over serial
+mise run flash:ota        # prod OTA (OTA_DEVICE_IP)
+mise run flash:ota:debug  # debug OTA
+mise run monitor          # serial monitor (MONITOR_PORT)
 ```
 
-### 9.2 Automated Build Pipeline
-
-PlatformIO executes the following pipeline via `extra_scripts` configuration:
-
-#### Pre-build
-
-1. **`tools/gen_version.py`**
-   - Reads version number from `tools/version` (constant, never modified by builds)
-   - Appends `-dirty` when the working tree has uncommitted changes
-   - Generates `src/version.h` (containing `VERSION` and `BUILD_TIMESTAMP` macros)
-
-2. **`tools/webfilesbuilder/build_html.py`**
-   - Checks `.no_web_update` marker file
-   - Runs `npm install` + `npx gulp` to build web frontend
-   - Compresses HTML/JS/CSS/images to gzip and converts to C header files in `src/webh/`
-
-#### Post-build
-
-3. **`tools/build.py`**
-   - Copies `firmware.bin` to `bin/`
-   - Copies `partitions.bin` and `bootloader_dio_40m.bin`
-   - Calls `merge_bin_esp.py` to merge full firmware:
-     - `bootloader @ 0x1000` + `partitions @ 0x8000` + `firmware @ 0x10000`
-   - Generates named files:
-     - `AVATTO-GW90-Ti_v{version}.full.bin` — full flash image
-     - `AVATTO-GW90-Ti.bin` — OTA upgrade
-
-### 9.3 Version Management
-
-- Version number stored in `tools/version` text file
-- Format: `major.minor.patch` (e.g. `1.0.1`)
-- Builds never modify it — only the `Release` workflow (via `scripts/release.sh`) bumps `tools/version`
-- `tools/gen_version.py` appends `-dirty` to `VERSION` in `src/version.h` when the working tree has uncommitted changes, so local builds are distinguishable from clean CI/release builds
-
-### 9.4 Skipping Web Build
-
-If only modifying C++ code, create an empty `.no_web_update` file under `tools/webfilesbuilder/` to skip the web build and speed up compilation.
+`scripts/ota_flash.sh` is the shared OTA uploader used by both flash tasks.
 
 ---
 
 ## 10. Web Frontend Build
 
-### 10.1 Tech Stack
-
-- **HTML templates**: Located in `src/websrc/html/`
-- **JavaScript**: jQuery + Bootstrap + custom `functions.js`
-- **Internationalization**: i18next
-- **Build tool**: Gulp (via `tools/webfilesbuilder/gulpfile.js`)
-
-### 10.2 Build Pipeline
-
-```
-src/websrc/ (source)
-    ↓ gulp (minify + gzip)
-src/websrc/gzipped/ (intermediate)
-    ↓ convert to C byte array
-src/webh/*.gz.h (embedded at compile time)
-```
-
-### 10.3 Manual Web Resource Build
-
-```bash
-cd tools/webfilesbuilder
-npm install
-npx gulp
-```
+- Source: `src/websrc/` (HTML, JS, CSS, images) — jQuery, Bootstrap-derived minimal CSS, i18next
+- Build: `npm install && npx gulp` in `tools/webfilesbuilder/`
+- Output: gzip-compressed C headers in `src/webh/`, routes in `src/web_routes.h` (auto-generated)
+- Pages are served gzip-encoded; the `[Unreleased]`-era UI is a single-page shell that fetches JSON data per page
 
 ---
 
-## 11. Firmware Features
+## 11. Network Management
 
-### 11.1 Three Operating Modes
-
-| Mode | `coordMode` | Description |
-|------|-------------|-------------|
-| **LAN** | 0 | Zigbee data passthrough via Ethernet TCP socket, default port 6638 |
-| **WiFi** | 1 | Zigbee data passthrough via WiFi TCP socket |
-| **USB** | 2 | GPIO33 pulled high, CC2652P communicates directly with host via USB |
-
-### 11.2 Network Services
-
-| Service | Port | Description |
-|---------|------|-------------|
-| Web management | TCP 80 | HTTP |
-| TCP socket passthrough | TCP 6638 (default, configurable) | Zigbee data bridge |
-| mDNS | UDP 5353 | Service discovery (`_avatto-gw90-ti._tcp`) |
-| DNS (AP mode) | UDP 53 | Captive portal |
-
-### 11.3 AP Hotspot Mode
-
-- **SSID**: Device ID (e.g. `AVATTO-GW90-TI`)
-- **IP**: 192.168.1.1
-- **Trigger conditions**:
-  - First boot with no configuration
-  - Network connection timeout (5s × 4 retries = 20s)
-  - No WiFi credentials
+- **Overseer** (`tmrNetworkOverseer`, 5 s): in Network mode, Ethernet is preferred. If Ethernet drops, WiFi STA is brought up (if credentials exist) as a fallback; when Ethernet returns, WiFi is torn down again (less RF noise). If both fail, a soft AP starts for config recovery.
+- **PASSTHROUGH mode**: WiFi for ~10 s, then `initLan()` is attempted **once** (re-running `ETH.begin()` every tick used to flap the LAN8720 PHY), then AP as last resort.
+- **Ethernet init**: GPIO5 must be toggled LOW→HIGH immediately before `ETH.begin()` (the EMAC clock must be running when the PHY comes out of reset) or the PHY fails after `ESP.restart()`.
+- **mDNS**: `_avatto-gw90-ti._tcp` with `radio_type=znp`, `baud_rate`, `data_flow_control=software`.
 
 ---
 
-## 12. MQTT Integration
+## 12. On-board Temperature Sensor
 
-### 12.1 Features
+The ESP32 TSENS shares the SAR ADC with the RF PHY. On IDF 5.x the radio stays in modem-sleep after `esp_wifi_start()`, so `temprature_sens_read()` returns the fixed `0x80` sentinel unless the PHY is actually powered. A real read therefore powers the radio on, triggers a scan, samples, then powers it back down.
 
-- Periodic device state publishing (configurable interval, default 60s)
-- Home Assistant MQTT auto-discovery (sensor/button/binary_sensor)
-- Remote command control
-- LWT (Last Will and Testament) messages (online/offline detection)
+Design (all in `etc.cpp`):
 
-### 12.2 Remote Commands
-
-Send JSON via `{topic}/cmd` topic:
-```json
-{"cmd": "rst_esp"}     // Restart ESP32
-{"cmd": "rst_zig"}     // Restart Zigbee
-{"cmd": "enbl_bsl"}    // Enter BSL mode
-```
-
-### 12.3 State Data
-
-JSON published to `{topic}/state`:
-```json
-{
-    "uptime": "0 d 01:23:45",
-    "temperature": "42.5",
-    "connections": 1,
-    "ip": "192.168.1.100",
-    "mode": "Zigbee-to-Ethernet",
-    "zbfw": "20221226",
-    "hostname": "AVATTO-GW90-TI"
-}
-```
+- **Demand-driven**: the radio only powers up when a consumer asks — the status/home page (`getRootData()` → `getCPUtemp()`) or MQTT state publish. With neither active, the radio stays down: no loop spikes and no 2.4 GHz noise near the coordinator. A `tempRequested` flag gates the state machine.
+- **Non-blocking**: `tempSensorLoop()` runs as a state machine from `loop()` (Idle → WaitSettle ~1.2 s → 5 samples ~20 ms apart → TearDown). `getCPUtemp()` never blocks; it returns the cache and requests a refresh.
+- **Calibration**: on first boot the offset needed to report ~30 °C is stored in `/config/system.json` (raw die temp on this sealed PoE gateway is ~71 °C). A stale offset outside ±10 °C is clamped to 0 and recalibrated; `tempSetCalibrated()` caches the offset-adjusted value so the first page view is correct.
+- Reads are capped at one per 15 s; per-read logging is `DEBUG`-only.
 
 ---
 
-## 13. WireGuard VPN Support
+## 13. Zigbee Coordinator Management
 
-- Based on local library `WireGuard-ESP32`
-- Automatically initializes WireGuard tunnel after network connection is established
-- Configuration: local address/private key, endpoint address/public key/port
-
----
-
-## 14. Zigbee Coordinator Management
-
-### 14.1 CC2652P Firmware Version Detection
-
-Uses the ZNP protocol's `SYS_VERSION` command to retrieve version info, including:
-- `majorrel` / `minorrel` / `maintrel` / `zbRev` / `product` / `transportrev`
-
-### 14.2 BSL Firmware Flashing
-
-1. Upload `.hex` firmware file via web interface
-2. File saved to LittleFS `/config/fw.hex`
-3. Use CCTools library to put CC2652P into BSL mode
-4. Execute flashing via serial port
-
-### 14.3 LED Control
-
-Control the LED on the CC2652P module via ZNP command:
-- Command frame format: `FE 02 27 0A 01 {00|01} {checksum}`
+- **Protocol**: TI Z-Stack ZNP over Serial2 (default 115 200 baud; raised to 1 000 000 during BSL flash).
+- **Version**: `getZbVer()` decodes the 11-byte SYS_VERSION response (`zb_ver.h`).
+- **Health**: `zbHealthCheck()` passively resets a hung coordinator (client active + 3 min silence ×3) and counts `zbAutoResets`.
+- **BSL flashing**: HEX file validated with `IntelHex` (chip/BSL-pin/level checks against `NEED_BSL_PIN`/`NEED_BSL_LEVEL`), then `runFlash()` streams it in 240 B packets with gap-fill and progress events.
 
 ---
 
-## 15. OTA & Firmware Updates
+## 14. MQTT & Home Assistant Discovery
 
-### 15.1 Web OTA
-
-Upload `.bin` file via web interface at `/sys-tools` for OTA upgrade.
-
-### 15.2 Remote OTA
-
-Firmware downloaded from GitHub Release:
-```
-https://github.com/AVATTO-smart/avatto-gw90-firmware/releases/latest/download/AVATTO-GW90-Ti.bin
-```
-
-### 15.3 ESP Web Tools Flashing
-
-`manifest.json` supports flashing full firmware (bootloader + partition table + application) directly via browser Web Serial.
+- Commands on `{topic}/cmd`: `{"cmd":"rst_esp"}` / `"rst_zig"` / `"enbl_bsl"`.
+- State JSON on `{topic}/state`: uptime, temperature, connections, IP, mode, `zbfw`, hostname.
+- HA discovery payloads are built by `buildHaDiscoveryMessage()` from the `ha_discovery.h` entity table (retained, topic-per-entity, `stat_t`/`cmd_t`/`avty_t`/`dev`). Every button `payload_press` is valid JSON carrying `cmd` — enforced by unit tests.
 
 ---
 
-## 16. Button & LED Interaction
+## 15. WireGuard
 
-### 16.1 Physical Button (GPIO 35)
-
-| Action | Effect |
-|--------|--------|
-| **Short press** | Toggle USB/non-USB mode (save and restart) |
-| **Long press 2s** | Toggle LED global on/off |
-| **Long press 4s** | Enter Zigbee BSL flash mode |
-| **Hold > 2s at boot** | Factory reset |
-
-### 16.2 LED Indicators
-
-| LED | Color | GPIO | Indication |
-|-----|-------|------|------------|
-| LED_PWR | Blue | 14 | Power/operation indicator (can be disabled) |
-| LED_USB | Red | 12 | USB mode indicator (only on in USB mode) |
+`wgBegin()` uses the Tinkerforge fork's explicit API (`/32` host subnet, local port 51820, no gateway) after the network is up. Config in `/config/configWg.json`.
 
 ---
 
-## 17. Network Connection Management
+## 16. OTA & Releases
 
-### 17.1 Network Overseer Timer
-
-- **Check interval**: 5 seconds
-- **Max retries**: 4 times (i.e. 20s timeout)
-- **Behavior**:
-  - LAN mode: check Ethernet connection, start AP on timeout
-  - WiFi mode: check WiFi connection, reconnect on timeout and start AP
-  - USB mode: try WiFi for 10s, if failed try LAN, if both fail start AP
-
-### 17.2 Ethernet Initialization
-
-LAN8720 PHY initialization sequence:
-1. GPIO5 LOW for 50ms → HIGH for 300ms (hardware reset PHY)
-2. `ETH.begin()` initializes RMII interface
-3. Configure static IP or use DHCP
-
-### 17.3 mDNS Service
-
-Registers `_avatto-gw90-ti._tcp` service with ZHA-compatible zeroconf metadata:
-- `radio_type`: znp
-- `baud_rate`: configured baud rate
-- `data_flow_control`: software
+- **Web**: `POST /update` (multipart `AVATTO-GW90-Ti.bin`) or URL fetch (`/api?cmd=10`).
+- **ZB**: `POST /updateZB` or `/api?action=10&fwurl=...`.
+- **Release flow** (`scripts/release.sh` + the GitHub `Release` workflow):
+  1. Bump `tools/version` + `manifest.json`, commit + tag `vX.Y.Z` (workflow_dispatch with `patch`/`minor`/`major`/`X.Y.Z`)
+  2. Build `prod` with the pinned version
+  3. Attach `bin/*.bin` to the GitHub release
 
 ---
 
-## 18. Debugging Methods
+## 17. Profiler (Debug Build)
 
-### 18.1 Build Debug Version
+Gated behind `-DBUILD_DEBUG` — **production firmware ships zero instrumentation**.
 
-```bash
-pio run -e debug-solo
-```
-When the `-DDEBUG` macro is enabled, `DEBUG_PRINT` / `DEBUG_PRINTLN` macros output to Serial (115200 baud).
+- `profilingLoopBegin()` / `profilingLoopTick()` bracket each `loop()` iteration; the loop is a strict serial scheduler, so the cycle time is the gateway's end-to-end latency.
+- Tracks min / EMA / max over a rolling 60 s window; every minute a `PROF` line is logged (loop latency + free/min/largest heap + fragmentation %).
+- The status API exposes `loopMinUs`/`loopAvgUs`/`loopMaxUs`, `espHeapMinFree`, `espHeapLargest`, `espHeapFrag`.
+- Stats math is pure `profiling.h` (unit-tested).
 
-### 18.2 Serial Monitor
-
-```bash
-pio device monitor
-```
-Built-in `esp32_exception_decoder` filter can automatically decode exception stack traces.
-
-### 18.3 Web Log
-
-The web interface provides real-time log viewing (ring buffer 8024 bytes), including Zigbee communication data in HEX format.
-
-### 18.4 Debug UI
-
-The `debug-ui/` directory contains a standalone debug web interface, launchable via `start-debug-server.bat`, simulating device behavior with mock data.
-
-### 18.5 Key Debug Log Prefixes
-
-| Prefix | Module |
-|--------|--------|
-| `[LAN]` | Ethernet initialization |
-| `[ETH_EVENT]` | Ethernet events (connected/disconnected/IP acquired) |
-| `[NET_EVENT]` | Network event dispatch |
-| `[OVERSEER]` | Network overseer timer |
-| `[SRV]` | Service startup |
-| `[MODE]` | Coordinator mode switch |
-| `[LED]` | LED control state |
-| `[ZBVER]` | Zigbee version info |
-| `[ZB_FW_TASK]` | Zigbee firmware flashing task |
-| `[SOCK IP WHITELIST]` | Socket connection IP filtering |
+Observed on a live PoE gateway: loop min ~1.26 ms, typical ~2 ms, ~30 ms periodic spikes from the temp-sensor radio cycle, heap ~187 K free / ~43 % fragmentation (stable).
 
 ---
 
-## 19. Known Issues & Precautions
+## 18. Testing
 
-### 19.1 Platform Version Compatibility
+`mise run test` runs the Unity suite on the host (`native` env). Only pure logic is testable (no hardware). The suite covers:
 
-**Very important**: ESP32-SOLO1 platform version selection is critical. Tested results:
-- ✅ `tasmota/platform-espressif32 @ 2023.07.00` — works reliably
-- ❌ `2023.08.00` and later — HTTPS functionality broken
-- ❌ `espressif32 @ 6.4.0` — does not support SOLO1 board
+- `encoding` (urlDecode, hex2bin) · `checksum` (ZNP) · `ip_utils` (IPv4) · `zb_ver` (version decode) · `zones` (TZ table)
+- `config_utils` (temp clamp, WG key fallback) · `ha_discovery` (entity table + message/topic shape + payload JSON validity)
+- `wifi_save_logic` (commit-on-connect modes, connect throttle) · `profiling` (stats math) · `log` (ring buffer) · `api_dispatch` (API numbering)
 
-### 19.2 LAN8720 PHY Initialization
-
-GPIO5 must be hardware-reset before `ETH.begin()` (LOW 50ms → HIGH 300ms), otherwise the PHY may not initialize correctly after `ESP.restart()`.
-
-### 19.3 CPU Temperature Reading
-
-The ESP32 temperature sensor requires the WiFi module to be active. `getCPUtemp()` temporarily enables then disables WiFi during the reading.
-
-### 19.4 MQTT Buffer
-
-PubSubClient's default buffer is small; `mqttPublishMsg()` uses `beginPublish/print/endPublish` pattern to support large messages.
-
-### 19.5 Config File Corruption Handling
-
-All `loadConfig*()` functions will **delete the corrupted file** and restart the device upon JSON deserialization failure. Default configuration is automatically created on next boot.
-
-### 19.6 Version Number Storage
-
-The `tools/version` file only stores the version string and is not auto-synced with Git commits. Manually edit this file to change the version number.
+`mise run lint` runs cppcheck with `--skip-packages` (cppcheck 2.21 cannot parse the GCC 14.2 toolchain's `type_traits`).
 
 ---
 
-## Appendix A: Quick Start Guide
+## 19. API Endpoints
 
-### First Compile
+| Route | Description |
+|-------|-------------|
+| `GET /api?action=0&page=N` | Page data (JSON headers) |
+| `GET /api?action=1&param=X` | Single param (`refreshLogs`, `coordMode`, `zbRev`, `espVer`) |
+| `GET /api?action=2` | Start WiFi scan |
+| `GET /api?action=3` | WiFi scan status/results |
+| `GET /api?action=4` | `/config` file list |
+| `GET /api?action=5&filename=X` | Read a config file |
+| `GET /api?action=7` | WiFi connect status |
+| `GET /api?action=8&cmd=N` | Execute command (see below) |
+| `GET /api?action=9` | Log buffer |
+| `GET /api?action=10&fwurl=X` | Download + flash CC2652P firmware from URL |
+| `POST /saveParams` | Save config (pageId) |
+| `POST /saveFile` | Write a config file |
+| `POST /update` | ESP32 OTA upload |
+| `POST /updateZB` | CC2652P upload |
+| `GET /events` | SSE event stream (auth-gated) |
+| `GET /status` | Full device status JSON |
+| `GET /logout` | Logout |
 
-```bash
-# 1. Install PlatformIO CLI (or VSCode plugin)
-pip install platformio
-
-# 2. Install Node.js (for web build)
-# Download: https://nodejs.org/
-
-# 3. Clone the project
-git clone <repo_url>
-cd PREGW90
-
-# 4. Build
-pio run -e prod-solo
-
-# 5. Output files
-# bin/AVATTO-GW90-Ti.bin          — OTA upgrade firmware
-# bin/AVATTO-GW90-Ti_v*.full.bin  — Full flash firmware
-```
-
-### First Flash
-
-```bash
-# Via serial
-pio run -e prod-solo -t upload
-
-# Or manually with esptool
-python tools/esptool.py --chip esp32 --baud 460800 write_flash 0x0 bin/AVATTO-GW90-Ti_v1.0.1.full.bin
-```
-
-### First-Time Device Configuration
-
-1. Device creates AP hotspot on first boot (SSID: `AVATTO-GW90-TI`)
-2. Connect to hotspot and browse to `192.168.1.1`
-3. Configure network parameters (WiFi or Ethernet)
-4. After reboot, access web management interface via the configured network
+**Commands** (`cmd`): 0 router rejoin · 1 ZB restart · 2 ZB BSL · 3 ESP restart · 6 LED power toggle · 7 LED USB toggle · 8 clear log · 9 ESP OTA from URL · 10 ZB check rev · 11 ZB check conn · 12 ZB LED toggle.
 
 ---
 
-## Appendix B: File Line Counts
+## 20. Known Issues & Precautions
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `main.cpp` | 1506 | Program entry and core logic |
-| `web.cpp` | 1944 | Web server (largest file) |
-| `mqtt.cpp` | 467 | MQTT integration |
-| `etc.cpp` | 373 | Utility functions |
-| `zb.cpp` | 347 | Zigbee management |
-| `config.h` | 160 | Configuration definitions |
-| `zones.h` | 479 | Timezone data |
-
----
-
-## Appendix C: Contacts & Resources
-
-- **Original repository**: https://github.com/mercenaruss/uzg-firmware
-- **OTA firmware download**: https://github.com/AVATTO-smart/avatto-gw90-firmware/releases
-- **PlatformIO documentation**: https://docs.platformio.org/
-- **CC2652P BSL documentation**: TI CC26xx Technical Reference Manual
-- **Z-Stack ZNP interface**: TI Z-Stack ZNP Interface Specification
-
----
+- **LAN8720 PHY**: GPIO5 must be toggled LOW→HIGH before `ETH.begin()` or the PHY fails after `ESP.restart()`.
+- **cppcheck vs GCC 14.2**: `pio check` requires `--skip-packages`.
+- **PSRAM intentionally disabled**: the D0WDR2-V3's 2 MB PSRAM routes through GPIO16/17, which conflict with `CC2652P_RST` (GPIO16). Enabling PSRAM would break the Zigbee reset line.
+- **`/events` auth**: `EventSource` can't send custom headers; browsers replay cached HTTP-auth credentials for the origin, so an already-logged-in session works, and unauthenticated clients get a 401 + the frontend's polling fallback.
+- **Temp reads are demand-driven**: the reported temperature may be the cached boot value on the very first page view after a long idle, and only refreshes while a page or MQTT is active.
+- **Version is constant**: `tools/version` is only bumped by the release workflow; dirty-tree builds carry a `-dirty` suffix.
