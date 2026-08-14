@@ -94,8 +94,6 @@ void processSocketBridge()
 {
   uint16_t net_bytes_read = 0;
   uint8_t net_buf[BUFFER_SIZE];
-  uint16_t serial_bytes_read = 0;
-  uint8_t serial_buf[BUFFER_SIZE];
 
   if (server.hasClient())
   {
@@ -158,6 +156,8 @@ void processSocketBridge()
 
   if (Serial2.available())
   {
+    uint16_t serial_bytes_read = 0;
+    uint8_t serial_buf[BUFFER_SIZE];
     zbLastRxMs = millis();
     while (Serial2.available() && serial_bytes_read < BUFFER_SIZE)
     { // read from Zigbee
