@@ -67,7 +67,7 @@ Configure at `http://<ip>/general`.
 
 ## Releases
 
-Releases are cut from `main` via the GitHub **Release** workflow (`patch`/`minor`/`major` or `X.Y.Z`), which bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds prod, and attaches the firmware to a GitHub release. Local equivalent: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
+Releases are cut from `main` via the GitHub **Release** workflow (`patch`/`minor`/`major` or `X.Y.Z`), which bumps `tools/version` + `manifest.json`, renames the `CHANGELOG.md` `[Unreleased]` section (if non-empty) to the released version, tags `vX.Y.Z`, builds prod, and attaches the firmware to a GitHub release whose notes come straight from that changelog section. Local equivalent: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
 
 ## Project Structure
 

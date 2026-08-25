@@ -80,5 +80,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(tr -d '\n' < tools/version)
-          gh release create "v$VERSION" --title "v$VERSION" --generate-notes \
-            bin/AVATTO-GW90-Ti.bin "bin/AVATTO-GW90-Ti_v${VERSION}.full.bin"
+          NOTES_FILE=$(mktemp)
+          VERSION="$VERSION" python3 > "$NOTES_FILE" <<'PY'
+          import os, re, sys
+
+          version = os.environ["VERSION"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^## v{re.escape(version)} — .+?\n(.*?)(?=^## )", text, re.S | re.M)
+          if not (m and m.group(1).strip()):
+              sys.exit(1)  # fall back to --generate-notes
+          print(m.group(1).strip())
+          PY
+          if [ -s "$NOTES_FILE" ]; then
+            gh release create "v$VERSION" --title "v$VERSION" --notes-file "$NOTES_FILE" \
+              bin/AVATTO-GW90-Ti.bin "bin/AVATTO-GW90-Ti_v${VERSION}.full.bin"
+          else
+            gh release create "v$VERSION" --title "v$VERSION" --generate-notes \
+              bin/AVATTO-GW90-Ti.bin "bin/AVATTO-GW90-Ti_v${VERSION}.full.bin"
+          fi

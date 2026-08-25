@@ -71,6 +71,7 @@ if git rev-parse -q --verify "refs/tags/v$next_version" >/dev/null 2>&1; then
 fi
 
 VERSION="$next_version" ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+import datetime
 import os
 import re
 from pathlib import Path
@@ -99,9 +100,24 @@ manifest_text, count = re.subn(
 if count != 1:
     raise SystemExit("Could not update artifact path in manifest.json")
 manifest_path.write_text(manifest_text, encoding="utf-8")
+
+changelog_path = root / "CHANGELOG.md"
+text = changelog_path.read_text(encoding="utf-8")
+match = re.search(r"^## \[Unreleased\]\n(.*?)(?=^## )", text, re.S | re.M)
+if match and match.group(1).strip():
+    replacement = (
+        "## [Unreleased]\n\n"
+        + f"## v{version} — {datetime.date.today():%Y-%m-%d}\n"
+        + match.group(1).rstrip()
+        + "\n\n"
+    )
+    text = text[:match.start()] + replacement + text[match.end():]
+    changelog_path.write_text(text, encoding="utf-8")
+else:
+    print("No [Unreleased] entries; CHANGELOG.md left untouched")
 PY
 
-git add tools/version manifest.json
+git add tools/version manifest.json CHANGELOG.md
 if git diff --cached --quiet; then
     echo "Error: no version changes to commit" >&2
     exit 1

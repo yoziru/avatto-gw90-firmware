@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+- Build: bump pioarduino platform 55.03.38 → 55.03.311 (Arduino core 3.3.11, ESP-IDF 5.5.5); drop the redundant `pip` package from the Python build env.
+
 ## v1.1.0 — 2026-08-11
 
 *All fork work since branching from AVATTO's v1.0.7.*
