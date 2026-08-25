@@ -164,7 +164,7 @@ Network mode is the default. If Ethernet drops, the overseer automatically bring
 ## Release Flow
 
 1. **Manual builds**: `mise run build` reads `tools/version` as-is (never modifies it); output in `bin/`: OTA binary + full flash binary.
-2. **Automated releases**: trigger the `Release` workflow on GitHub (Actions → Release → Run workflow) with `patch`/`minor`/`major` (or explicit `X.Y.Z`). It bumps `tools/version` + `manifest.json`, tags `vX.Y.Z`, builds `prod` with the version pinned, and creates a GitHub release with the firmware attached. Local script: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
+2. **Automated releases**: trigger the `Release` workflow on GitHub (Actions → Release → Run workflow) with `patch`/`minor`/`major` (or explicit `X.Y.Z`). It bumps `tools/version` + `manifest.json`, renames a non-empty `CHANGELOG.md` `[Unreleased]` section to the released version, tags `vX.Y.Z`, builds `prod` with the version pinned, and creates a GitHub release whose notes are that changelog section (falls back to generated notes if empty). Local script: `scripts/release.sh <patch|minor|major|X.Y.Z>` (main branch only).
 3. Update `manifest.json` for ESP Web Tools — done automatically by the release workflow.
 
 ## Web Frontend
