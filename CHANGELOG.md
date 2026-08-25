@@ -1,139 +1,95 @@
 # Changelog
 
+All notable changes to this project are documented here. Entries are grouped by kind: **Features**, **Fixes**, **Improvements** (perf / refactoring / tests), **Chores** (build / CI / deps / cleanup / docs).
+
 ## [Unreleased]
 
 ## v1.1.0 — 2026-08-11
 
-- Docs: reorganized and rewrote the project documentation — `README`, `ARCHITECTURE`, `AGENTS.md` and the factory-test README now reflect the current codebase (no stale `web.cpp`/`lib/`/SOLO1/three-mode/`prod-solo` references) and are written from the user/contributor perspective ("what do you want to do"), with durable phrasing that doesn't need updating on every version or test-count change. `ARCHITECTURE.md` gained a contributor "common tasks → where to look" map.
+*All fork work since branching from AVATTO's v1.0.7.*
 
-- Perf: the on-board temperature read is now **demand-driven** — the radio only powers up when a consumer actually asks (status/home page or MQTT state, both funnel through `getCPUtemp()`), so with no page open and MQTT off the radio stays fully down: no 30 ms loop spikes and no 2.4 GHz noise near the Zigbee coordinator while idle. The boot calibration now caches the offset-adjusted value (so the first page view after boot reads ~30 °C, not the raw ~71 °C die temp), the per-read log line is `DEBUG`-only, and the 1 s console log poll reuses a module-level String instead of allocating up to 8 KiB per fetch.
+### Features
 
-- Feature: lightweight profiler, **gated behind the `debug` build** (`BUILD_DEBUG`) so production firmware carries no instrumentation. `profilingLoopBegin()/profilingLoopTick()` bracket each `loop()` iteration (the loop is a strict serial scheduler, so its cycle time is the gateway's end-to-end latency) tracking min/EMA/max; every 60 s a snapshot (loop latency + free/min/largest heap + fragmentation %) is logged, and the status API exposes `loopMinUs`/`loopAvgUs`/`loopMaxUs`, `espHeapMinFree`, `espHeapLargest` and `espHeapFrag`. Stats math is pure `src/profiling.h` (unit-tested). Measured on a live PoE gateway: loop min ~1.26 ms, typical ~2 ms, periodic ~30 ms spikes from the temp-sensor radio cycle, heap ~187 K free with ~43% fragmentation.
-- Perf: reduce heap allocation churn on the hot paths. `getRootData()` now builds into a reused module-level `JsonDocument` (the several-KiB pool is allocated once instead of being freed on every 5 s status poll), the `/status` body reuses a reserved `String`, and `printLogTime()` (run per bridged frame) no longer allocates a `String` - the socket bridge now calls it instead of inlining a duplicate. Measured effect: fragmentation steady at ~43% either way (it was already flat, not growing - the earlier "risk" framing was overstated; 107 K contiguous headroom is ample since OTA streams and CC2652P BSL is line-buffered), but heap-manager work per poll/frame is cut substantially.
-- Security: `/events` (SSE) now requires the same web auth as every other protected endpoint - an unauthenticated client can no longer observe firmware-flash progress or occupy the single global SSE slot. `EventSource` can't send custom headers, but browsers replay cached HTTP-auth credentials for the origin, so an already-logged-in session keeps working; anyone else gets a 401 and the frontend falls back to its polling mode.
+- Collapse the three coordinator modes (LAN/WiFi/USB) into two — **Network** (0) and **Serial** (1). Network mode uses Ethernet as the primary uplink with automatic WiFi-STA fallback when Ethernet drops (and back when it returns, turning WiFi off again to reduce RF noise); a soft AP remains the last-resort config recovery. The old standalone WiFi mode is gone; Serial mode is unchanged GPIO33 passthrough with the optional Keep Network & Web channel. (#57, #59)
+- Report the active uplink ("Ethernet" / "WiFi (fallback)" / "Access Point" / "None") as `netUplink` on the root status page. (#58)
+- Status-page **Zigbee connection** card showing the live link between the coordinator and its client (Z2M, ZHA, or USB host in Serial mode): connection state, client IP, connected-for duration, coordinator status, auto-reset count; auto-refreshes every 5 s via `/status`. (#41)
+- Lightweight loop/heap profiler, **gated behind the `debug` build** (`BUILD_DEBUG`). `profilingLoopBegin()/profilingLoopTick()` bracket each `loop()` iteration tracking min/EMA/max; 60 s snapshots log loop latency + heap + fragmentation, exposed via the status API (`loopMinUs/loopAvgUs/loopMaxUs`, `espHeapMinFree`, `espHeapLargest`, `espHeapFrag`). Stats math is pure `src/profiling.h` (unit-tested).
+- Wi-Fi joins are now **commit-on-connect**: config is staged in RAM and only written to `/config/configWifi.json` once the STA link actually succeeds — a wrong password or unreachable AP can never become the saved network. Tweakable IP settings on the saved network and "Forget" still persist immediately. Adds pure `wifiShouldCommit()` logic (unit-tested) and shared `connectWifiSta()`. (#53)
+- Wi-Fi page: saved network gets its own "Your Network" section with checkmark instead of hiding under "Other Networks". (#54)
+- Web UI overhaul (#20): JS-controlled dark mode with toggle, sidebar language selector, proper pill-shaped switch toggles/radio/tab styling, mobile navbar fixes; embedded i18n without CDN deps (#1); routes auto-generated from `webh/` (#2).
 
-- C++ audit: buffer-safety and correctness fixes across the codebase.
-  - Fix: the socket bridge read LAN/Serial2 bytes *after* checking the bounds (check-before-write pattern) — reads are now bounded upfront (`bridge.cpp`).
-  - Fix: `logPrint()` skipped the newest log char (`size()-1` off-by-one).
-  - Fix: MQTT callback used a VLA sized off the network-supplied payload length — replaced with a fixed buffer and a `deserializeJson()` error check. HA discovery `payload_press` was emitted as invalid JSON (`{cmd:...}`) that ArduinoJson couldn't parse — now `{"cmd":"..."}` so the Restart/Bsl MQTT buttons actually work.
-  - Fix: ZNP status reads had no bound against the caller's buffer (a corrupt coordinator response could overflow the stack) — `zbGetResponseData`/`zbGetStatus` now take the buffer size and clamp the payload.
-  - Fix: `runFlash()` would overflow its 240-byte send buffer on an oversized Intel HEX record — now rejects the file instead.
-  - Fix: `saveParams` ZHA/Z2M page checked the `baud` arg for the `port` field (copy-paste bug); System Tools opened `configGeneral.json` twice for write (handle leak/truncation).
-  - Fix: `tempOffset` load used `(int)doc[...] | 0` (precedence no-op) and never clamped stale bogus calibrations — now a proper `| 0` default plus a ±10°C sanity clamp that re-calibrates bad values.
-  - Fix: WireGuard private key was persisted under the misleading `localIP` JSON key — the UI now writes `localPrivKey` (loader keeps a `localIP` fallback for existing configs).
-  - Fix: timezone default "Europe/Kiev" never applied because `if (ConfigSettings.timeZone)` is always truthy for a fixed array member — now checks `timeZone[0]`; also dropped the `const_cast` on a string literal.
-  - Fix: status page "connection/connections" pluralization was swapped.
-  - Fix: `/api` Zigbee-firmware download divided by zero (and broke immediately) when the server omitted `Content-Length`; the timeout was a total-download timeout instead of a no-data timeout.
-  - Fix: `GET /api?action=5` returned nothing when the file was missing (now 404); `sendEvent()` wrote via `sprintf` into an undersized VLA (now `printf` on the SSE client); `UPD_FILE` still pointed at the old `AVATTO-smart` GitHub org (now `yoziru`).
-- C++ audit: dead code removed. Dropped unused `programFlashFromFile`/`zbSendAck`/`zbBegin`/`getHexBinSize` (and the shadowed global `zbFlashTotal*` counters), the no-op `API_SEND_HEX` handler, commented-out cruft in `config.h`/`etc.h`/`main.cpp`/`network.cpp`/`mqtt.cpp`/`zb.cpp`, and redundant `extern struct X Y;` redeclarations.
-- C++ audit: DRY. Extracted `readJsonConfig()` (7 duplicated open/deserialize/error paths in `config.cpp`), `rawTempToCelsius()` (3 duplicated conversions in `etc.cpp`), `zbLedCommand()` (shared by `zbCheck`/`zbLedToggle`, also fixes the "respOk left true from last frame" logic), and turned the `for(0..99)+switch+i=100` MQTT discovery monster into a data table. `String` parameters passed by value are now `const String&`; the bridge hex-dump no longer calls `sprintf` per byte (nibble lookup table).
-- Test: extract the temp-offset clamp + WG private-key key-fallback into pure `src/config_utils.h`, and the HA discovery entity table into pure `src/ha_discovery.h`, so the native suite can validate them: `clampTempOffset` bounds, WG `localPrivKey`/`localIP` precedence, discovery entity types/uniqueness, and that every button `payload_press` is parseable JSON carrying a `cmd` (locks the discovery fix). 74 → 88 tests.
-- Test: the HA discovery *message* assembly is now also pure - `buildHaDiscoveryMessage()`/`haDiscoveryTopic()` in `ha_discovery.h` (ArduinoJson only, consumed by `mqtt.cpp`) - and the WiFi connect throttle is pure `wifiShouldBeginConnect()` in `wifi_save_logic.h` (consumed by `connectWifi()`). New tests lock the real desired behavior: every discovery entity gets the correct state/command/availability topics and device reference, buttons carry a parseable press payload, topics are `homeassistant/<type>/<device>/<id>/config`, and an in-progress STA connect is never restarted within the 20 s throttle window but a stuck one is retried. 88 → 95 tests.
-- Fix: `disableWeb` now actually disables the web server (`startServers()` skips `initWebServer()`), and the main loop serves the web server unconditionally instead of the confusing "only when no socket clients are connected" gate that both deprioritized the UI behind the Zigbee bridge and made `disableWeb` ineffective.
-- Fix: the PASSTHROUGH-mode overseer re-ran `ETH.begin()` every 5 s tick, re-initializing the LAN8720 PHY and flapping the link - it now brings Ethernet up once (right after the WiFi window).
-- Fix: `setClock()` blocked the whole loop (web server, socket bridge, MQTT) for up to 60 s waiting for NTP on every link-up event - it now applies the timezone immediately and lets the sync happen in the background; `setTimezone()` no longer logs a misleading "Thu Jan 1 1970" before the clock is synced.
-- Fix: `connectWifi()` used a `static` attempt counter that persisted across callers and re-armed indefinitely - replaced with a 20 s timestamp throttle so an in-progress connect isn't restarted every overseer tick.
+### Fixes
 
-- UI: move the **Device information** card from the status page to the About page, and move the **Zigbee connection** card up to sit directly below the Operating-mode diagram on the status page.
-- UI: About page cleanup - remove the marketing/link cards (Official Website, Product Documentation, Online Support, Purchase Channels) and the footer tech logos. Rename "Brand Information" to **Device** and merge "Hardware Information" + the moved "Device Information" into a single **System Information** card (model, MCU, Zigbee, Ethernet, interfaces, firmware/hardware versions, flash and memory). Drop the now-unused SVGs. The About API now serves the full device info (`handleAbout()` reuses `getRootData()`).
-- UI: point the footer repository link at `yoziru/avatto-gw90-firmware` instead of `AVATTO-smart/...`.
+- Security: `/events` (SSE) now requires web auth like every other protected endpoint — unauthenticated clients can no longer observe firmware-flash progress or occupy the single global SSE slot.
+- C++ audit — buffer safety & correctness:
+  - socket bridge read LAN/Serial2 bytes after bounds checking — reads now bounded upfront (`bridge.cpp`)
+  - `logPrint()` skipped the newest log char (`size()-1` off-by-one)
+  - MQTT callback VLA sized off network-supplied length → fixed buffer + `deserializeJson()` error check; HA discovery `payload_press` emitted invalid JSON → buttons actually work now
+  - ZNP status reads had no bound against caller buffers → `zbGetResponseData`/`zbGetStatus` clamp payloads
+  - `runFlash()` overflowed its 240-byte send buffer on oversized Intel HEX records → rejects file
+  - `saveParams` checked `baud` for the `port` field; System Tools leaked/truncated `configGeneral.json` handles
+  - `tempOffset` load precedence no-op + no sanity clamp → proper default + ±10 °C re-calibration
+  - WireGuard private key persisted under misleading `localIP` key → `localPrivKey` (loader keeps fallback)
+  - timezone default "Europe/Kiev" never applied (always-truthy array check); dropped `const_cast` on string literal
+  - Zigbee-firmware download divided by zero without `Content-Length`; timeout was total-download instead of no-data
+  - `GET /api?action=5` returned nothing on missing file (now 404); SSE client `sprintf` into undersized VLA; `UPD_FILE` pointed at old org
+- Platform/Core-3.x migration fallout: `wifiMac` read all-zeros with WiFi off (now via `esp_base_mac_addr_get()`); CPU temp skewed by bogus auto-calibration (store 0, clamp stale offsets); missing `delay(1)` yield caused 100% busy-spin after `CronAlarms` removal. (#67, #68, #33)
+- Auto-recover a hung CC2652P coordinator via fully-passive `zbHealthCheck()` (resets only when a client is active with zero coordinator output for 3 min ×3); exposes status + auto-reset count in Device Status. (#34)
+- Temperature read was frozen at exactly 53.3 °C — TSENS returns a fixed sentinel when the RF PHY is down; reads now force the radio on, take a median of 5 samples, cache 15 s. Also restored the ~30 °C auto-calibration persisted to `/config/system.json`, and made reads **non-blocking** (state machine in `loop()`) so cold reads no longer freeze web/bridge/MQTT for ~1.3 s. (#46–#48)
+- `disableWeb` now actually disables the web server; loop serves web unconditionally instead of deprioritizing it behind socket clients. (#32)
+- PASSTHROUGH-mode overseer re-ran `ETH.begin()` every 5 s tick, flapping the LAN8720 link — brings Ethernet up once now. (#33)
+- `setClock()` blocked the whole loop up to 60 s waiting for NTP on every link-up — applies timezone immediately, syncs in background. (#34)
+- `connectWifi()` static attempt counter persisted across callers and re-armed indefinitely → 20 s timestamp throttle. (#35)
+- Debug logging leaked into prod firmware (`#define DEBUG` unconditional); broken `#if BUILD_ENV_NAME != debug` guard replaced with `-DBUILD_DEBUG`; ISR-written `btnFlag` now `volatile`; socket arrays sized to `MAX_SOCKET_CLIENTS`; TCP port unified at 6638. (#26)
+- Off-by-one buffer overflow in `mqttCallback` (`jjson[length+1]`). (#24)
+- Static-analysis defects: device-ID XOR init, `%02x` buffer overflow (`char[2]` → `char[3]`). (#20)
+- UI: duplicate sidebar `<li>` broke nav DOM; page-fragment inline scripts (upload/GitHub OTA buttons) execute again after injection; saved dark theme applies before first paint (no light-mode flash). (#20)
+- Values in `respValuesArr` headers are ASCII-only (em-dash placeholder rendered as mojibake). (#42)
+- `parseIpv4()` rejected/accepted wrong inputs (`1.2.3`, `256.x`) — fixed during pure-header extraction. (#75)
 
-- Feature: the status page now has a **Zigbee connection** card showing the live link between the coordinator and its client (Z2M, ZHA, or the USB host in Serial mode): connection state (Connected / Not connected / USB passthrough), client IP, connected-for duration, coordinator status, and auto-reset count. The card auto-refreshes every 5 s via `/status`; it works for both Zigbee2MQTT and ZHA (both use the TCP socket) and degrades gracefully in Serial mode. The "Connection Duration" row moved here from Device Status and is renamed "Connected for".
-- Fix: values sent through the `respValuesArr` HTTP header (status-page `data-replace` fields) are ASCII-only — an em dash placeholder rendered as mojibake (`â€"`) in the browser. Use an ASCII `-` for not-applicable values instead. Also replaced the remaining em dashes across the source with ASCII hyphens for consistency.
+### Improvements
 
-- Build: stop auto-incrementing the patch version on every build. `tools/gen_version.py` now reads `tools/version` read-only (only the Release workflow bumps it) and appends `-dirty` when the working tree is dirty; version logic consolidated into `tools/version_util.py` shared by `gen_version.py` and `build.py`. Removes `version_increment_pre.py`, `version_increment_post.py`, and the `.version_no_increment` marker logic. Version reverted to `1.0.7`.
+- Performance: temperature read is **demand-driven** — radio powers up only when a consumer asks (status page/MQTT), so idle gateway has no 30 ms loop spikes or 2.4 GHz noise near the coordinator; boot calibration caches the offset-adjusted value; console poll reuses a module-level String instead of allocating up to 8 KiB per fetch.
+- Performance: cut heap allocation churn on hot paths — `getRootData()` reuses a module-level `JsonDocument`, `/status` body reuses a reserved `String`, per-frame `printLogTime()` no longer allocates.
+- Refactor: split `main.cpp` (2053 → 484 lines) into `network.cpp`/`bridge.cpp`/`factory.cpp`; finished the `web.cpp` split (`events.cpp`, `common.cpp`). (#74, #17)
+- Refactor/DRY: extracted `readJsonConfig()`, `rawTempToCelsius()`, `zbLedCommand()`; HA discovery monster-loop became a data table; bridge hex-dump uses a nibble table instead of per-byte `sprintf`.
+- Testability: extracted pure headers with Unity suites — `ip_utils.h` (59→63), `checksum.h`+`zones.h` (+15), `zb_ver.h` (63→67), `config_utils.h`+`ha_discovery.h` (74→88), discovery-message builder + WiFi throttle (88→95 tests); expanded native coverage of log buffer/API dispatch. (#16, #28)
+- STA negotiates 802.11 b/g/n (was b-only, capping fallback at 11 Mbps and rejecting n-only APs). (#49)
+- UI: honest WiFi radio state on status page (green Connected / blue Asleep / grey Not configured; diagram tints accordingly); Wi-Fi IP-settings panel shows explanatory note instead of blank "—" when asleep; card layout/alignment polish; fan icon; red-outlined Forget button. (#50–#52, #55)
+- UI: About page cleanup — marketing/link cards and footer logos removed; "Brand Information" renamed **Device**, hardware info merged into one System Information card; About API serves full device info via `getRootData()`. Device-information card moved to About, Zigbee-connection card moved under Operating-mode diagram. (#37, #38)
+- CSS: replaced Bootstrap with Water.css + minimal custom stylesheet (65 KB → 10 KB gzipped). (#18)
+- C++ modernization: `-std=gnu++17`, scoped `enum class CoordinatorMode`, `constexpr` constants/config helpers, include guards everywhere. (#22)
 
-- Fix: the on-board temperature read was frozen at exactly 53.3°C — the ESP32 TSENS returns the fixed `0x80` sentinel whenever the RF PHY (shared SAR ADC) isn't actually powered. On ESP-IDF 5.x `esp_wifi_start()` alone leaves the radio in modem-sleep, so now the read forces the radio fully on (scan + `setSleep(false)`), takes a median of 5 samples, then tears it back down. Results are cached for 15 s so the 60 s MQTT heartbeat and page reloads don't power the radio every call (2.4 GHz noise near the Zigbee coordinator).
-- Fix: the temp read is now **non-blocking** — it runs as a state machine in `loop()` (`tempSensorLoop`) instead of `delay(1200)` inside the web/MQTT handlers, which previously froze the web server, Zigbee socket bridge and MQTT together for ~1.3 s on every cold read. Page loads stay ~40 ms even on a cold cache; boot-time calibration keeps a synchronous read (nothing else runs during setup).
-- Fix: restore the on-board temperature **auto-calibration** (offset against a ~30 °C reference, stored in `/config/system.json` on first boot) so the reported die temp reads sensibly.
-- Network: STA now negotiates **802.11 b/g/n** (was pinned to 802.11b-only, capping fallback throughput at 11 Mbps and rejecting b/g/n-only APs).
-- UI: the main status page now reports the WiFi radio state honestly — green **Connected** when STA is the active uplink, blue **Asleep** when configured but idle (Ethernet primary, radio off), grey **Not configured** when no credentials are saved. `wifiEnabled` reflects the actual radio power state. The Operating-mode diagram tints the WiFi icon/line/dot blue when it's asleep, and the stale "Switch" label reads "WiFi".
-- UI: fixed the Wi-Fi page IP-settings panel — the live-IP box no longer shows a blank "—" when WiFi is asleep (it shows an explanatory note instead), and the DHCP toggle now cleanly swaps between the live values and the static form.
-- UI: the "Your Network" row's checkmark and info button are now vertically centered and evenly spaced (the info button's water.css margin was adding a stray right gap), and expanded rows/panels no longer show a hand cursor over non-interactive areas.
-- Fix: join a new Wi-Fi network via **commit-on-connect** — the config is staged in RAM and only written to `/config/configWifi.json` once the STA link to that SSID actually succeeds. A wrong password or unreachable AP can never become the saved network (previously any `saveParams` post persisted immediately, so a failed join looked "saved" after refresh). Tweakable IP settings on the already-saved network and "Forget" still persist right away. Adds `wifiSaveMode`/`wifiShouldCommit` pure logic (unit-tested) and a shared `connectWifiSta()` used by both the overseer and the save handler.
-- Feature: the saved network is no longer listed under "Other Networks" on the Wi-Fi page (it has its own "Your Network" section with a checkmark).
-- UI: the Wi-Fi page card now shows a proper Wi-Fi fan icon instead of the scanning-loop icon; the "Forget This Network" action renders as a red-outlined delete button (added `.btn-outline-danger`).
-- Cleanup: remove the deprecated `adapterModeUSB`/`adapterModeLAN` API commands and the dead "Enable Network/Serial Mode" buttons in System Tools (mode is configured on the General page); drop dead `emergencyWifi`/`enableWiFi`/`disableEmerg` config keys and stale comments; de-duplicate the `temprature_sens_read` declaration.
-- Feature: collapse the three coordinator modes (LAN/WiFi/USB) into two — **Network** (0) and **Serial** (1). Network mode uses Ethernet as the primary uplink with automatic WiFi-STA fallback when Ethernet drops (and back when it returns, turning WiFi off again to reduce RF noise); a soft AP remains the last-resort config recovery when both fail. The old standalone WiFi mode is gone — WiFi STA is now just the fallback in Network mode. Serial mode (was USB) is unchanged GPIO33 passthrough with the optional Keep Network & Web channel.
-- Feature: report the active uplink ("Ethernet" / "WiFi (fallback)" / "Access Point" / "None") as `netUplink` on the root status page.
-- Refactor: remove `CoordinatorMode::WIFI` and the now-redundant `prevCoordinator_mode`; mode is a binary toggle (Network ↔ Serial) on the button and the General page.
-- Fix: guard `startServers()` so web/socket handlers are registered once per boot (repeated overseer reconnects previously re-registered duplicate `.on()` handlers).
+### Chores
 
-## v1.0.2 — 2026-07-15
-
-- Build: migrate to `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core) and `board = esp32dev`. Fixes the misidentified hardware: the AVATTO GW90-TI uses a dual-core **ESP32-D0WDR2-V3** (2 cores + 2MB PSRAM), not the single-core ESP32-SOLO1 that README/AGENTS.md assumed. This invalidates the old "SOLO1 requires tasmota 2023.07.00" platform constraint; HTTPS (`WiFiClientSecure`) and modern deps now work. Renames envs `prod-solo`/`debug-solo`/`factory-test-solo` → `prod`/`debug`/`factory-test`. Runs both cores at 240 MHz (was 160 MHz).
-- Deps: replace vendored `lib/WireGuard-ESP32` with the maintained Tinkerforge fork (`Tinkerforge/WireGuard-ESP32-Arduino` via git `lib_deps`) — esp_netif/IDF 5.x compatible with the LAN8720 Ethernet fix built in. Adapt `wgBegin()` to the fork's explicit subnet/port/gateway API (`/32`, port 51820, no gateway).
-- Migrate: `WiFiClientSecure` → `NetworkClientSecure`, `WiFiClient` → `NetworkClient`, `ETH.begin()` → Core 3.x signature, `SYSTEM_EVENT_*` → `ARDUINO_EVENT_*` event names, `server.available()` → `server.accept()`, `xTaskCreate` → `xTaskCreatePinnedToCore` (pins flash/test tasks to core 0), `WiFiEvent_t` → `arduino_event_id_t`, `#include <esp_chip_info.h>`/`<esp_mac.h>`. Rename `src/network.h` → `src/net.h` (avoids shadowing the framework `Network` library).
-- Fix: `wifiMac` read `00:00:00:00:00:00` with WiFi off (Ethernet mode) on Core 3.x — `WiFi.macAddress()` now requires an initialized STA netif. Read the burned-in base MAC via `esp_base_mac_addr_get()` (eFuse) instead.
-- Fix: CPU temp display was skewed by a bogus auto-calibration (`loadSystemVar` stored `tempOffset = rawTemp - 30`, but a sealed PoE gateway runs ~53°C, so it subtracted ~23–33°C). Stop auto-calibrating (store 0) and clamp any stale offset outside ±10°C to 0. Raw sensor reads the true ~53°C die temp.
-- Note: the D0WDR2-V3's embedded 2MB PSRAM is deliberately NOT enabled — it routes through GPIO16/17, which conflict with `CC2652P_RST` (GPIO16). Enabling PSRAM would break the Zigbee reset line.
-- Build: cppcheck gate now runs with `--skip-packages` — the GCC 14.2 toolchain `type_traits` header breaks cppcheck 2.21 parsing (unrelated to project code).
-- Fix: add `delay(1)` yield to `loop()` — PR #29 removed `CronAlarms`, whose `Cron.delay()` was the only yield, causing a 100% CPU busy-spin. (#33)
-- Fix: auto-recover a hung CC2652P coordinator via a fully-passive `zbHealthCheck()` (observes client↔coordinator traffic; resets only when a client is active with zero coordinator output for 3 min ×3); exposes Coordinator status + auto-reset count in the Device Status card. (#34)
-- Test: extract CC2652P ZNP version-response decode into pure `src/zb_ver.h` (`decodeZbVer`), used by `getZbVer()`; add Unity suite (4 tests). 63 → 67 tests.
-- Refactor: split `main.cpp` (2053 → 484 lines) into `network.cpp` (initLan, WiFi/AP, mDNS, overseer, WireGuard), `bridge.cpp` (TCP socket bridge), `factory.cpp` (BUILD_FACTORY_TEST only); globals/`BUFFER_SIZE` moved into `config.h`.
-- Refactor: extract config loading into `config.cpp` + pure `ip_utils.h` `parseIpv4()` (4 new Unity tests; fixed `1.2.3` and `256.x` parse bugs). 59 → 63 tests.
-- CI: add `Release` workflow — bump `tools/version` + `manifest.json` via `patch`/`minor`/`major` (or explicit `X.Y.Z`), tag `vX.Y.Z`, build pinned `prod-solo`, attach firmware to GitHub release. Local equivalent: `scripts/release.sh`.
-- Build: gate all factory-test code behind `-DBUILD_FACTORY_TEST` (new `factory-test-solo` env); prod `prod-solo` and `debug-solo` builds now exclude it. Factory test triggers on BTN pressed (LOW) instead of released, and hard-reset mode is skipped in factory builds.
-- Build: make factory-test credentials injectable via `FACTORY_TEST_SSID`/`FACTORY_TEST_PASS`/`FACTORY_TEST_HOST` build flags with defaults preserved.
-- Cleanup: remove dead factory BSL/Type-C passthrough code (`typecReveivePktProcess`, `zigbeeReveivePktProcess`, `bsl_flag`, unused RX buffers) and commented-out `cmd2zigbee`/`clearS2Buffer`.
-- Test: extract `zbGenChksum` → `src/checksum.h` and `getGmtOffsetForZone` → `src/zones.h` as header-only pure functions; add Unity suites (15 new tests, 59 total). (#28)
-- Cleanup: remove dead `hexToDec` (no callers). (#28)
-- CI: add `pio check` (cppcheck) lint gate, `debug-solo` build job, and firmware artifact upload (`bin/*.bin`) to the workflow. (#27)
-- Fix: gate `DEBUG_PRINT*` behind the `-DDEBUG` build flag only — unconditional `#define DEBUG` in `config.h` leaked full debug logging into prod firmware. (#26)
-- Fix: `#if BUILD_ENV_NAME != debug` preprocessor guard never worked (compared a string literal); replaced with a real `-DBUILD_DEBUG` flag for debug envs. (#26)
-- Fix: `btnFlag` written from an ISR was not `volatile`; now `volatile uint8_t`. (#26)
-- Fix: socket arrays sized `[10]` vs `MAX_SOCKET_CLIENTS` (5) — unified; `TCP_LISTEN_PORT` 9999 → 6638 to match config/docs default. (#26)
-- Security: remove committed factory-test credentials (`factory-test-ap.txt`, `factory-test-process.txt`, `bin/factory-test-ap.txt`); document the inline AP-scan test flow in `factory_test/README.md` instead. (#25)
-- Build: wire `version_increment_post.py` so patch version auto-increments every build; stop committing `tools/.version_no_increment` (now gitignored). (#25)
-- Build: fix `build.py` version filename trailing-newline bug (`AVATTO-GW90-Ti_v1.0.7<newline>.full.bin`). (#25)
-- Cleanup: delete dead `tools/` scripts (`commit.sh`, `make_git_hook.sh`, `flash.sh`, `esptool.py`, `debug_build.py`); stale `debug-ui/`; dead web JS (`bootstrap.min.js`, `jquery-min.js`, `masonry.js`) + inert `data-masonry` attributes/CSS. (#25)
-- Deps: migrate ArduinoJson 6.x → 7.4.3 (`DynamicJsonDocument`/`StaticJsonDocument` → auto-sized `JsonDocument`, `createNested*` → `to<JsonArray>()`/`add<JsonObject>()`). (#24)
-- Fix: off-by-one buffer overflow in `mqttCallback` (`jjson[length+1]` → `jjson[length]`). (#24)
-- Deps: remove unused `ArduinoJson.h` includes from `zb.cpp`/`web/common.cpp`; self-contained `etc.h`. (#24)
-- Build: suppress cppcheck preprocessor errors from ArduinoJson 7 macros. (#24)
-- Deps: remove unused libs — AsyncTCP, EspSoftwareSerial, ESP32Ping (no code references; Serial2 is hardware UART). (#23)
-- Deps: pin all remaining `lib_deps` to exact versions for reproducible builds (CircularBuffer 1.4.0, Ticker 4.4.0, PubSubClient 2.8.0, CronAlarms 0.1.0, Unity 2.6.1). (#23)
-- C++: enable `-std=gnu++17` (override framework `gnu++11` via `build_unflags`). (#22)
-- C++: modernize `encoding.h` — `constexpr`/`noexcept` helpers, `std::string_view` inputs, drop `strtol` hex parsing. (#22)
-- C++: convert `COORDINATOR_MODE_t` unscoped enum to scoped `enum class CoordinatorMode`; explicit `uint8_t` casts at JSON/serial boundaries. (#22)
-- C++: `constexpr` config constants; add missing include guards to `log.h`, `mqtt.h`, `zb.h`, `web.h`. (#22)
-- Build: mise.toml + pyproject.toml for reproducible builds. (#3)
-- CI: GitHub Actions workflow (PlatformIO, SHA-pinned deps). (#5)
-- Chore: untrack build artifacts (bin/, webh/, .vscode/). (#6)
-- Docs: AGENTS.md, ARCHITECTURE.md (renamed), rewritten README, CHANGELOG extracted.
-- Translation: all Chinese → English (61 files). (#4)
-- Web: embed i18n, remove CDN deps, fix console logging. (#1)
-- Routes: auto-generate from webh/ directory. (#2)
-- CSS: replace Bootstrap with Water.css + minimal custom stylesheet (65KB→10KB gzipped). (#18)
-- Refactor: finish web.cpp split — events.cpp, common.cpp, delete web.cpp, fix CSS MIME. (#17)
-- Test: expand native unit tests (log buffer, API dispatch). (#16)
-- UI: JS-controlled dark mode with toggle (mobile + sidebar), remove `prefers-color-scheme`. (#20)
-- UI: sidebar language selector + dark mode toggle. (#20)
-- UI: fix mobile navbar layout — `display: flex` on container, clean up h2 positioning. (#20)
-- UI: proper pill-shaped switch toggles, radio button fix, tab styling. (#20)
-- UI: fix item-box height on desktop, temperature bar, table striping. (#20)
-- UI: move toggles out of card-header to card-body (Ethernet, WireGuard). (#20)
-- JS: simplify `isMobile()` (width only), auto-close sidebar on page nav. (#20)
-- JS: sync both lang selectors, fix tab pane `.show` class. (#20)
-- Build: OTA flash task, git-aware version string. (#20)
-- Build: remove Bootstrap JS (dead code), remove unused `navbar-brand` CSS. (#20)
-- Fix: remove duplicate sidebar `<li>` that broke the nav DOM. (#20)
-- Fix: restore page-fragment inline scripts (file upload, GitHub OTA buttons) by executing injected `<script>` tags. (#20)
-- Fix: apply saved dark theme before first paint to avoid light-mode flash. (#20)
-- Build: make version script git-optional, gitignore generated `src/version.h`, add OTA auth to `flash:ota`. (#20)
-- Build: enable `pio check` (cppcheck) with `lint`/`lint:full` mise tasks. (#20)
-- Fix: static-analysis defects — init device-ID XOR bytes, `%02x` buffer overflow (`char[2]` → `char[3]`). (#20)
+- Build: migrated to `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4) — correct dual-core ESP32-D0WDR2-V3 target (was misassumed SOLO1), HTTPS works, envs renamed `prod`/`debug`/`factory-test`, both cores at 240 MHz. (#64)
+- Build: replaced vendored WireGuard lib with maintained Tinkerforge fork (esp_netif/IDF 5.x compatible); adapted `wgBegin()` to its API. (#65)
+- Build: full Core-3.x API migration (`NetworkClientSecure`, event names, `accept()`, pinned tasks). (#66)
+- Build: stopped auto-incrementing patch version per build — `tools/version` is read-only (Release workflow bumps), `-dirty` suffix on dirty trees, logic consolidated in `tools/version_util.py`. (#44)
+- Build: factory-test code gated behind `-DBUILD_FACTORY_TEST`; credentials injectable via `FACTORY_TEST_SSID/PASS/HOST` flags. (#77, #78)
+- Build/deps: ArduinoJson 6 → 7.4.3 migration; removed unused libs (AsyncTCP, EspSoftwareSerial, ESP32Ping); pinned remaining `lib_deps` to exact versions. (#23, #24, #91, #93–#96)
+- Build: mise.toml + pyproject.toml reproducible setup; OTA flash task; git-aware version string. (#3, #20)
+- CI: GitHub Actions workflow (PlatformIO, SHA-pinned deps); `Release` workflow (version bump/tag/firmware attach); `pio check` lint gate with `--skip-packages` (GCC 14.2 toolchain header breaks cppcheck parsing); debug build job + artifact upload. (#5, #27, #70, #76, #82, #94)
+- Cleanup: dead code removal across audit (`programFlashFromFile`, `zbSendAck`, factory BSL/Type-C passthrough, deprecated `adapterModeUSB/LAN` commands + their UI buttons, dead `emergencyWifi`/`enableWiFi` config keys, unused includes, commented-out cruft); deleted stale `tools/` scripts, `debug-ui/`, dead web JS. (#25, #28, #56, #79, #81)
+- Chore: untracked build artifacts (`bin/`, `webh/`, `.vscode/`). (#6)
+- Docs: rewrote README/ARCHITECTURE/AGENTS.md + factory-test README around current codebase and contributor workflows; CHANGELOG extracted; AGENTS.md added.
+- i18n: translated all remaining Chinese content to English (61 files). (#4)
 
 ## v1.0.7
+
+Upstream release (AVATTO):
 
 - Fix ZHA USB mode serial connection failure (factory test timeout).
 
 ## v1.0.6
 
+Upstream release (AVATTO):
+
 - Fix OTA display bugs on firmware update page.
 
 ## v1.0.5
+
+Upstream release (AVATTO):
 
 - Initial fork from mercenaruss/uzg-firmware.
 - CC2652P BSL flashing, factory test, AVATTO GW90-TI pin mapping, SVG fixes.
