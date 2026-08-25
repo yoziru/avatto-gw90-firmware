@@ -89,3 +89,10 @@ Releases are cut from `main` via the GitHub **Release** workflow (`patch`/`minor
 | `test/` | Native Unity test suites |
 
 Full details: `ARCHITECTURE.md`.
+
+## License & Attribution
+
+This project is based on [AVATTO's official GW90-TI firmware](https://github.com/AVATTO-smart/avatto-gw90-firmware), with extensive modifications for stability, Home Assistant integration, and developer tooling. Changes relative to upstream are documented in `CHANGELOG.md`.
+
+- Licensed under the [GNU General Public License v3.0](LICENSE), inherited from the upstream project — all modifications are distributed under the same license.
+- **Not affiliated with or endorsed by AVATTO.** "AVATTO" and "GW90" are trademarks of their respective owners, used here solely to identify compatible hardware.
