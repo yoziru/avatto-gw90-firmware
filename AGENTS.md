@@ -48,7 +48,7 @@ Only the non-full `.bin` at offset 0x10000 is used for OTA. The `.full.bin` is f
 
 ### Network Logs
 
-- **API**: `GET /api?action=9` returns the circular log buffer (8KB)
+- **API**: `GET /api?action=7` returns the log ring (8KB events; `&src=zb` for the 8KB ZB frame ring). The web console fetches both and merges by timestamp
 - **SSE**: `/events` endpoint for real-time server-sent events (used for firmware progress)
 - **Web UI**: The web console page reads logs via the API
 - **Serial**: `pio device monitor` at 115200 baud
@@ -145,8 +145,8 @@ Network mode is the default. If Ethernet drops, the overseer automatically bring
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/api?action=8&cmd=N` | GET | Execute command (cmd 0-12) |
-| `/api?action=9` | GET | Get log buffer |
+| `/api?action=6&cmd=N` | GET | Execute command (cmd 0-12) |
+| `/api?action=7` | GET | Get log buffer |
 | `/update` | POST | ESP32 OTA firmware upload |
 | `/updateZB` | POST | CC2652P firmware upload |
 | `/events` | GET | SSE event stream |
@@ -181,6 +181,8 @@ Keep `CHANGELOG.md` up to date with every meaningful change. Follow the existing
 - `[Unreleased]` for pending work
 - Versioned sections for releases (`## vX.Y.Z — YYYY-MM-DD`)
 - Tag entries with PR numbers where applicable: `(#N)`
+
+Write entries for users, not developers. The changelog doubles as the GitHub release notes, so `[Unreleased]` should tell people what changed for them. Implementation detail belongs in Improvements/Chores.
 
 ## Known Issues
 

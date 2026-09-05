@@ -436,8 +436,26 @@ void handleGeneral()
     {
         doc["checkedDisableLedUSB"] = checked;
     }
+    doc["hostname"] = ConfigSettings.hostname;
+    doc["refreshLogs"] = ConfigSettings.refreshLogs;
+    if (ConfigSettings.timeZone)
+    {
+        doc["timeZoneName"] = ConfigSettings.timeZone;
+    }
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);
+
+    JsonDocument zones;
+    String results;
+
+    JsonArray zonesArray = zones.to<JsonArray>();
+    for (int i = 0; i < timeZoneCount; i++)
+    {
+        zonesArray.add(timeZones[i].zone);
+    }
+
+    serializeJson(zones, results);
+    serverWeb.sendHeader(respTimeZonesName, results);
 }
 
 void handleSecurity()
@@ -583,29 +601,8 @@ void handleWg()
 
 void handleSysTools()
 {
-    String result;
-    JsonDocument doc;
-
-    doc["hostname"] = ConfigSettings.hostname;
-    doc["refreshLogs"] = ConfigSettings.refreshLogs;
-    if (ConfigSettings.timeZone)
-    {
-        doc["timeZoneName"] = ConfigSettings.timeZone;
-    }
-    serializeJson(doc, result);
-    serverWeb.sendHeader(respHeaderName, result);
-
-    JsonDocument zones;
-    String results;
-
-    JsonArray zonesArray = zones.to<JsonArray>();
-    for (int i = 0; i < timeZoneCount; i++)
-    {
-        zonesArray.add(timeZones[i].zone);
-    }
-
-    serializeJson(zones, results);
-    serverWeb.sendHeader(respTimeZonesName, results);
+    // No per-page values: static page, logs poll via the API.
+    serverWeb.sendHeader(respHeaderName, "{}");
 }
 
 void handleAbout()

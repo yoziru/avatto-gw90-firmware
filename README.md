@@ -50,7 +50,7 @@ Only the non-full `.bin` (offset 0x10000) works for OTA.
 
 ## Network Logs
 
-- **API**: `GET /api?action=9` returns the circular log buffer (8 KB)
+- **API**: `GET /api?action=7` returns the log ring (8 KB events; `&src=zb` for the 8 KB ZB frame ring)
 - **SSE**: `GET /events` for real-time events (firmware progress)
 - **Web UI**: web console reads logs via the API
 

@@ -55,8 +55,6 @@ void handleApi()
         API_GET_PARAM,
         API_STARTWIFISCAN,
         API_WIFISCANSTATUS,
-        API_GET_FILELIST,
-        API_GET_FILE,
         API_SEND_HEX,
         API_WIFICONNECTSTAT,
         API_CMD,
@@ -364,29 +362,6 @@ void handleApi()
             serverWeb.send(HTTP_CODE_OK, contTypeJson, result);
         }
         break;
-        case API_GET_FILE:
-        {
-            String result = wrongArgs;
-            const char *argFilename = "filename";
-            if (serverWeb.hasArg(argFilename))
-            {
-                String filename = "/config/" + serverWeb.arg(argFilename);
-                File file = LittleFS.open(filename, "r");
-                if (!file)
-                {
-                    serverWeb.send(HTTP_CODE_NOT_FOUND, contTypeText, "not found");
-                    break;
-                }
-                result = "";
-                while (file.available())
-                {
-                    result += (char)file.read();
-                }
-                file.close();
-            }
-            serverWeb.send(HTTP_CODE_OK, contTypeText, result);
-        }
-        break;
         case API_GET_PARAM:
         {
             String resp = wrongArgs;
@@ -514,24 +489,6 @@ void handleApi()
                 break;
             }
             break;
-        case API_GET_FILELIST:
-        {
-            String fileList = "";
-            JsonDocument doc;
-            JsonArray files = doc["files"].to<JsonArray>();
-            File root = LittleFS.open("/config");
-            File file = root.openNextFile();
-            while (file)
-            {
-                JsonObject jsonfile = files.add<JsonObject>();
-                jsonfile["filename"] = String(file.name());
-                jsonfile["size"] = file.size();
-                file = root.openNextFile();
-            }
-            serializeJson(doc, fileList);
-            serverWeb.send(HTTP_CODE_OK, contTypeJson, fileList);
-            break;
-        }
 
         default:
             DEBUG_PRINTLN(F("[handleApi] switch (action) err"));

@@ -113,6 +113,46 @@
         [data-theme="dark"] .dot { border-color: var(--border-color); }
         [data-theme="dark"] .version-badge { background: var(--accent); color: #1a1a2e; border-color: transparent; }
 
+        /* Firmware update sections */
+        .fw-status { font-size: 15px; }
+        .fw-status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 12px; font-size: 15px; }
+        .fw-status-row .fw-status { min-width: 0; overflow-wrap: anywhere; }
+        .fw-status-row .btn { flex-shrink: 0; }
+        #zbFwStatus { margin: 8px 0 12px; }
+        #espFwChglog {
+            white-space: pre-wrap; font-size: 0.8rem;
+            max-height: 220px; overflow: auto;
+        }
+        .zb-fw-row {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 10px; padding: 8px 0;
+            border-top: 1px solid var(--border-color); font-size: 15px;
+        }
+        .zb-fw-info { min-width: 0; }
+        .zb-fw-sub { font-size: 0.85rem; }
+        .default-badge {
+            font-size: 0.7rem; font-weight: 600; padding: 1px 8px; border-radius: 10px;
+            background: rgba(245,166,35,0.16); color: var(--accent); white-space: nowrap;
+        }
+        html[data-theme="light"] .default-badge { color: #a86200; }
+        .zb-fw-btns { display: flex; gap: 8px; flex-shrink: 0; }
+        .file-pick {
+            display: block; width: 280px; height: 38px; padding: 0 0.75rem;
+            margin: 0 auto 0.5rem; background-color: #f8f9fa;
+            border: 1px solid #dee2e6; border-radius: 0.25rem;
+            font-size: 0.875rem; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; cursor: pointer; text-align: center;
+            line-height: 36px;
+        }
+        .file-pick:hover { background-color: #e9ecef; }
+        [data-theme="dark"] .file-pick {
+            background-color: #2a2a4a;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+        [data-theme="dark"] .file-pick:hover { background-color: #3a3a5a; }
+        #updButton, #updButton_zb { display: block; margin-left: auto; margin-right: auto; }
+
         @media (max-width: 767px) {
             .brand-content { flex-direction: column; align-items: center; }
             .product-img-wrapper { min-height: auto; }
@@ -220,11 +260,227 @@
                         </tbody>
                     </table>
                 </div>
-                
+                 
+            </div>
+        </div>
+
+        <!-- ESP32 Firmware -->
+        <div class="col-sm-12 col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <img src="icon_firmware_update.svg" class="title_icon_style" />
+                    <span>ESP32 Firmware</span>
+                </div>
+                <div class="card-body">
+                    <div class="info-item"><span class="label">Installed:</span><span data-replace="firmwareVersion"></span></div>
+                    <div class="fw-status-row">
+                      <div id="espFwStatus" class="fw-status"><span class="text-muted">Checking for updates...</span></div>
+                      <button type="button" class="btn btn-outline-primary btn-sm" onclick="showEspFwDetails()">Details</button>
+                    </div>
+                    <pre id="espFwChglog" style="display:none"></pre>
+                    <button
+                      type="button"
+                      id="updEspGit"
+                      class="btn btn-outline-warning col-sm-12 mb-2"
+                      style="display:none"
+                      onclick="localStorage.setItem('update_notify', 0); espFlashGitWait();"
+                    >
+                      Install update from GitHub
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary col-sm-12 mb-3"
+                      onclick="checkEspFirmware()"
+                    >
+                      Check for updates
+                    </button>
+                    <hr />
+                    <form
+                      method="POST"
+                      action="#"
+                      enctype="multipart/form-data"
+                      id="upload_form"
+                    >
+                      <input
+                        type="file"
+                        name="update"
+                        id="file"
+                        onchange="sub(this)"
+                        style="display: none"
+                        accept=".bin"
+                      />
+                      <label id="file-input" class="file-pick" for="file">Select File...</label>
+                      <input
+                        id="updButton"
+                        type="submit"
+                        class="btn btn-warning mb-2"
+                        value="ESP32 file update"
+                        disabled
+                      />
+                      <div class="container" style="max-width: 300px; margin: 30px auto 0">
+                        <div id="prg"></div>
+                        <div id="prgbar" style="display: none">
+                          <div id="bar"></div>
+                        </div>
+                      </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zigbee Firmware -->
+        <div class="col-sm-12 col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <img src="icon_zigbee_info.svg" class="title_icon_style" />
+                    <span>Zigbee Firmware</span>
+                </div>
+                <div class="card-body">
+                    <div class="info-item"><span class="label">Installed:</span><span>rev <span data-replace="zigbeeFwRev"></span></span></div>
+                    <div id="zbFwStatus" class="fw-status"><span class="text-muted">Checking for updates...</span></div>
+                    <div id="zbFwList" class="mb-2"></div>
+                    <p class="text-muted" style="font-size:0.85rem">Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.</p>
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary col-sm-12 mb-3"
+                      onclick="checkZbFirmware()"
+                    >
+                      Check for updates
+                    </button>
+                    <hr />
+                    <form
+                      method="POST"
+                      action="#"
+                      enctype="multipart/form-data"
+                      id="upload_form_zb"
+                    >
+                      <input
+                        type="file"
+                        name="update_zb"
+                        id="file_zb"
+                        onchange="sub_zb(this)"
+                        style="display: none"
+                        accept=".hex"
+                      />
+                      <label id="file-input_zb" class="file-pick" for="file_zb">Select File...</label>
+                      <input
+                        id="updButton_zb"
+                        type="submit"
+                        class="btn btn-primary mb-2"
+                        value="Zigbee File Update"
+                        disabled
+                      />
+                      <div class="container" style="max-width: 300px; margin: 30px auto 0">
+                        <div id="prg_zb"></div>
+                        <div id="prgbar_zb" style="display: none">
+                          <div id="bar_zb"></div>
+                        </div>
+                      </div>
+                    </form>
+                </div>
             </div>
         </div>
 </div>
 </div>
+
+    <script>
+      ["bar", "bar_zb"].forEach(function(id) {
+        var track = getEl(id === "bar" ? "prgbar" : "prgbar_zb");
+        new MutationObserver(function() {
+          track.style.display = (getEl(id).style.width && getEl(id).style.width !== "0%") ? "block" : "none";
+        }).observe(getEl(id), { attributes: true, attributeFilter: ["style"] });
+      });
+      function sub(obj) {
+        let fileName = obj.value.split("\\\\");
+        if (fileName != "") {
+          if (!(localStorage.getItem('flash_warning') == 1)) { modalConstructor("flashWarning"); }
+          else { getEl("updButton").removeAttribute("disabled"); }
+        } else { getEl("updButton").disabled = true; }
+        getEl("file-input").innerHTML = "   " + fileName[fileName.length - 1];
+      }
+      function sub_zb(obj) {
+        let fileName = obj.value.split("\\\\");
+        if (fileName != "") { getEl("updButton_zb").removeAttribute("disabled"); }
+        else { getEl("updButton_zb").disabled = true; }
+        getEl("file-input_zb").innerHTML = "   " + fileName[fileName.length - 1];
+      }
+      getQ("form#upload_form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var data = new FormData(this);
+        getEl("updButton").disabled = true;
+        getEl("prg").innerHTML = "Uploading firmware...";
+        getEl("bar").style.width = "0%";
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", function(evt) {
+          if (evt.lengthComputable) {
+            var per = evt.loaded / evt.total;
+            getEl("prg").innerHTML = "Uploading: " + Math.round(per * 100) + "%";
+            getEl("bar").style.width = Math.round(per * 100) + "%";
+          }
+        }, false);
+        xhr.open("POST", "/update", true);
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            console.log("ESP32 firmware upload and flash completed!");
+            getEl("prg").innerHTML = "Update completed!<br>Rebooting!";
+            getEl("bar").style.width = "100%";
+            rebootWait();
+            getEl("updButton").disabled = true;
+          } else {
+            console.log("ESP32 update error: " + xhr.status + " - " + xhr.statusText);
+            getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
+            getEl("bar").style.width = "0%";
+            getEl("updButton").removeAttribute("disabled");
+          }
+        };
+        xhr.onerror = function() {
+          getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
+          getEl("bar").style.width = "0%";
+          getEl("updButton").removeAttribute("disabled");
+        };
+        xhr.send(data);
+      });
+      getQ("form#upload_form_zb").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var data = new FormData(this);
+        getEl("updButton_zb").disabled = true;
+        getEl("prg_zb").innerHTML = "Uploading firmware...";
+        getEl("bar_zb").style.width = "0%";
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", function(evt) {
+          if (evt.lengthComputable) {
+            var per = evt.loaded / evt.total;
+            getEl("prg_zb").innerHTML = "upload: " + Math.round(per * 100) + "%";
+            getEl("bar_zb").style.width = Math.round(per * 100) + "%";
+          }
+        }, false);
+        xhr.open("POST", "/updateZB", true);
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            console.log("Success!");
+            getEl("prg_zb").innerHTML = "Upload complete! <br>Start verifing & flashing...";
+            getEl("bar_zb").style.width = "0%";
+            ZBfwStartEvents();
+            setTimeout(function() {
+              if (typeof zbEventSource !== "undefined" && zbEventSource && zbEventSource.readyState !== EventSource.CLOSED) {
+                zbEventSource.close();
+                getEl("prg_zb").innerHTML = '<span style="color:orange">Operation timed out. Please check device status.</span>';
+                getEl("updButton_zb").disabled = false;
+              }
+            }, 300000);
+          } else {
+            console.log("Zigbee update error: " + xhr.status + " - " + xhr.statusText);
+            getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
+            getEl("bar_zb").style.width = "0%";
+          }
+        };
+        xhr.onerror = function() {
+          getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
+          getEl("bar_zb").style.width = "0%";
+        };
+        xhr.send(data);
+      });
+    </script>
 
 </body>
 </html>

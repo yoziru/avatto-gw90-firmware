@@ -143,6 +143,54 @@
           </div>
         </div>
 
+        <!-- System Variables -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <img src="icon_config_generator.svg" class="title_icon_style" />
+            <span>System Variables</span>
+          </div>
+          <div class="card-body">
+            <div class="container">
+              <div class="row">
+                <label for="hostname">
+                  Hostname (The device will be displayed on the network with this name)
+                </label>
+                <input
+                  data-replace="hostname"
+                  class="form-control"
+                  id="hostname"
+                  type="text"
+                  name="hostname"
+                  value=""
+                  maxlength="50"
+                  required
+                />
+                <label for="refreshLogs">Log refresh interval (milliseconds)</label>
+                <input
+                  data-replace="refreshLogs"
+                  class="form-control"
+                  id="refreshLogs"
+                  type="number"
+                  min="1000"
+                  max="10000"
+                  step="1"
+                  name="refreshLogs"
+                  value=""
+                  placeholder="ms"
+                  required
+                />
+                <label for="timeZoneId">Time Zone</label>
+                <select
+                  data-replace="timeZones"
+                  id="timeZoneId"
+                  class="form-control"
+                  name="timeZoneName"
+                ></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Save Button -->
         <div class="save-row">
           <button
