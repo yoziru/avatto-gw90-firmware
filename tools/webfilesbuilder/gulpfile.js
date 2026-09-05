@@ -4,9 +4,6 @@ var concat = require('gulp-concat');
 var gzip = require('gulp-gzip');
 var flatmap = require('gulp-flatmap');
 var path = require('path');
-var htmlmin = require('gulp-htmlmin');
-var uglify = require('gulp-uglify');
-var pump = require('pump');
 
 function stylesConcat() {
     return gulp.src([ '../../src/websrc/css/water.css','../../src/websrc/css/style.css'])
