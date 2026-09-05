@@ -149,6 +149,7 @@ struct zbVerStruct
 };
 
 typedef CircularBuffer<char, 8024> LogConsoleType;
+typedef CircularBuffer<char, 16384> ZbLogConsoleType;
 
 extern ConfigSettingsStruct ConfigSettings;
 extern MqttSettingsStruct MqttSettings;

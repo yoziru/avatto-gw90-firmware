@@ -69,31 +69,54 @@ bool checkAuth()
     }
 }
 
-void printLogTime()
+template <typename Ring>
+static void printTimeTo(Ring &ring)
 {
     // Runs on every bridged frame and every log line - never allocate a String
-    // here. A bounded snprintf into the stack is allocation-free.
+    // here. A bounded snprintf into the stack is allocation-free. Wall clock
+    // once NTP synced (same threshold as setTimezone), millis before that.
     char timeBuf[12];
-    const int tlen = snprintf(timeBuf, sizeof(timeBuf), "%lu", (unsigned long)millis());
-    logPush('[');
+    int tlen;
+    const time_t nowSecs = time(nullptr);
+    if (nowSecs >= 100000000)
+    {
+        struct tm timeinfo;
+        localtime_r(&nowSecs, &timeinfo);
+        tlen = snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    }
+    else
+    {
+        tlen = snprintf(timeBuf, sizeof(timeBuf), "%lu", (unsigned long)millis());
+    }
+    ring.push('[');
     for (int j = 0; j < tlen; j++)
     {
-        logPush(timeBuf[j]);
+        ring.push(timeBuf[j]);
     }
-    logPush(']');
+    ring.push(']');
+}
+
+void printLogTime()
+{
+    printTimeTo(logConsole);
+}
+
+void printLogTimeZb()
+{
+    printTimeTo(zbLogConsole);
 }
 
 void printLogMsg(const String &msg)
 {
     printLogTime();
-    logPush(' ');
-    logPush('|');
-    logPush(' ');
+    logConsole.push(' ');
+    logConsole.push('|');
+    logConsole.push(' ');
     for (int j = 0; j < msg.length(); j++)
     {
-        logPush(msg[j]);
+        logConsole.push(msg[j]);
     }
-    logPush('\n');
+    logConsole.push('\n');
 }
 
 void initWebServer()

@@ -41,6 +41,7 @@ void mqttReconnect()
     if (clientPubSub.connect(String(deviceIdArr).c_str(), MqttSettings.user, MqttSettings.pass, willTopic.c_str(), willQoS, willRetain, willMessage))
     {
         MqttSettings.reconnectTime = 0;
+        printLogMsg("MQTT connected");
         mqttOnConnect();
     }
     else
@@ -50,6 +51,7 @@ void mqttReconnect()
         DEBUG_PRINT(F(" try again in "));
         DEBUG_PRINT(MqttSettings.interval);
         DEBUG_PRINTLN(F(" seconds"));
+        printLogMsg(String("MQTT connect failed rc=") + clientPubSub.state());
 
         MqttSettings.reconnectTime = millis() + MqttSettings.interval * 1000;
     }

@@ -237,6 +237,10 @@ void handleTmrNetworkOverseer()
 
 void NetworkEvent(arduino_event_id_t event)
 {
+  // "WiFi down" is only logged on a real up->down transition; the repeated
+  // disconnect events fired while an association is failing must not flood
+  // the log ring.
+  static bool wifiStaWasUp = false;
   Serial.print(F("[NET_EVENT] Event ID: "));
   Serial.println(event);
   switch (event)
@@ -263,10 +267,12 @@ void NetworkEvent(arduino_event_id_t event)
     ConfigSettings.connectedEther = true;
     Serial.println(F("[ETH_EVENT] connectedEther = true"));
     Serial.println(F("[ETH_EVENT] ========================"));
+    printLogMsg(String("ETH up: ") + ETH.localIP().toString());
     setClock();
     break;
   case ARDUINO_EVENT_ETH_DISCONNECTED: // 21:  //SYSTEM_EVENT_ETH_DISCONNECTED:
     Serial.println(F("[ETH_EVENT] ETH Disconnected"));
+    printLogMsg("ETH down");
     Serial.print(F("[ETH_EVENT] coordinator_mode=")); Serial.println(static_cast<uint8_t>(ConfigSettings.coordinator_mode));
     ConfigSettings.connectedEther = false;
     if (tmrNetworkOverseer.state() == STOPPED && ConfigSettings.coordinator_mode == CoordinatorMode::NETWORK)
@@ -292,10 +298,17 @@ void NetworkEvent(arduino_event_id_t event)
     DEBUG_PRINT(WiFi.subnetMask().toString());
     DEBUG_PRINT(F(", "));
     DEBUG_PRINTLN(WiFi.gatewayIP().toString());
+    printLogMsg(String("WiFi up: ") + WiFi.localIP().toString());
     setClock();
+    wifiStaWasUp = true;
     break;
   case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: // SYSTEM_EVENT_STA_DISCONNECTED:
     DEBUG_PRINTLN(F("WIFI STA DISCONNECTED"));
+    if (wifiStaWasUp)
+    {
+      printLogMsg("WiFi down");
+    }
+    wifiStaWasUp = false;
     if (tmrNetworkOverseer.state() == STOPPED)
     {
       tmrNetworkOverseer.start();

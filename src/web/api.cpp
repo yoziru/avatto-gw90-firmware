@@ -266,9 +266,11 @@ void handleApi()
         break;
         case API_GET_LOG:
         {
-            // logPrint() returns a reused String (the console polls every
+            // logPrint*() returns a reused String (the console polls every
             // second); send it directly so it isn't copied into a new buffer.
-            serverWeb.send(HTTP_CODE_OK, contTypeText, logPrint());
+            // src=zb serves the ZB frame ring, default is the event ring.
+            serverWeb.send(HTTP_CODE_OK, contTypeText,
+                           serverWeb.arg("src") == "zb" ? logPrintZb() : logPrint());
         }
         break;
         case API_CMD:
@@ -279,7 +281,7 @@ void handleApi()
                 CMD_ZB_RST = 1,
                 CMD_ZB_BSL = 2,
                 CMD_ESP_RES = 3,
-                // 4, 5 were the deprecated temporary mode switches (removed);
+                // 4, 5 were removed toggles (ZB frame log, temporary mode);
                 // numbers are kept so existing data-cmd / API callers don't shift.
                 CMD_LED_PWR_TOG = 6,
                 CMD_LED_USB_TOG = 7,
