@@ -111,6 +111,7 @@ The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridg
 │   │   ├── events.cpp      # /events SSE endpoint
 │   │   └── ota.cpp         # ESP OTA (web/URL) + ZB checkFwHexTask
 │   ├── mqtt.cpp/h          # MQTT client + HA auto-discovery
+│   ├── mqtt_cmd.h          # MQTT command dispatch (pure)
 │   ├── etc.cpp/h           # LEDs, ZB reset/BSL, device ID, config write, NTP, temp sensor
 │   ├── zb.cpp/h            # CC2652P: version, BSL flashing, ZNP commands, health check
 │   ├── log.cpp/h           # Circular log buffer (8024 B)
@@ -118,7 +119,6 @@ The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridg
 │   ├── profiling.cpp/h     # Loop-latency/heap profiler (BUILD_DEBUG only)
 │   ├── checksum.h          # ZNP checksum (pure)
 │   ├── encoding.h          # URL decode, hex→bin (pure)
-│   ├── ip_utils.h          # IPv4 parser (pure)
 │   ├── zb_ver.h            # ZNP version-response decode (pure)
 │   ├── zones.h             # Timezone POSIX-rule table (pure)
 │   ├── config_utils.h      # temp-offset clamp, WG private-key lookup (pure)
@@ -209,7 +209,7 @@ Up to `MAX_SOCKET_CLIENTS` (5) `WiFiClient`s. Each loop iteration:
 
 ### 4.6 `mqtt.cpp`
 
-PubSubClient on a WiFiClient. Topics:
+PubSubClient (maintained v3 fork) on a WiFiClient. Topics:
 
 ```
 {topic}/avty   — LWT online/offline
@@ -291,13 +291,13 @@ Load order (setup): system → serial → wifi → ether → general → securit
 | bblanchon/ArduinoJson | 7.4.3 | JSON |
 | rlogiacco/CircularBuffer | 1.4.0 | Log ring buffer |
 | sstaub/Ticker | 4.4.0 | Timers (button, overseer, health) |
-| knolleary/PubSubClient | 2.8.0 | MQTT |
-| Tinkerforge/WireGuard-ESP32-Arduino | git | WireGuard (esp_netif/IDF 5.x) |
+| hmueller01/PubSubClient3 | 3.3.0 | MQTT (maintained PubSubClient continuation) |
+| Tinkerforge/WireGuard-ESP32-Arduino | git, pinned — see `platformio.ini` | WireGuard (esp_netif/IDF 5.x) |
 | *local* `lib/CCTools` | — | CC2652P control |
 | *local* `lib/IntelHex` | — | HEX parsing |
 | *test only* throwtheswitch/Unity | 2.6.1 | Native unit tests |
 
-Platform: `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core — HTTPS works out of the box).
+Platform: `pioarduino/platform-espressif32` (pinned in `platformio.ini`; vanilla espressif core — HTTPS works out of the box).
 
 ---
 
@@ -421,9 +421,9 @@ Observed on a live PoE gateway: loop min ~1.26 ms, typical ~2 ms, ~30 ms periodi
 
 `mise run test` runs the Unity suite on the host (`native` env). Only pure logic is testable (no hardware). The suite covers:
 
-- `encoding` (urlDecode, hex2bin) · `checksum` (ZNP) · `ip_utils` (IPv4) · `zb_ver` (version decode) · `zones` (TZ table)
+- `encoding` (urlDecode, hex2bin) · `checksum` (ZNP) · `zb_ver` (version decode) · `zones` (TZ table)
 - `config_utils` (temp clamp, WG key fallback) · `ha_discovery` (entity table + message/topic shape + payload JSON validity)
-- `wifi_save_logic` (commit-on-connect modes, connect throttle) · `profiling` (stats math) · `log` (ring buffer) · `api_dispatch` (API numbering)
+- `wifi_save_logic` (commit-on-connect modes, connect throttle) · `profiling` (stats math) · `log` (ring buffer) · `api_dispatch` (API numbering) · `mqtt_cmd` (command dispatch)
 
 `mise run lint` runs cppcheck with `--skip-packages` (cppcheck 2.21 cannot parse the GCC 14.2 toolchain's `type_traits`).
 

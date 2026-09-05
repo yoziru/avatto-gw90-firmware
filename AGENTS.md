@@ -65,10 +65,10 @@ src/
 ├── net.h/network.cpp  Network: initLan, WiFi/AP, mDNS, overseer, WireGuard
 ├── bridge.h/cpp    TCP socket bridge: accept/forward ZNP frames over LAN
 ├── factory.h/cpp   Factory test mode (BUILD_FACTORY_TEST only)
-├── ip_utils.h      Pure IPv4 parser (unit-testable)
 ├── web.h           Web server declarations, API page enum, UPD_FILE URL
 ├── web/            Web server split: common (routes/auth), api, pages, save, events (SSE), ota
 ├── mqtt.cpp        MQTT client, HA auto-discovery
+├── mqtt_cmd.h      MQTT command dispatch (pure, unit-testable)
 ├── etc.cpp         Utilities: LED control, ZB reset/BSL, config, NTP, temp sensor
 ├── zb.cpp          CC2652P management: version, BSL flashing, ZNP protocol, health check
 ├── log.cpp         Circular buffer log (8024 bytes)
