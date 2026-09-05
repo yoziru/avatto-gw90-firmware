@@ -107,7 +107,7 @@ void handleApi()
             if (serverWeb.hasArg(fwurlArg))
             {
                 String fwUrl = serverWeb.arg(fwurlArg);
-                fwUrl = urlDecode(fwUrl);
+                fwUrl = String(urlDecode(fwUrl.c_str()).c_str());
 
                 Serial.print("Firmware URL: ");
                 Serial.println(fwUrl);
