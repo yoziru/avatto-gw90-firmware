@@ -50,8 +50,6 @@ def main():
     for f in gz_h_files:
         if f.endswith('.html.gz.h'):
             continue
-        if 'i18next' in f:
-            continue
         orig = derive_original_filename(f)
         url, mime = get_route_info(orig)
         if url is None:

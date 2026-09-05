@@ -11,6 +11,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Chores
 
+- Web UI slim-down (no visual changes): dropped the gulp toolchain (`gulpfile.js`, `package.json`, `npm install` step — `build_html.py` now stages/gzips with stdlib only, wiping stale headers so deleted assets stop shipping); removed `commonmark.min.js` (release notes render as plain text), 14 unreferenced images, and the dead `/js/{jquery,bootstrap,masonry}` routes; SPA shell routes collapsed into a table loop.
+
 - Deps: `knolleary/PubSubClient` (unmaintained) → `hmueller01/PubSubClient3@3.3.0` (drop-in, verified live against a broker); WireGuard git dep pinned to a commit; dropped the bogus `npm@6` webfiles dependency.
 - Cleanup: removed dead webfiles heritage (`gulp.js`, `gulp.meta.js`, `buildWeb.bat`), unused gulp requires, hand-rolled IPv4 parser (core `fromString()` instead) and `String` urlDecode wrapper, `haDiscoveryEntityCount()` helper, bubble sort in `merge_bin_esp`, unreachable CCTools package cases; deduped the 4 gulp gzip/emit task pairs.
 

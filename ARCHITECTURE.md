@@ -35,7 +35,7 @@
 |---|---|
 | Build / test / lint / flash a device | `mise run <task>` (§9.3) |
 | Add or change a configuration option | struct + loader in `config.h`/`config.cpp`, the save handler in `web/save.cpp`, and the page in `web/pages.cpp` |
-| Change the web UI | `src/websrc/` → gulp → `src/webh/` (§10) |
+| Change the web UI | `src/websrc/` → `build_html.py` → `src/webh/` (§10) |
 | Add an API endpoint | `web/api.cpp` (action enum + dispatch, §19) |
 | Change how ZNP frames are bridged | `bridge.cpp` |
 | Tune the coordinator health check | `zb.cpp` → `zbHealthCheck()` |
@@ -126,7 +126,7 @@ The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridg
 │   ├── wifi_save_logic.h   # Commit-on-connect + connect-throttle logic (pure)
 │   ├── web_routes.h        # Auto-generated static asset routes
 │   ├── webh/               # Auto-generated gzip C headers from websrc/
-│   └── websrc/             # Frontend source (HTML/JS/CSS) - gulp build
+│   └── websrc/             # Frontend source (HTML/JS/CSS) - staged+gzip'd by build_html.py
 ├── lib/                    # Local libs (not PIO-registered)
 │   ├── CCTools/            # CC2652P control (BSL, reset, chip detect)
 │   └── IntelHex/           # Intel HEX parser for ZB flashing
@@ -134,7 +134,7 @@ The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridg
 │   ├── build.py            # Post-build: merge bootloader+partitions+firmware
 │   ├── gen_version.py      # Pre-build: generate src/version.h from tools/version
 │   ├── version_util.py     # Shared version/git-describe helpers
-│   └── webfilesbuilder/    # Gulp frontend build
+│   └── webfilesbuilder/    # Stdlib-only frontend build (replaces gulp)
 ├── scripts/
 │   └── ota_flash.sh        # Shared OTA upload (used by flash:ota / flash:ota:debug)
 ├── test/                   # Native Unity test suites
@@ -315,7 +315,7 @@ Platform: `pioarduino/platform-espressif32` (pinned in `platformio.ini`; vanilla
 ### 9.2 Pipeline (`extra_scripts`)
 
 - **pre** `tools/gen_version.py` — reads `tools/version` (constant; builds never modify it), appends `-dirty` when the tree is dirty, writes `src/version.h`
-- **pre** `tools/webfilesbuilder/build_html.py` + `gen_routes.py` — gulp frontend build + static route generation
+- **pre** `tools/webfilesbuilder/build_html.py` + `gen_routes.py` — stdlib-only frontend staging/gzip + static route generation (no npm/node)
 - **post** `tools/build.py` — merges bootloader + partitions + app into `bin/AVATTO-GW90-Ti_vX.Y.Z.full.bin`, copies `bin/AVATTO-GW90-Ti.bin` (OTA)
 
 Skip the web rebuild with an empty `tools/webfilesbuilder/.no_web_update` file.
@@ -341,8 +341,8 @@ mise run monitor          # serial monitor (MONITOR_PORT)
 
 ## 10. Web Frontend Build
 
-- Source: `src/websrc/` (HTML, JS, CSS, images) — jQuery, Bootstrap-derived minimal CSS, i18next
-- Build: `npm install && npx gulp` in `tools/webfilesbuilder/`
+- Source: `src/websrc/` (HTML, JS, CSS, images) — hand-rolled JS, `water.css` + custom `style.css`
+- Build: automatic pre-step `tools/webfilesbuilder/build_html.py` (pure stdlib)
 - Output: gzip-compressed C headers in `src/webh/`, routes in `src/web_routes.h` (auto-generated)
 - Pages are served gzip-encoded; the `[Unreleased]`-era UI is a single-page shell that fetches JSON data per page
 
