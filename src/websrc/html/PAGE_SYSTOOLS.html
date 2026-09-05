@@ -559,17 +559,13 @@
         espFlashGitWait();
       });
     </script>
-    <script src="/js/commonmark.min.js"></script>
     <script>
       getQ("button#info_esp_git").addEventListener("click", function() {
         processResponses().then((combinedData) => {
           var downloadCount = 0;
           for (var i = 0; i < combinedData.jsonData.assets.length; i++) { downloadCount += combinedData.jsonData.assets[i].download_count; }
           var text = "Local version v" + combinedData.textData + ". GitHub version " + combinedData.jsonData.tag_name + ", downloaded " + downloadCount.toLocaleString() + " ";
-          var reader = new commonmark.Parser();
-          var writer = new commonmark.HtmlRenderer();
-          var parsed = reader.parse(combinedData.jsonData.body);
-          var chglog = writer.render(parsed);
+          var chglog = "<pre>" + String(combinedData.jsonData.body || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</pre>";
           modalConstructor("espFlashGitInfo", { text, chglog });
         });
       });

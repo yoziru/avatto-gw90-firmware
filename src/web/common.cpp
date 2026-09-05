@@ -100,26 +100,14 @@ void initWebServer()
 {
     serverWeb.onNotFound([]()
                          { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/general", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/security", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/wifi", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/ethernet", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/zha-z2m", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/about", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/sys-tools", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/mqtt", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
-    serverWeb.on("/wg", []()
-                 { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
+    // SPA shell: every page route serves the same loader; the JS router
+    // fills #pageContent via the API.
+    static const char *spaRoutes[] = {"/", "/general", "/security", "/wifi", "/ethernet", "/zha-z2m", "/about", "/sys-tools", "/mqtt", "/wg"};
+    for (const char *route : spaRoutes)
+    {
+        serverWeb.on(route, []()
+                     { sendGzip(contTypeTextHtml, PAGE_LOADER_html_gz, PAGE_LOADER_html_gz_len); });
+    }
     serverWeb.on("/saveParams", HTTP_POST, handleSaveParams);
     serverWeb.on("/cmdZigRST", handleZigbeeRestart);
     serverWeb.on("/cmdZigBSL", handleZigbeeBSL);

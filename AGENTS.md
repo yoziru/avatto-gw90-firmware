@@ -80,14 +80,14 @@ src/
 ├── config_utils.h  temp-offset clamp, WG private-key lookup (pure)
 ├── ha_discovery.h  HA discovery entity table + message builder (pure)
 ├── wifi_save_logic.h  WiFi commit-on-connect + connect throttle (pure)
-├── websrc/         Frontend source (HTML/CSS/JS) — processed by gulp
+├── websrc/         Frontend source (HTML/CSS/JS) — staged+gzip'd by build_html.py
 └── webh/           Auto-generated gzip-compressed C headers from websrc/
 
 tools/
 ├── build.py                 Post-build: merge bootloader + partitions + firmware
 ├── gen_version.py           Pre-build: generate src/version.h from tools/version (read-only; -dirty when tree is dirty)
 ├── version_util.py          Shared version read + git describe helper (used by gen_version.py and build.py)
-└── webfilesbuilder/         Gulp-based web frontend build (npm install + npx gulp)
+└── webfilesbuilder/         Python-only web frontend build (no npm/node)
 
 scripts/
 └── ota_flash.sh             Shared OTA uploader (used by flash:ota / flash:ota:debug)
@@ -170,10 +170,10 @@ Network mode is the default. If Ethernet drops, the overseer automatically bring
 ## Web Frontend
 
 - **Source**: `src/websrc/` (HTML, JS, CSS, images)
-- **Build**: `npm install && npx gulp` in `tools/webfilesbuilder/`
+- **Build**: automatic PlatformIO pre-step — `tools/webfilesbuilder/build_html.py` stages `src/websrc/` and gzips each file into a header (pure stdlib, no npm/node)
 - **Output**: gzip-compressed C header files in `src/webh/`
 - **To skip**: create `tools/webfilesbuilder/.no_web_update` (saves build time)
-- **Tech**: jQuery, Bootstrap, i18next, Gulp
+- **Tech**: hand-rolled JS (`functions.js`), `water.css` + custom `style.css` (dark mode via `data-theme`)
 
 ## Changelog
 
