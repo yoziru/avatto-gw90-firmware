@@ -49,6 +49,32 @@ static bool readJsonConfig(const char *path, JsonDocument &doc)
   return true;
 }
 
+// Auto-calibrate against a ~30°C reference (room temperature): store the
+// offset needed so the reported temperature reads 30°C. False only when the
+// calibration cannot even be persisted (first boot with unwritable FS).
+static bool calibrateTempOffset()
+{
+  float CPUtemp = getCPUtemp(true);
+  int correct = static_cast<int>(CPUtemp - 30.0f);
+
+  JsonDocument doc;
+  doc["tempOffset"] = correct;
+  DEBUG_PRINTLN(String("calibrated tempOffset to ") + correct);
+
+  File configFile = LittleFS.open(configFileSystem, FILE_WRITE);
+  if (!configFile)
+  {
+    DEBUG_PRINTLN(F("failed write"));
+    return false;
+  }
+  serializeJson(doc, configFile);
+  configFile.close();
+
+  ConfigSettings.tempOffset = correct;
+  tempSetCalibrated(CPUtemp); // cache the offset-adjusted value for display
+  return true;
+}
+
 bool loadSystemVar()
 {
   File configFile = LittleFS.open(configFileSystem, FILE_READ);
@@ -56,27 +82,7 @@ bool loadSystemVar()
   {
     DEBUG_PRINTLN(F("failed open. try to write defaults"));
 
-    // Auto-calibrate against a ~30°C reference (room temperature) on first
-    // boot: store the offset needed so the reported temperature reads 30°C.
-    float CPUtemp = getCPUtemp(true);
-    int correct = static_cast<int>(CPUtemp - 30.0f);
-
-    JsonDocument doc;
-    doc["tempOffset"] = correct;
-    DEBUG_PRINTLN(String("calibrated tempOffset to ") + correct);
-
-    configFile = LittleFS.open(configFileSystem, FILE_WRITE);
-    if (!configFile)
-    {
-      DEBUG_PRINTLN(F("failed write"));
-      return false;
-    }
-    serializeJson(doc, configFile);
-    configFile.close();
-
-    ConfigSettings.tempOffset = correct;
-    tempSetCalibrated(CPUtemp); // cache the offset-adjusted value for display
-    return true;
+    return calibrateTempOffset();
   }
 
   JsonDocument doc;
@@ -90,20 +96,7 @@ bool loadSystemVar()
   if (ConfigSettings.tempOffset == 0)
   {
     // No calibration stored yet: calibrate now against the 30°C reference.
-    float CPUtemp = getCPUtemp(true);
-    int correct = static_cast<int>(CPUtemp - 30.0f);
-    ConfigSettings.tempOffset = correct;
-    tempSetCalibrated(CPUtemp); // cache the offset-adjusted value for display
-
-    JsonDocument writeDoc;
-    writeDoc["tempOffset"] = correct;
-    configFile = LittleFS.open(configFileSystem, FILE_WRITE);
-    if (configFile)
-    {
-      serializeJson(writeDoc, configFile);
-      configFile.close();
-    }
-    DEBUG_PRINTLN(String("calibrated tempOffset to ") + correct);
+    calibrateTempOffset();
   }
   return true;
 }
