@@ -1,5 +1,6 @@
 #include <unity.h>
 #include <ArduinoJson.h>
+#include <iterator>
 #include <string.h>
 #include "ha_discovery.h"
 
@@ -31,8 +32,8 @@ static void test_button_payloads_are_valid_json(void) {
 }
 
 static void test_ids_are_unique(void) {
-    for (size_t i = 0; i < haDiscoveryEntityCount(); i++) {
-        for (size_t j = i + 1; j < haDiscoveryEntityCount(); j++) {
+    for (size_t i = 0; i < std::size(haDiscoveryEntities); i++) {
+        for (size_t j = i + 1; j < std::size(haDiscoveryEntities); j++) {
             TEST_ASSERT_TRUE(strcmp(haDiscoveryEntities[i].id, haDiscoveryEntities[j].id) != 0);
         }
     }

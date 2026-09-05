@@ -53,12 +53,6 @@ void sendGzip(const char *contentType, const uint8_t content[], uint16_t content
     serverWeb.send_P(HTTP_CODE_OK, contentType, (const char *)content, contentLen);
 }
 
-String urlDecode(String input)
-{
-    std::string s = input.c_str();
-    return String(urlDecode(s).c_str());
-}
-
 bool checkAuth()
 {
     if (!ConfigSettings.webAuth)

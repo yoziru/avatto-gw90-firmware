@@ -39,11 +39,6 @@ inline const HaDiscoveryEntity haDiscoveryEntities[] = {
     {"sensor", "zbfw", "Zigbee fw rev", "mdi:access-point-network", false, nullptr, "{{ value_json.zbfw }}", nullptr, nullptr, nullptr, false},
 };
 
-inline constexpr size_t haDiscoveryEntityCount()
-{
-    return sizeof(haDiscoveryEntities) / sizeof(HaDiscoveryEntity);
-}
-
 // Home Assistant discovery topic for an entity, e.g.
 // "homeassistant/sensor/AVATTO-GW90-TI-XXXX/uptime/config".
 inline std::string haDiscoveryTopic(const HaDiscoveryEntity &e, const char *deviceName) noexcept
