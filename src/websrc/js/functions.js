@@ -466,8 +466,7 @@ function showPreloader(state) {
 }
 
 function applyTheme(dark) {
-	if (dark) document.documentElement.setAttribute("data-theme", "dark");
-	else document.documentElement.removeAttribute("data-theme");
+	document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
 	localStorage.setItem("theme", dark ? "dark" : "light");
 }
 
@@ -479,8 +478,7 @@ function initDarkModeToggle() {
 	const saved = localStorage.getItem("theme");
 	const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 	const isDark = saved !== null ? saved === "dark" : prefersDark;
-	if (isDark) document.documentElement.setAttribute("data-theme", "dark");
-	else document.documentElement.removeAttribute("data-theme");
+	document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
 	const btn = document.getElementById("darkModeToggleSide");
 	if (btn) btn.addEventListener("click", toggleDarkModeMobile);
 }
@@ -672,6 +670,12 @@ function ZBfwStartEvents() {
 
 function modalConstructor(type, params) {
 	console.log("[modalConstructor] start");
+	const modalEl = getEl("modal");
+	if (modalEl) {
+		const dismissible = !["rebootWait", "espFlashGitWait", "saveOk"].includes(type);
+		modalEl.setAttribute("data-bs-backdrop", dismissible ? "true" : "static");
+		modalEl.setAttribute("data-bs-keyboard", dismissible ? "true" : "false");
+	}
 	const hText = getQ(".modal-title");
 	const mBody = getQ(".modal-body");
 	const mBtns = getQ(".modal-footer");

@@ -16,6 +16,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 - Wi-Fi joins that can't succeed now fail fast: a join to a wrong-password or out-of-range network gives up after ~45 s, stops the retry loop, and keeps the previously saved network. Repeated connect failures no longer flood the log with "WiFi down" lines.
 - Wi-Fi page polish: the Join Other Network form shows a clear message when the network name or password is missing, password fields no longer trigger the browser's strong-password/save prompts, expanded rows use the full width, and the join form only appears after a scan finishes (a stalled scan times out with tap-to-retry). The saved-network row opens its IP settings on click anywhere, and the password field and Connect button share one height with even padding.
+- Theme setting is now pinned explicitly instead of only setting dark: an OS-dark + in-app-light combination no longer desyncs into unreadable white-on-white text. Progress modals also sit slightly higher with a slimmer header.
+- The page spinner now centers over the content column on desktop instead of sliding under the sidebar.
 - Timezone table moved from DRAM to flash (~3.7 KiB freed); MQTT command dispatch extracted into pure `mqtt_cmd.h` with 9 native tests.
 - Static web routes generated as a table + loop; `loadSystemVar()` temp-calibration block deduplicated into one helper.
 
