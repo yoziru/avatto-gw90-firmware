@@ -83,7 +83,7 @@ Releases are cut from `main` via the GitHub **Release** workflow (`patch`/`minor
 | `src/zb.cpp` | CC2652P management, BSL flashing, health check |
 | `src/log.cpp` | Circular log buffer (8024 B) |
 | `src/profiling.*` | Loop-latency/heap profiler (**debug build only**) |
-| `src/{checksum,encoding,ip_utils,zb_ver,zones,config_utils,ha_discovery,wifi_save_logic}.h` | Pure, unit-tested logic headers |
+| `src/{checksum,encoding,zb_ver,zones,config_utils,ha_discovery,wifi_save_logic,mqtt_cmd}.h` | Pure, unit-tested logic headers |
 | `src/websrc/` | Web frontend source (HTML/CSS/JS) |
 | `src/webh/` | Gzip-compressed web assets as C headers |
 | `test/` | Native Unity test suites |

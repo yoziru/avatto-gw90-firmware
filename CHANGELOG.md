@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+### Improvements
+
+- Timezone table moved from DRAM to flash (~3.7 KiB freed); MQTT command dispatch extracted into pure `mqtt_cmd.h` with 9 native tests.
+- Static web routes generated as a table + loop; `loadSystemVar()` temp-calibration block deduplicated into one helper.
+
+### Chores
+
+- Deps: `knolleary/PubSubClient` (unmaintained) → `hmueller01/PubSubClient3@3.3.0` (drop-in, verified live against a broker); WireGuard git dep pinned to a commit; dropped the bogus `npm@6` webfiles dependency.
+- Cleanup: removed dead webfiles heritage (`gulp.js`, `gulp.meta.js`, `buildWeb.bat`), unused gulp requires, hand-rolled IPv4 parser (core `fromString()` instead) and `String` urlDecode wrapper, `haDiscoveryEntityCount()` helper, bubble sort in `merge_bin_esp`, unreachable CCTools package cases; deduped the 4 gulp gzip/emit task pairs.
+
 ## v1.1.1 — 2026-08-25
 
 - Build: bump pioarduino platform 55.03.38 → 55.03.311 (Arduino core 3.3.11, ESP-IDF 5.5.5); drop the redundant `pip` package from the Python build env.
