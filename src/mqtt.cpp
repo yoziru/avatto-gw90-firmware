@@ -12,6 +12,7 @@
 #include "log.h"
 #include "etc.h"
 #include "mqtt.h"
+#include "mqtt_cmd.h"
 #include "ha_discovery.h"
 
 extern zbVerStruct zbVer;
@@ -162,48 +163,29 @@ void mqttPublishIo(String const &io, String const &state)
 
 void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
-    // PubSubClient caps a message at MQTT_MAX_PACKET_SIZE (256 by default), but
-    // the length is still network-supplied - never size a stack buffer off it.
-    static const size_t kMaxPayload = 256;
-    const size_t capped = (length < kMaxPayload) ? length : kMaxPayload;
-    char jjson[kMaxPayload + 1];
-    memcpy(jjson, payload, capped);
-    jjson[capped] = '\0';
-
-    JsonDocument jsonBuffer;
-    DeserializationError err = deserializeJson(jsonBuffer, jjson);
-    if (err)
+    (void)topic;
+    const MqttCmd cmd = parseMqttCommand(payload, length);
+    if (cmd == MqttCmd::None)
     {
-        DEBUG_PRINT(F("mqttCallback deserializeJson() failed: "));
-        DEBUG_PRINTLN(err.f_str());
         return;
     }
 
-    const char *command = jsonBuffer["cmd"];
-
-    DEBUG_PRINT(F("mqtt Callback - "));
-    DEBUG_PRINTLN(jjson);
-
-    if (command) {
-        DEBUG_PRINT(F("mqtt cmd - "));
-        DEBUG_PRINTLN(command);
-        if (strcmp(command, "rst_esp") == 0)
-        {
-            printLogMsg("ESP restart MQTT");
-            ESP.restart();
-        }
-
-        if (strcmp(command, "rst_zig") == 0)
-        {
-            printLogMsg("Zigbee restart MQTT");
-            zigbeeRestart();
-        }
-
-        if (strcmp(command, "enbl_bsl") == 0)
-        {
-            printLogMsg("Zigbee BSL enable MQTT");
-            zigbeeEnableBSL();
-        }
+    switch (cmd)
+    {
+    case MqttCmd::RstEsp:
+        printLogMsg("ESP restart MQTT");
+        ESP.restart();
+        break;
+    case MqttCmd::RstZig:
+        printLogMsg("Zigbee restart MQTT");
+        zigbeeRestart();
+        break;
+    case MqttCmd::EnblBsl:
+        printLogMsg("Zigbee BSL enable MQTT");
+        zigbeeEnableBSL();
+        break;
+    case MqttCmd::None:
+        break;
     }
     return;
 }
