@@ -10,13 +10,13 @@ ESP32 firmware for the AVATTO GW90-TI Zigbee Gateway. Bridges a TI CC2652P Zigbe
 
 | Tool | Details |
 |------|---------|
-| **Platform** | `pioarduino/platform-espressif32 55.03.38` (Arduino Core 3.3.8 + ESP-IDF 5.5.4, vanilla espressif core) |
+| **Platform** | `pioarduino/platform-espressif32` (pinned in `platformio.ini`; vanilla espressif Arduino core, not the tasmota fork) |
 | **Framework** | Arduino for ESP32 |
 | **Default env** | `prod` |
 | **Flash size** | 16MB |
 | **Partitions** | Dual OTA (2×6MB app partitions + 4MB spiffs) |
 
-> **Why this platform:** it ships the vanilla espressif Arduino Core 3.3.8, so `NetworkClientSecure`/HTTPS and `HTTPClient` work out of the box, and the underlying IDF 5.5.4 provides the `esp_netif` APIs the Tinkerforge WireGuard fork needs. The tasmota fork strips TLS (`CONFIG_MBEDTLS_TLS_DISABLED=y`), so it cannot do HTTPS firmware downloads.
+> **Why this platform:** it ships the vanilla espressif Arduino Core, so `NetworkClientSecure`/HTTPS and `HTTPClient` work out of the box, and the underlying IDF provides the `esp_netif` APIs the Tinkerforge WireGuard fork needs. The tasmota fork strips TLS (`CONFIG_MBEDTLS_TLS_DISABLED=y`), so it cannot do HTTPS firmware downloads.
 
 ## Build & Flash Commands
 
