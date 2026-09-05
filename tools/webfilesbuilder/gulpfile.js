@@ -49,146 +49,48 @@ function styles(cb) {
 }
 
 
-function scriptsgz() {
-	return gulp.src("../../src/websrc/js/*.*")
-        .pipe(gulp.dest("../../src/websrc/js/"))
-            .pipe(gzip({
-                append: true
-            }))
-        .pipe(gulp.dest('../../src/websrc/gzipped/js/'));
+function gzDir(kind) {
+	return function gz() {
+		return gulp.src("../../src/websrc/" + kind + "/*.*")
+			.pipe(gulp.dest("../../src/websrc/" + kind + "/"))
+				.pipe(gzip({
+					append: true
+				}))
+			.pipe(gulp.dest('../../src/websrc/gzipped/' + kind + '/'));
+	};
 }
 
-function scripts() {
-    return gulp.src("../../src/websrc/gzipped/js/*.*")
-        .pipe(flatmap(function(stream, file) {
-			var filename = path.basename(file.path);
-            var wstream = fs.createWriteStream("../../src/webh/" + filename + ".h");
-            wstream.on("error", function(err) {
-                console.log(err);
-            });
-			var data = file.contents;
-            wstream.write("#define " + filename.replace(/\.|-/g, "_") + "_len " + data.length + "\n");
-            wstream.write("const uint8_t " + filename.replace(/\.|-/g, "_") + "[] PROGMEM = {")
-            
-            for (i = 0; i < data.length; i++) {
-                if (i % 1000 == 0) wstream.write("\n");
-                wstream.write('0x' + ('00' + data[i].toString(16)).slice(-2));
-                if (i < data.length - 1) wstream.write(',');
-            }
+function emitHeaders(kind) {
+    return function emit() {
+        return gulp.src("../../src/websrc/gzipped/" + kind + "/*.*")
+            .pipe(flatmap(function(stream, file) {
+				var filename = path.basename(file.path);
+                var wstream = fs.createWriteStream("../../src/webh/" + filename + ".h");
+                wstream.on("error", function(err) {
+                    console.log(err);
+                });
+				var data = file.contents;
+                wstream.write("#define " + filename.replace(/\.|-/g, "_") + "_len " + data.length + "\n");
+                wstream.write("const uint8_t " + filename.replace(/\.|-/g, "_") + "[] PROGMEM = {")
 
-            wstream.write("\n};")
-            wstream.end();
+                for (i = 0; i < data.length; i++) {
+                    if (i % 1000 == 0) wstream.write("\n");
+                    wstream.write('0x' + ('00' + data[i].toString(16)).slice(-2));
+                    if (i < data.length - 1) wstream.write(',');
+                }
 
-            return stream;
-        }));
-}
+                wstream.write("\n};")
+                wstream.end();
 
-function fontgz() {
-	return gulp.src("../../src/websrc/fonts/*.*")
-        .pipe(gulp.dest("../../src/websrc/fonts/"))
-            .pipe(gzip({
-                append: true
-            }))
-        .pipe(gulp.dest('../../src/websrc/gzipped/fonts/'));
-}
-
-function fonts() {
-    return gulp.src("../../src/websrc/gzipped/fonts/*.*")
-        .pipe(flatmap(function(stream, file) {
-			var filename = path.basename(file.path);
-            var wstream = fs.createWriteStream("../../src/webh/" + filename + ".h");
-            wstream.on("error", function(err) {
-                console.log(err);
-            });
-			var data = file.contents;
-            wstream.write("#define " + filename.replace(/\.|-/g, "_") + "_len " + data.length + "\n");
-            wstream.write("const uint8_t " + filename.replace(/\.|-/g, "_") + "[] PROGMEM = {")
-            
-            for (i = 0; i < data.length; i++) {
-                if (i % 1000 == 0) wstream.write("\n");
-                wstream.write('0x' + ('00' + data[i].toString(16)).slice(-2));
-                if (i < data.length - 1) wstream.write(',');
-            }
-
-            wstream.write("\n};")
-            wstream.end();
-
-            return stream;
-        }));
-}
-
-function imggz() {
-	return gulp.src("../../src/websrc/img/*.*")
-        .pipe(gulp.dest("../../src/websrc/img/"))
-            .pipe(gzip({
-                append: true
-            }))
-        .pipe(gulp.dest('../../src/websrc/gzipped/img/'));
-}
-
-function imgs() {
-    return gulp.src("../../src/websrc/gzipped/img/*.*")
-        .pipe(flatmap(function(stream, file) {
-			var filename = path.basename(file.path);
-            var wstream = fs.createWriteStream("../../src/webh/" + filename + ".h");
-            wstream.on("error", function(err) {
-                console.log(err);
-            });
-			var data = file.contents;
-            wstream.write("#define " + filename.replace(/\.|-/g, "_") + "_len " + data.length + "\n");
-            wstream.write("const uint8_t " + filename.replace(/\.|-/g, "_") + "[] PROGMEM = {")
-            
-            for (i = 0; i < data.length; i++) {
-                if (i % 1000 == 0) wstream.write("\n");
-                wstream.write('0x' + ('00' + data[i].toString(16)).slice(-2));
-                if (i < data.length - 1) wstream.write(',');
-            }
-
-            wstream.write("\n};")
-            wstream.end();
-
-            return stream;
-        }));
-}
-
-function htmlgz() {
-	return gulp.src("../../src/websrc/html/*.*")
-        .pipe(gulp.dest("../../src/websrc/html/"))
-            .pipe(gzip({
-                append: true
-            }))
-        .pipe(gulp.dest('../../src/websrc/gzipped/html/'));
-}
-
-function htmls() {
-    return gulp.src("../../src/websrc/gzipped/html/*.*")
-        .pipe(flatmap(function(stream, file) {
-			var filename = path.basename(file.path);
-            var wstream = fs.createWriteStream("../../src/webh/" + filename + ".h");
-            wstream.on("error", function(err) {
-                console.log(err);
-            });
-			var data = file.contents;
-            wstream.write("#define " + filename.replace(/\.|-/g, "_") + "_len " + data.length + "\n");
-            wstream.write("const uint8_t " + filename.replace(/\.|-/g, "_") + "[] PROGMEM = {")
-            
-            for (i = 0; i < data.length; i++) {
-                if (i % 1000 == 0) wstream.write("\n");
-                wstream.write('0x' + ('00' + data[i].toString(16)).slice(-2));
-                if (i < data.length - 1) wstream.write(',');
-            }
-
-            wstream.write("\n};")
-            wstream.end();
-
-            return stream;
-        }));
+                return stream;
+            }));
+    };
 }
 
 const styleTasks = gulp.series(stylesConcat, styles);
-const scriptTasks = gulp.series(scriptsgz, scripts);
-const fontTasks = gulp.series(fontgz, fonts);
-const imgTasks = gulp.series(imggz, imgs);
-const htmlTasks = gulp.series(htmlgz, htmls);
+const scriptTasks = gulp.series(gzDir("js"), emitHeaders("js"));
+const fontTasks = gulp.series(gzDir("fonts"), emitHeaders("fonts"));
+const imgTasks = gulp.series(gzDir("img"), emitHeaders("img"));
+const htmlTasks = gulp.series(gzDir("html"), emitHeaders("html"));
 
 exports.default = gulp.parallel(styleTasks, scriptTasks, fontTasks, imgTasks, htmlTasks);
