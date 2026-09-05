@@ -6,8 +6,11 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Features
 
-- **Logs that don't drown each other.** Zigbee frames now go to their own history buffer instead of sharing the event log, so busy mesh traffic can no longer push device events out — with real clock timestamps once NTP has synced.
+- **Firmware updates moved to the About page.** Opening About checks GitHub for both the gateway (ESP32) and the Zigbee coordinator/router firmware: it shows what's installed, what's latest, and only offers an update (with release notes) when a newer version actually exists. Manual file upload stays as the fallback when GitHub is unreachable.
+- **Readable Zigbee console.** Zigbee traffic now appears as short one-liners instead of raw hex, e.g. `AF_INCOMING_MSG from 0xA494 · cluster 0x0B04 · LQI 61 · ZCL Report`, and version reads show as `SYS_VERSION v2.7.1`. Turn off "Human-readable frames" to see the raw bytes again.
+- **Logs that don't drown each other.** Zigbee frames now go to their own history buffer instead of sharing the event log, so busy mesh traffic can no longer push device events out — with real clock timestamps once NTP has synced. The filter buttons pick what you're looking at: **ESP32** (device events, incl. Zigbee chip/version reports) or **Zigbee ZNP Frames** (traffic).
 - **More useful device events.** The ESP32 log now records Ethernet/WiFi up-down, MQTT connect results and OTA downloads.
+- **Simpler Tools page.** The old tabs are gone: Logs on top, Module Control below. System Variables moved to General; the file browser and Current Control card were removed along with their API endpoints (nothing but them used those). Every save is confirmed with a log line.
 
 ### Improvements
 

@@ -1,225 +1,127 @@
+<style>
+  #console {
+    font-family: monospace;
+    font-size: 0.8rem;
+    height: 40vh;
+    min-height: 220px;
+    max-height: 480px;
+    margin-bottom: 12px;
+  }
+  .log-filter-seg {
+    display: inline-flex;
+    width: max-content;
+    max-width: 100%;
+    gap: 2px;
+    padding: 4px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+  .log-filter-seg button {
+    margin: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    height: 28px;
+    padding: 0 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .log-filter-seg button.seg-active {
+    background: var(--accent);
+    color: #1a1a2e;
+  }
+  .log-seg-row { display: flex; margin-bottom: 12px; }
+  .mc-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mc-grid .btn { flex: 1 1 calc(50% - 4px); }
+  .log-tools-switches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 2.5rem;
+    row-gap: 6px;
+    margin-bottom: 12px;
+  }
+  .log-tools-switches .form-check,
+  .log-tools-switches .form-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding-left: 0;
+    margin-bottom: 0;
+  }
+  .log-tools-switches .form-switch .form-check-input { margin-left: 0; }
+  .log-tools-switches .form-check-input { margin: 0; flex-shrink: 0; }
+  .log-tools-switches .form-check-label { line-height: 28px; }
+</style>
 <div id="main">
-  <style>
-    #file-input_zb, #file-input {
-      display: block;
-      width: 280px;
-      height: 38px;
-      padding: 0 0.75rem;
-      margin-bottom: 0.5rem;
-      background-color: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 0.25rem;
-      font-size: 0.875rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      cursor: pointer;
-      text-align: center;
-      line-height: 36px;
-    }
-    #file-input_zb:hover, #file-input:hover {
-      background-color: #e9ecef;
-    }
-    [data-theme="dark"] #file-input_zb, [data-theme="dark"] #file-input {
-      background-color: #2a2a4a;
-      border-color: var(--border-color);
-      color: var(--text-main);
-    }
-    [data-theme="dark"] #file-input_zb:hover, [data-theme="dark"] #file-input:hover { background-color: #3a3a5a; }
-  </style>
-  <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link active"
-        id="home-tab"
-        data-bs-toggle="tab"
-        data-bs-target="#systemControl"
-        type="button"
-        role="tab"
-        aria-controls="home"
-        aria-selected="true"
-      >
-        <img src="icon_system_control.svg" class="title_icon_style" />
-        <span>System</span>
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
-        id="profile-tab"
-        data-bs-toggle="tab"
-        data-bs-target="#systemTools"
-        type="button"
-        role="tab"
-        aria-controls="profile"
-        aria-selected="false"
-      >
-        <img src="realTime_control.svg" class="title_icon_style" />
-        <span>Tools</span>
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
-        id="fw-tab"
-        data-bs-toggle="tab"
-        data-bs-target="#firmwareUpdate"
-        type="button"
-        role="tab"
-        aria-controls="fw"
-        aria-selected="false"
-      >
-        <img src="icon_firmware_update.svg" class="title_icon_style" />
-        <span>Firmware</span>
-      </button>
-    </li>
-  </ul>
-
-  <div class="tab-content">
-    <div
-      class="tab-pane fade show active"
-      id="systemControl"
-      role="tabpanel"
-      aria-labelledby="home-tab"
-    >
-      <div class="row">
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">
-              <img src="icon_config_generator.svg" class="title_icon_style" />
-              <span>System Variables</span>
-            </div>
-            <div class="card-body">
-              <div class="container">
-                <form class="saveParams" method="POST" action="saveParams">
-                  <div class="row">
-                    <label for="hostname">
-                      Hostname (The device will be displayed on the network with this name)
-                    </label>
-                    <input
-                      data-replace="hostname"
-                      class="form-control"
-                      id="hostname"
-                      type="text"
-                      name="hostname"
-                      value=""
-                      maxlength="50"
-                      required
-                    />
-                    <label for="refreshLogs">Log refresh interval (seconds)</label>
-                    <input
-                      data-replace="refreshLogs"
-                      class="form-control"
-                      id="refreshLogs"
-                      type="number"
-                      min="1000"
-                      max="10000"
-                      step="1"
-                      name="refreshLogs"
-                      value=""
-                      placeholder="ms"
-                      required
-                    />
-                    <label for="timeZoneId">Time Zone</label>
-                    <select
-                      data-replace="timeZones"
-                      id="timeZoneId"
-                      class="form-control"
-                      name="timeZoneName"
-                    ></select>
-                    <div class="col">
-                      <div class="save-row">
-                        <button
-                          type="submit"
-                          class="btn btn-outline-primary"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
+  <div class="row">
+    <div class="col-sm-12 mb-4">
+      <div class="card">
+        <div class="card-header">
+          <svg class="title_icon_style svg-icon" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><use href="icons.svg#clipboard2" /></svg>
+          <span>Logs</span>
         </div>
-
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">
-              <img src="icon_system_control.svg" class="title_icon_style" />
-              <span>Module Control</span>
-            </div>
-            <div class="card-body">
-              <div
-                class="row"
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                "
-              >
-                <button
-                  type="button"
-                  data-cmd="1"
-                  class="btn btn-outline-primary col-sm-12 col-md-auto mb-1 me-1"
-                >
-                  Restart Zigbee
-                </button>
-                <button
-                  type="button"
-                  data-cmd="2"
-                  class="btn btn-outline-primary col-sm-12 col-md-auto mb-1 me-1"
-                >
-                  Zigbee Refresh Mode
-                </button>
-                <button
-                  type="button"
-                  data-cmd="0"
-                  class="btn btn-outline-primary col-sm-12 col-md-auto mb-1 me-1"
-                >
-                  Router Reconnect  
-                </button>
+        <div class="card-body">
+          <div class="row">
+            <div class="col">
+              <div class="log-seg-row">
+                <div class="log-filter-seg" id="logFilterSeg" role="group" aria-label="Log filter">
+                  <button type="button" data-logfilter="esp" class="seg-active">ESP32</button>
+                  <button type="button" data-logfilter="zb">Zigbee ZNP Frames</button>
+                </div>
               </div>
-              <div
-                class="row"
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                "
-              >
+              <div class="log-tools-switches mb-3" id="humanizeWrap">
+                <div class="form-check form-switch mb-0">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    id="humanizeSw"
+                    checked
+                  />
+                  <label class="form-check-label" for="humanizeSw">
+                    Human-readable frames
+                  </label>
+                </div>
+              </div>
+              <textarea
+                class="form-control mb-2"
+                id="console"
+                rows="8"
+              ></textarea>
+              <div class="mc-grid">
                 <button
                   type="button"
-                  data-cmd="3"
-                  class="btn btn-outline-warning col-sm-12 col-md-auto mb-1 me-1"
+                  id="clearLogBtn"
+                  data-cmd="8"
+                  onclick="document.getElementById('console').value = ''"
+                  class="btn btn-outline-primary"
                 >
-                  Restart ESP32 
+                  Clear Console
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">
-              <img src="realTime_control.svg" class="title_icon_style" />
-              <span>Current Control</span>
-            </div>
-            <div class="card-body">
-              <div
-                class="row"
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                "
-              >
-                <span class="text-muted">
-                  Coordinator mode is set on the
-                  <a href="/general">General</a> page.
-                </span>
+                <button
+                  type="button"
+                  data-cmd="11"
+                  class="btn btn-outline-primary"
+                >
+                  Check Zigbee Connection
+                </button>
+                <button
+                  type="button"
+                  data-cmd="10"
+                  class="btn btn-outline-primary"
+                >
+                  Check Zigbee Version
+                </button>
               </div>
             </div>
           </div>
@@ -227,349 +129,45 @@
       </div>
     </div>
 
-    <div
-      class="tab-pane fade"
-      id="systemTools"
-      role="tabpanel"
-      aria-labelledby="profile-tab"
-    >
-      <div class="row">
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">
-              <svg class="title_icon_style svg-icon" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><use href="icons.svg#clipboard2" /></svg>
-              <span>Logs</span>
-            </div>
-            <div class="card-body">
-              <div class="row">
-                <div class="col">
-                  <textarea
-                    class="form-control mb-2"
-                    id="console"
-                    rows="8"
-                  ></textarea>
-                  <button
-                    type="button"
-                    data-cmd="8"
-                    onclick="document.getElementById('console').value = ''"
-                    class="btn btn-outline-primary col-sm-12 col-md-auto mb-1 me-1"
-                  >
-                    Clear Console
-                  </button>
-                  <button
-                    type="button"
-                    data-cmd="11"
-                    class="btn btn-outline-warning col-sm-12 col-md-auto mb-1 me-1"
-                  >
-                    Check Zigbee Connection
-                  </button>
-                  <button
-                    type="button"
-                    data-cmd="10"
-                    class="btn btn-outline-success col-sm-12 col-md-auto mb-1 me-1"
-                  >
-                    Check Zigbee Version  
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="col-sm-12 mb-4">
+      <div class="card">
+        <div class="card-header">
+          <img src="icon_system_control.svg" class="title_icon_style" />
+          <span>Module Control</span>
         </div>
-
-        <div class="col-sm-12 col-md-6 mb-4">
-          <div class="card">
-            <div class="card-header">
-              <svg class="title_icon_style svg-icon" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><use href="icons.svg#systemTools" /></svg>
-              <span>File Browser</span>
-            </div>
-            <div class="card-body">
-              <div class="file-table-wrap">
-              <table id="filelist" class="table">
-                <thead>
-                  <tr>
-                    <th scope="col">Filename</th>
-                    <th scope="col">Size</th>
-                  </tr>
-                </thead>
-              </table>
-              </div>
-              <form method="POST" action="saveFile">
-                <div class="form-group">
-                  <div>
-                    <label for="config_file">File : <span id="title"></span></label
-                    ><input
-                      type="hidden"
-                      name="filename"
-                      id="filename"
-                      value=""
-                    />
-                  </div>
-                  <textarea
-                    class="form-control mb-2"
-                    id="config_file"
-                    name="file"
-                    rows="10"
-                  ></textarea>
-                </div>
-                <div class="save-row">
-                  <button
-                    type="submit"
-                    class="btn btn-outline-primary"
-                  >
-                    Save  
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div
-      class="tab-pane fade"
-      id="firmwareUpdate"
-      role="tabpanel"
-      aria-labelledby="fw-tab"
-    >
-      <div class="row">
-        <div class="col-sm-12 col-md-6 mb-4 d-flex">
-          <div class="card flex-fill d-flex flex-column">
-            <div class="card-header">
-              <img src="icon_firmware_update.svg" class="title_icon_style" />
-              <span>ESP32 Update</span>
-            </div>
-            <div class="card-body d-flex flex-column">
-              <form
-                class="container"
-                method="POST"
-                action="#"
-                enctype="multipart/form-data"
-                id="upload_form"
-              >
-                <input
-                  type="file"
-                  name="update"
-                  id="file"
-                  onchange="sub(this)"
-                  style="display: none"
-                  accept=".bin"
-                />
-                <label id="file-input" for="file"> Select File...</label>
-                <input
-                  id="updButton"
-                  type="submit"
-                  class="btn btn-warning mb-2"
-                  value="ESP32 file update"
-                  disabled
-                />
-                <br />
-                <div
-                  class="container"
-                  style="max-width: 300px; margin-top: 30px"
-                >
-                  <div id="prg"></div>
-                  <div id="prgbar">
-                    <div id="bar"></div>
-                  </div>
-                </div>
-                <br />
-                <div
-                  class="container"
-                  style="max-width: 300px; margin-top: auto; padding-top: 15px"
-                >
-                  <div class="row">
-                    <button
-                      type="button"
-                      id="upd_esp_git"
-                      class="btn btn-outline-warning col-sm-12 mb-2"
-                    >
-                      Install latest from Github
-                    </button>
-                  </div>
-                  <div class="row">
-                    <button
-                      type="button"
-                      id="info_esp_git"
-                      class="btn btn-outline-warning col-sm-12 flsh_esp mb-2"
-                    >
-                      Show version information
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-sm-12 col-md-6 mb-4 d-flex">
-          <div class="card flex-fill d-flex flex-column">
-            <div class="card-header">
-              <img src="icon_zigbee_info.svg" class="title_icon_style" />
-              <span>Zigbee Update</span>
-            </div>
-            <div class="card-body d-flex flex-column">
-              <form
-                class="container"
-                method="POST"
-                action="#"
-                enctype="multipart/form-data"
-                id="upload_form_zb"
-              >
-                <input
-                  type="file"
-                  name="update_zb"
-                  id="file_zb"
-                  onchange="sub_zb(this)"
-                  style="display: none"
-                  accept=".hex"
-                />
-                <label id="file-input_zb" for="file_zb">Select File...</label>
-                <input
-                  id="updButton_zb"
-                  type="submit"
-                  class="btn btn-primary mb-2"
-                  value="Zigbee File Update"
-                  disabled
-                />
-                <br />
-                <div
-                  class="container"
-                  style="max-width: 300px; margin-top: 30px"
-                >
-                  <div id="prg_zb"></div>
-                  <div id="prgbar_zb">
-                    <div id="bar_zb"></div>
-                  </div>
-                </div>
-                <br />
-                <div class="container" style="max-width: 300px; margin-top: auto; padding-top: 15px">
-                  <div class="row">
-                    <button
-                      type="button"
-                      id="info_zb_git"
-                      class="btn btn-outline-primary col-sm-12 mb-2"
-                    >
-                      Show version information
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
+        <div class="card-body">
+          <div class="mc-grid">
+            <button
+              type="button"
+              data-cmd="1"
+              class="btn btn-outline-primary"
+            >
+              Restart Zigbee
+            </button>
+            <button
+              type="button"
+              data-cmd="2"
+              class="btn btn-outline-primary"
+            >
+              Zigbee Refresh Mode
+            </button>
+            <button
+              type="button"
+              data-cmd="0"
+              class="btn btn-outline-primary"
+            >
+              Router Reconnect
+            </button>
+            <button
+              type="button"
+              data-cmd="3"
+              class="btn btn-outline-primary"
+            >
+              Restart ESP32
+            </button>
           </div>
         </div>
       </div>
     </div>
-
-    <script>
-      function sub(obj) {
-        let fileName = obj.value.split("\\\\");
-        if (fileName != "") {
-          if (!(localStorage.getItem('flash_warning') == 1)) { modalConstructor("flashWarning"); }
-          else { getEl("updButton").removeAttribute("disabled"); }
-        } else { getEl("updButton").disabled = true; }
-        getEl("file-input").innerHTML = "   " + fileName[fileName.length - 1];
-      }
-      function sub_zb(obj) {
-        let fileName = obj.value.split("\\\\");
-        if (fileName != "") { getEl("updButton_zb").removeAttribute("disabled"); }
-        else { getEl("updButton_zb").disabled = true; }
-        getEl("file-input_zb").innerHTML = "   " + fileName[fileName.length - 1];
-      }
-      getQ("form#upload_form").addEventListener("submit", function(e) {
-        e.preventDefault();
-        var data = new FormData(this);
-        getEl("updButton").disabled = true;
-        getEl("prg").innerHTML = "Uploading firmware...";
-        getEl("bar").style.width = "0%";
-        var xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("progress", function(evt) {
-          if (evt.lengthComputable) {
-            var per = evt.loaded / evt.total;
-            getEl("prg").innerHTML = "Uploading: " + Math.round(per * 100) + "%";
-            getEl("bar").style.width = Math.round(per * 100) + "%";
-          }
-        }, false);
-        xhr.open("POST", "/update", true);
-        xhr.onload = function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            console.log("ESP32 firmware upload and flash completed!");
-            getEl("prg").innerHTML = "Update completed!<br>Rebooting!";
-            getEl("bar").style.width = "100%";
-            rebootWait();
-            getEl("updButton").disabled = true;
-          } else {
-            console.log("ESP32 update error: " + xhr.status + " - " + xhr.statusText);
-            getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
-            getEl("bar").style.width = "0%";
-            getEl("updButton").removeAttribute("disabled");
-          }
-        };
-        xhr.onerror = function() {
-          getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
-          getEl("bar").style.width = "0%";
-          getEl("updButton").removeAttribute("disabled");
-        };
-        xhr.send(data);
-      });
-      getQ("form#upload_form_zb").addEventListener("submit", function(e) {
-        e.preventDefault();
-        var data = new FormData(this);
-        getEl("updButton_zb").disabled = true;
-        getEl("prg_zb").innerHTML = "Uploading firmware...";
-        getEl("bar_zb").style.width = "0%";
-        var xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("progress", function(evt) {
-          if (evt.lengthComputable) {
-            var per = evt.loaded / evt.total;
-            getEl("prg_zb").innerHTML = "upload: " + Math.round(per * 100) + "%";
-            getEl("bar_zb").style.width = Math.round(per * 100) + "%";
-          }
-        }, false);
-        xhr.open("POST", "/updateZB", true);
-        xhr.onload = function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            console.log("Success!");
-            getEl("prg_zb").innerHTML = "Upload complete! <br>Start verifing & flashing...";
-            getEl("bar_zb").style.width = "0%";
-            ZBfwStartEvents();
-            setTimeout(function() {
-              if (typeof zbEventSource !== "undefined" && zbEventSource && zbEventSource.readyState !== EventSource.CLOSED) {
-                zbEventSource.close();
-                getEl("prg_zb").innerHTML = '<span style="color:orange">Operation timed out. Please check device status.</span>';
-                getEl("updButton_zb").disabled = false;
-              }
-            }, 300000);
-          } else {
-            console.log("Zigbee update error: " + xhr.status + " - " + xhr.statusText);
-            getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
-            getEl("bar_zb").style.width = "0%";
-          }
-        };
-        xhr.onerror = function() {
-          getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
-          getEl("bar_zb").style.width = "0%";
-        };
-        xhr.send(data);
-      });
-      getQ("button#upd_esp_git").addEventListener("click", function() {
-        console.log("Starting update from Git... Please wait patiently!");
-        localStorage.setItem("update_notify", 0);
-        espFlashGitWait();
-      });
-    </script>
-    <script>
-      getQ("button#info_esp_git").addEventListener("click", function() {
-        processResponses().then((combinedData) => {
-          var downloadCount = 0;
-          for (var i = 0; i < combinedData.jsonData.assets.length; i++) { downloadCount += combinedData.jsonData.assets[i].download_count; }
-          var text = "Local version v" + combinedData.textData + ". GitHub version " + combinedData.jsonData.tag_name + ", downloaded " + downloadCount.toLocaleString() + " ";
-          var chglog = "<pre>" + String(combinedData.jsonData.body || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</pre>";
-          modalConstructor("espFlashGitInfo", { text, chglog });
-        });
-      });
-      getQ("button#info_zb_git").addEventListener("click", function() { modalConstructor("zbFirmwareSelect"); });
-    </script>
   </div>
 </div>

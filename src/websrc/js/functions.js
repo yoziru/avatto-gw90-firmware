@@ -36,7 +36,7 @@ const pages = {
 	API_PAGE_WIFI: { num: 3, str: "/wifi", title: "WiFi" },
 	API_PAGE_SERIAL: { num: 4, str: "/zha-z2m", title: "ZHA/Z2M" },
 	API_PAGE_SECURITY: { num: 5, str: "/security", title: "Security" },
-	API_PAGE_SYSTOOLS: { num: 6, str: "/sys-tools", title: "System and Tools" },
+	API_PAGE_SYSTOOLS: { num: 6, str: "/sys-tools", title: "Tools" },
 	API_PAGE_ABOUT: { num: 7, str: "/about", title: "About" },
 	API_PAGE_MQTT: { num: 8, str: "/mqtt", title: "MQTT Configuration" },
 	API_PAGE_WG: { num: 9, str: "/wg", title: "WireGuard" }
@@ -48,12 +48,10 @@ const api = {
 		API_GET_PARAM: 1,
 		API_STARTWIFISCAN: 2,
 		API_WIFISCANSTATUS: 3,
-		API_GET_FILELIST: 4,
-		API_GET_FILE: 5,
-		API_WIFICONNECTSTAT: 7,
-		API_CMD: 8,
-		API_GET_LOG: 9,
-		API_FLASH_ZB: 10
+		API_WIFICONNECTSTAT: 5,
+		API_CMD: 6,
+		API_GET_LOG: 7,
+		API_FLASH_ZB: 8
 	},
 	pages: pages
 };
@@ -195,16 +193,6 @@ advanced:
 	getEl("generatedFile").value = result;
 }
 
-function fillFileTable(files) {
-	const filelist = getEl("filelist");
-	files.forEach((elem) => {
-		const row = document.createElement("tr");
-		const size = (elem.size !== undefined && elem.size !== null) ? elem.size + "B" : "-";
-		row.innerHTML = "<td class='filename'><a href='#config_file' title='" + elem.filename + "' onclick=\"readfile('" + elem.filename + "');\">" + elem.filename + "</a></td><td>" + size + "</td>";
-		filelist.appendChild(row);
-	});
-}
-
 function loadPage(url) {
 	window.history.pushState("", document.title, url);
 	console.log("[loadPage] url: " + url);
@@ -251,14 +239,30 @@ function loadPage(url) {
 			break;
 		case api.pages.API_PAGE_SYSTOOLS.str:
 			apiGetPage(api.pages.API_PAGE_SYSTOOLS, () => {
-				fetch(apiLink + api.actions.API_GET_FILELIST).then(r => r.json()).then(data => fillFileTable(data.files));
+				const hz = getEl("humanizeSw");
+				if (hz) {
+					hz.checked = localStorage.getItem("humanize") !== "0";
+					hz.addEventListener("change", () => {
+						localStorage.setItem("humanize", hz.checked ? "1" : "0");
+						repaintLogs();
+					});
+				}
+				const seg = getEl("logFilterSeg");
+				if (seg) {
+					setLogFilter(logFilterMode, seg);
+					seg.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+						setLogFilter(b.dataset.logfilter, seg);
+						repaintLogs();
+					}));
+				}
+				const clr = getEl("clearLogBtn");
 				fetch(apiLink + api.actions.API_GET_PARAM + "&param=refreshLogs").then(r => r.text()).then(data => {
 					logRefresh(parseInt(data) >= 1000 ? parseInt(data) : 1000);
 				});
 			});
 			break;
 		case api.pages.API_PAGE_ABOUT.str:
-			apiGetPage(api.pages.API_PAGE_ABOUT);
+			apiGetPage(api.pages.API_PAGE_ABOUT, () => { checkEspFirmware(); checkZbFirmware(); });
 			break;
 		default:
 			apiGetPage(api.pages.API_PAGE_ROOT);
@@ -328,6 +332,10 @@ function apiGetPage(page, doneCall) {
 					const cmd = this.getAttribute("data-cmd");
 					if (cmd) {
 						if (cmd === "3") { modalConstructor("confirmRestart"); return; }
+						if (cmd === "10" || cmd === "11") { // results print into the event log
+							const seg = getEl("logFilterSeg");
+							if (seg && logFilterMode !== "esp") { setLogFilter("esp", seg); repaintLogs(); }
+						}
 						const sp = createSpinner();
 						const sp2 = el("span", { "class": classHide });
 						this.appendChild(sp);
@@ -687,12 +695,12 @@ function modalConstructor(type, params) {
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: "Restart", click: () => { closeModal(); espReboot(); rebootWait(); } }));
 			}
 			break;
-		case "espFlashGitInfo":
-			if (hText) hText.textContent = "Latest ESP32 firmware";
+		case "espFwDetails":
+			if (hText) hText.textContent = "ESP32 firmware";
 			if (mBody) { mBody.textContent = params.text; mBody.insertAdjacentHTML("beforeend", params.chglog); }
 			if (mBtns) {
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update now", click: () => { closeModal(); localStorage.setItem("update_notify", 0); espFlashGitWait(); } }));
+				if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update now", click: () => { closeModal(); localStorage.setItem("update_notify", 0); espFlashGitWait(); } }));
 			}
 			break;
 		case "espFlashGitWait":
@@ -725,22 +733,11 @@ function modalConstructor(type, params) {
 		case "zbVersionInfo":
 			if (hText) hText.textContent = "Latest Zigbee Firmware";
 			if (mBody) { mBody.innerHTML = params.chglog; const alertDiv = el("div", { "class": "alert alert-info", html: params.text }); mBody.insertBefore(alertDiv, mBody.firstChild); }
-			if (latestZbFirmware) {
-				const localVer = latestZbFirmware.localVersion || "unknown";
-				const remoteVer = latestZbFirmware.version || "unknown";
-				if (remoteVer !== "unknown" && localVer !== "unknown") {
-					if (remoteVer > localVer) {
-						if (mBody) mBody.appendChild(el("div", { "class": "alert alert-success mt-2", html: "<strong>Update Available!</strong><br>Current: v" + localVer + " -> Latest: v" + remoteVer }));
-					} else if (remoteVer === localVer) {
-						if (mBody) mBody.appendChild(el("div", { "class": "alert alert-secondary mt-2", html: "<strong>Up to date</strong><br>Current version: v" + localVer }));
-					}
-				}
-			}
-			if (mBtns) {
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update Now", click: () => { closeModal(); zbFlashGitWait(); } }));
-			}
-			break;
+		if (mBtns) {
+			mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
+			if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update Now", click: () => { closeModal(); zbFlashGitWait(); } }));
+		}
+		break;
 		case "rebootWait":
 			if (hText) hText.textContent = "DEVICE RESTART";
 			if (mBody) mBody.textContent = "Waiting for device... This window will automatically close when the device reboots.";
@@ -1319,16 +1316,169 @@ function SeqInputDsblFw(state) {
 	const div = getEl("div_show2"); if (div) div.style.display = state ? "none" : "";
 }
 
-function readfile(file) {
-	const configFile = getEl("config_file");
-	if (configFile) configFile.value = "Loading file: " + file;
-	fetch(apiLink + api.actions.API_GET_FILE + "&filename=" + file).then(r => r.text()).then(data => {
-		const titleEl = getEl("title");
-		const filenameEl = getEl("filename");
-		if (titleEl) titleEl.textContent = file;
-		if (filenameEl) filenameEl.value = file;
-		if (configFile) configFile.value = data;
-	});
+// ---- ZNP frame humanizer (display only; the raw bytes stay in the log) ----
+const znpSubs = ["RES", "SYS", "MAC", "NWK", "AF", "ZDO", "SAPI", "UTIL", "DEBUG", "APP", "APP_CNF"];
+const znpTypes = ["POLL", "SREQ", "AREQ", "SRSP"];
+
+function znpHex(n, w) { return "0x" + Number(n).toString(16).toUpperCase().padStart(w || 2, "0"); }
+function znpAddr(lo, hi) { return znpHex(lo | (hi << 8), 4); }
+function znpStatus(b) { return b === 0 ? "OK" : znpHex(b); }
+
+function decodeZcl(p) {
+	if (p.length < 3) return null;
+	const names = { 0x00: "Read", 0x01: "ReadRsp", 0x08: "DiscoverRsp", 0x09: "Report", 0x0A: "Report", 0x0B: "DefaultRsp" };
+	return "ZCL " + (names[p[2]] || znpHex(p[2]));
+}
+
+function decodeAfFrame(type, cmd, d) {
+	if (type === "SREQ" && cmd === 0x01 && d.length >= 10)
+		return "AF_DATA_REQUEST → " + znpAddr(d[0], d[1]) + " · cluster " + znpHex(d[4] | (d[5] << 8), 4) + " (" + d[9] + "B)";
+	if (type === "SRSP" && cmd === 0x01 && d.length >= 1)
+		return "AF_DATA_REQUEST_RSP status=" + znpStatus(d[0]);
+	if (type === "AREQ" && cmd === 0x80 && d.length >= 3)
+		return "AF_DATA_CONFIRM ep " + d[1] + " · status=" + znpStatus(d[0]);
+	if (type === "AREQ" && cmd === 0x81 && d.length >= 17) {
+		let s = "AF_INCOMING_MSG from " + znpAddr(d[4], d[5]) + " · cluster " + znpHex(d[2] | (d[3] << 8), 4) + " · LQI " + d[9];
+		const zcl = decodeZcl(d.slice(17));
+		if (zcl) s += " · " + zcl;
+		return s;
+	}
+	return null;
+}
+
+function znpGenericName(c0, c1) {
+	return znpSubs[c0 & 0x1F] + " " + znpTypes[(c0 >> 5) & 7] + " " + znpHex(c1);
+}
+
+// Exact-total frame lengths (incl SOF+LEN+FCS) for commands we fully decode.
+// Returns {text, next} or null. d = data bytes at/after the command.
+function znpTry(t, i, hasSof) {
+	const b = hasSof ? 2 : 1;
+	if (t.length - i < b + 3) return null;
+	const c0 = t[i + b], c1 = t[i + b + 1];
+	if (((c0 >> 5) & 7) > 3 || !znpSubs[c0 & 0x1F]) return null;
+	const d = t.slice(i + b + 2);
+	const type = znpTypes[(c0 >> 5) & 7];
+	let need, text = null;
+	if (c0 === 0x24 && c1 === 0x01) { // AF_DATA_REQUEST
+		if (d.length < 10) return null;
+		need = 10 + d[9];
+		text = decodeAfFrame(type, c1, d);
+	} else if (c0 === 0x64 && c1 === 0x01) { // AF_DATA_REQUEST_RSP
+		need = 1;
+		text = decodeAfFrame(type, c1, d);
+	} else if (c0 === 0x44 && c1 === 0x80) { // AF_DATA_CONFIRM
+		need = 3;
+		text = decodeAfFrame(type, c1, d);
+	} else if (c0 === 0x44 && c1 === 0x81) { // AF_INCOMING_MSG
+		if (d.length < 17) return null;
+		need = 17 + d[16];
+		text = decodeAfFrame(type, c1, d);
+	} else if (c0 === 0x21 && c1 === 0x02) { // SYS_VERSION
+		need = 1;
+		text = "SYS_VERSION";
+	} else if (c0 === 0x61 && c1 === 0x02) { // SYS_VERSION response
+		need = 5;
+		text = "SYS_VERSION v" + d[2] + "." + d[3] + "." + d[4];
+	} else {
+		return null;
+	}
+	const total = b + 2 + need + 1;
+	if (t.length - i < total) return null;
+	return text ? { text, next: i + total } : null;
+}
+
+// Split a token run into decodable frames + raw residue. Handles lines where
+// the 8 KiB ring glued two frames together or overwrote a frame head/tail.
+function znpSegments(t) {
+	const segs = [];
+	let i = 0, rawStart = 0;
+	const flushRaw = end => { if (end > rawStart) segs.push({ raw: t.slice(rawStart, end) }); };
+	const isFeStart = k => t[k] === 0xFE && t.length - k >= 5 &&
+		(((t[k + 2] >> 5) & 7) <= 3) && !!znpSubs[t[k + 2] & 0x1F];
+	const isKnownPair = (c0, c1) => (c0 === 0x24 && c1 === 0x01) || (c0 === 0x64 && c1 === 0x01) ||
+		(c0 === 0x44 && c1 === 0x80) || (c0 === 0x44 && c1 === 0x81);
+	while (i < t.length) {
+		let f = null;
+		if (t[i] === 0xFE && t.length - i >= 5) {
+			f = znpTry(t, i, true);
+			if (!f) {
+				const c0 = t[i + 2], c1 = t[i + 3];
+				if (((c0 >> 5) & 7) <= 3 && znpSubs[c0 & 0x1F]) {
+					let end = t.length;
+					for (let k = i + 1; k < t.length; k++) {
+						if (isFeStart(k)) { end = k; break; }
+					}
+					f = { text: znpGenericName(c0, c1), next: end };
+				}
+			}
+		} else if (i + 4 < t.length && isKnownPair(t[i + 1], t[i + 2])) {
+			f = znpTry(t, i, false); // SOF lost to a ring overwrite, length still validates
+		}
+		if (f) { flushRaw(i); segs.push({ text: f.text }); i = f.next; rawStart = i; }
+		else i++;
+	}
+	flushRaw(t.length);
+	return segs;
+}
+
+const LOG_LINE_RE = /^\[([\d:]+)\] (<?->?)\s+(.*)$/;
+
+function humanizeZnpLine(line) {
+	const m = line.match(LOG_LINE_RE);
+	if (!m) return line;
+	const raw = m[3].trim().split(/\s+/);
+	if (!raw.length || !raw.every(h => /^[0-9a-fA-F]{2}$/.test(h))) return line;
+	const t = raw.map(h => parseInt(h, 16));
+	const segs = znpSegments(t);
+	if (!segs.some(s => s.text)) return line;
+	const hex = a => a.map(b => ("0" + b.toString(16)).slice(-2)).join(" ");
+	return "[" + m[1] + "] " + m[2] + " " + segs.map(s => s.text || hex(s.raw)).join(" + ");
+}
+
+function humanizeLog(text) {
+	const hz = getEl("humanizeSw");
+	if (hz && !hz.checked) return text;
+	return text.split("\n").map(humanizeZnpLine).join("\n");
+}
+
+let logFilterMode = localStorage.getItem("logfilter") || "esp";
+if (!["esp", "zb"].includes(logFilterMode)) logFilterMode = "esp";
+
+function setLogFilter(mode, seg) {
+	logFilterMode = mode;
+	localStorage.setItem("logfilter", mode);
+	if (seg) seg.querySelectorAll("button").forEach(b => b.classList.toggle("seg-active", b.dataset.logfilter === mode));
+	const hw = getEl("humanizeWrap");
+	if (hw) hw.style.display = mode === "zb" ? "" : "none"; // only meaningful for frames
+}
+
+// Ring debris guard: when a ring churns, fetched text can start mid-line or
+// glue a truncated head onto the next line. Cut back to the last
+// "[ts] <-/->/ |" line start, ignore the chunk when it has none.
+function intactLogLine(line) {
+	const re = /\[(\d\d:\d\d:\d\d|\d+)\] (<-|->|\|)/g;
+	let m, last = -1;
+	while ((m = re.exec(line))) last = m.index;
+	if (last < 0) return null;
+	const s = line.slice(last);
+	return /^\[[^\]]+\] (<?->?)?\s*$/.test(s) ? null : s;
+}
+
+// Filter mode doubles as ring selector: esp = event ring, zb = ZNP frame ring.
+function renderLogs() {
+	const data = logFilterMode === "esp" ? lastEspText : lastZbText;
+	return humanizeLog(data.split("\n").map(intactLogLine).filter(Boolean).join("\n"));
+}
+
+let lastEspText = "", lastZbText = "";
+var logUpd = null;
+
+function fetchLogs() {
+	return Promise.all([
+		fetch(apiLink + api.actions.API_GET_LOG + "&src=esp").then(r => r.text()).then(t => { lastEspText = t; }).catch(() => ""),
+		fetch(apiLink + api.actions.API_GET_LOG + "&src=zb").then(r => r.text()).then(t => { lastZbText = t; }).catch(() => "")
+	]);
 }
 
 function logRefresh(ms) {
@@ -1338,13 +1488,26 @@ function logRefresh(ms) {
 		console.log("Pausing log refresh during firmware update");
 		return;
 	}
-	var logUpd = setInterval(() => {
-		fetch(apiLink + api.actions.API_GET_LOG).then(r => r.text()).then(data => {
+	logUpd = setInterval(() => {
+		fetchLogs().then(() => {
 			const consoleEl = getEl("console");
-			if (consoleEl) consoleEl.value = data;
+			if (consoleEl) {
+				const stick = consoleEl.scrollHeight - consoleEl.scrollTop - consoleEl.clientHeight < 40;
+				consoleEl.value = renderLogs();
+				if (stick) consoleEl.scrollTop = consoleEl.scrollHeight;
+			}
 			else clearInterval(logUpd);
 		});
 	}, ms);
+}
+
+// Instant re-render of the last poll (no poll wait) for toggle/filter
+// clicks. Always jumps to the tail: the user just changed the view.
+function repaintLogs() {
+	const consoleEl = getEl("console");
+	if (!consoleEl || !(lastEspText + lastZbText)) return;
+	consoleEl.value = renderLogs();
+	consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
 async function fetchData(url, isJson = true) {
@@ -1370,14 +1533,9 @@ async function processResponses() {
 
 function checkLatestESPrelease() {
 	processResponses().then(combinedData => {
-		var gitVer = Number(combinedData.jsonData.tag_name.replace(/[^0-9.]/g, "").split(".").join(""));
-		var localVer = Number(combinedData.textData.replace(/[^0-9.]/g, "").split(".").join(""));
-		var downloadCount = 0;
-		for (var i = 0; i < combinedData.jsonData.assets.length; i++) {
-			downloadCount += combinedData.jsonData.assets[i].download_count;
-		}
-		var releaseInfo = "New firmware (" + combinedData.jsonData.tag_name + ") was found on GitHub. It was downloaded " + downloadCount.toLocaleString() + " times. Go -> System and Tools -> Firmware update page to get more info.";
-		if (gitVer > localVer) {
+		var downloadCount = (combinedData.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
+		var releaseInfo = "New firmware (" + combinedData.jsonData.tag_name + ") was found on GitHub. It was downloaded " + downloadCount.toLocaleString() + " times. Go -> About -> ESP32 Firmware to update.";
+		if (verIsNewer(combinedData.jsonData.tag_name, combinedData.textData)) {
 			setTimeout(() => {
 				if (!(localStorage.getItem("update_notify") == 1)) modalConstructor("espGitUpdate", releaseInfo);
 				console.log(releaseInfo);
@@ -1421,14 +1579,15 @@ async function showZigbeeVersionInfo(firmwareType) {
 			return;
 		}
 		latestZbFirmware = { ...selectedFw, localVersion: localVerData ? localVerData.trim() : "unknown" };
-		const text = "Local version v" + latestZbFirmware.localVersion + ". GitHub version " + latestZbFirmware.version + ", File: " + latestZbFirmware.name + ", Description: " + (latestZbFirmware.firmwareDesc || "N/A");
-		const chglog = `<p><strong>Firmware Details:</strong></p><ul><li><strong>Name:</strong> ${latestZbFirmware.name}</li><li><strong>Version:</strong> ${latestZbFirmware.version}</li><li><strong>Type:</strong> ${latestZbFirmware.firmwareType || "N/A"}</li><li><strong>Description:</strong> ${latestZbFirmware.firmwareDesc || "N/A"}</li><li><strong>Baud Rate:</strong> ${latestZbFirmware.baudRate || "N/A"}</li><li><strong>Dongle Type:</strong> ${latestZbFirmware.dongleType || "N/A"}</li></ul>`;
-		const mBody = getQ(".modal-body");
-		if (mBody) {
-			mBody.innerHTML = chglog;
-			const alertDiv = el("div", { "class": "alert alert-info", html: text });
-			mBody.insertBefore(alertDiv, mBody.firstChild);
-		}
+		const localVer = latestZbFirmware.localVersion, remoteVer = latestZbFirmware.version || "unknown";
+		const hasUpdate = localVer === "unknown" || verIsNewer(remoteVer, localVer);
+		const text = "Local version: v" + localVer + "<br>GitHub version: " + remoteVer + "<br>File: " + latestZbFirmware.name + "<br>Description: " + (latestZbFirmware.firmwareDesc || "N/A");
+		let chglog = `<p><strong>Firmware Details:</strong></p><ul><li><strong>Name:</strong> ${latestZbFirmware.name}</li><li><strong>Version:</strong> ${latestZbFirmware.version}</li><li><strong>Type:</strong> ${latestZbFirmware.firmwareType || "N/A"}</li><li><strong>Description:</strong> ${latestZbFirmware.firmwareDesc || "N/A"}</li><li><strong>Baud Rate:</strong> ${latestZbFirmware.baudRate || "N/A"}</li><li><strong>Dongle Type:</strong> ${latestZbFirmware.dongleType || "N/A"}</li></ul>`;
+		if (localVer !== "unknown" && remoteVer !== "unknown")
+			chglog += hasUpdate
+				? "<div class='alert alert-success mt-2'><strong>Update Available!</strong><br>Current: v" + localVer + " -> Latest: v" + remoteVer + "</div>"
+				: "<div class='alert alert-secondary mt-2'><strong>Up to date</strong><br>Current version: v" + localVer + "</div>";
+		modalConstructor("zbVersionInfo", { text, chglog, hasUpdate });
 	} catch (error) {
 		console.error("Error while getting Zigbee version info:", error);
 		const mBody = getQ(".modal-body");
@@ -1436,6 +1595,121 @@ async function showZigbeeVersionInfo(firmwareType) {
 	} finally {
 		isZbVersionLoading = false;
 	}
+}
+
+// Numeric version compare.
+function verIsNewer(remote, local) {
+	const rn = Number(String(remote).replace(/[^0-9.]/g, "").split(".").join(""));
+	const ln = Number(String(local).replace(/[^0-9.]/g, "").split(".").join(""));
+	return rn > 0 && rn > ln;
+}
+
+function escHtml(s) {
+	return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+let espFwInfo = null;
+
+// Details modal for the ESP32 card: installed + latest + release notes,
+// available for any version (not just when an update is pending).
+function showEspFwDetails() {
+	if (!espFwInfo) { checkEspFirmware(); return; }
+	const text = "Installed v" + espFwInfo.local + ". Latest " + espFwInfo.tag + ".";
+	const chglog = "<pre>" + escHtml(espFwInfo.body || "(no release notes)") + "</pre>";
+	modalConstructor("espFwDetails", { text, chglog, hasUpdate: espFwInfo.hasUpdate });
+}
+
+// ESP32 firmware status on the About page: only offers an update (and shows
+// the changelog) when GitHub actually has something newer.
+async function checkEspFirmware() {
+	const st = getEl("espFwStatus");
+	if (!st) return;
+	st.innerHTML = "<span class='text-muted'>Checking for updates...</span>";
+	let combined = null;
+	try {
+		combined = await processResponses();
+	} catch (e) { console.warn("ESP32 version check failed:", e); }
+	const upd = getEl("updEspGit");
+	const log = getEl("espFwChglog");
+	espFwInfo = null;
+	if (!combined || !combined.jsonData || !combined.jsonData.tag_name) {
+		st.innerHTML = "<span class='text-muted'>Could not reach GitHub. Use file upload below.</span>";
+		if (upd) upd.style.display = "none";
+		if (log) log.style.display = "none";
+		return;
+	}
+	const tag = combined.jsonData.tag_name;
+	const local = String(combined.textData).trim();
+	const hasUpdate = verIsNewer(tag, combined.textData);
+	espFwInfo = { tag, local, body: combined.jsonData.body || "", hasUpdate };
+	if (hasUpdate) {
+		const count = (combined.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
+		st.innerHTML = "Update available: <strong>" + tag + "</strong> (downloaded " + count.toLocaleString() + " times)";
+		if (log) { log.style.display = ""; log.textContent = combined.jsonData.body || ""; }
+		if (upd) upd.style.display = "";
+	} else {
+		st.innerHTML = "Up to date (<strong>" + escHtml(local) + "</strong>)";
+		if (upd) upd.style.display = "none";
+		if (log) log.style.display = "none";
+	}
+}
+
+// Zigbee firmware status on the About page, same deal: per-type rows that
+// only offer a flash when the indexed release is newer than the local rev.
+async function checkZbFirmware() {
+	const st = getEl("zbFwStatus");
+	if (!st) return;
+	st.innerHTML = "<span class='text-muted'>Checking for updates...</span>";
+	let fwData = null, rev = "";
+	try {
+		[fwData, rev] = await Promise.all([fetchData(zbFwInfoUrl, true), fetchData("/api?action=1&param=zbRev", false)]);
+	} catch (e) { console.warn("Zigbee version check failed:", e); }
+	const localRev = (rev || "").trim();
+	const box = getEl("zbFwList");
+	if (!Array.isArray(fwData) || !fwData.length) {
+		st.innerHTML = "<span class='text-muted'>Could not reach the firmware index. Use file upload below.</span>";
+		if (box) box.innerHTML = "";
+		return;
+	}
+	const fws = fwData.filter(fw => (fw.firmwareType || "").toLowerCase() === "zigbee");
+	if (!fws.length) {
+		st.innerHTML = "<span class='text-muted'>No Zigbee firmware in the index.</span>";
+		if (box) box.innerHTML = "";
+		return;
+	}
+	let newer = 0;
+	if (box) {
+		box.innerHTML = "";
+		fws.forEach(fw => {
+			const isRouter = (fw.name || "").toLowerCase().includes("router");
+			const remote = fw.version || "unknown";
+			const hasUpdate = verIsNewer(remote, localRev);
+			if (hasUpdate) newer++;
+			const row = el("div", { "class": "zb-fw-row" });
+			const info = el("div", { "class": "zb-fw-info" });
+			info.innerHTML = "<strong>" + (isRouter ? "Router" : "Coordinator") + "</strong>" +
+				(isRouter ? "" : " <span class='default-badge'>default</span>") +
+				"<div class='text-muted zb-fw-sub'>latest " + escHtml(remote) + " - " +
+				(hasUpdate ? "<span style='color:#f7a623'>update available</span>" : "up to date") + "</div>";
+			row.appendChild(info);
+			const wrap = el("span", { "class": "zb-fw-btns" });
+			wrap.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary btn-sm", text: "Details", click: () => showZigbeeVersionInfo(isRouter ? "router" : "coordinator") }));
+			if (hasUpdate) {
+				wrap.appendChild(document.createTextNode(" "));
+				wrap.appendChild(el("button", {
+					type: "button", "class": "btn btn-warning btn-sm", text: "Flash " + remote, click: () => {
+						if (!fw.link) return;
+						latestZbFirmware = { ...fw, localVersion: localRev || "unknown" };
+						startZbFlashFromGit();
+					}
+				}));
+			}
+			row.appendChild(wrap);
+			box.appendChild(row);
+		});
+	}
+	st.innerHTML = newer ? ("<span style='color:#f7a623'><strong>" + newer + " update" + (newer > 1 ? "s" : "") + " available</strong></span>")
+		: "All variants up to date (local rev <strong>" + (localRev || "unknown") + "</strong>)";
 }
 
 

@@ -107,7 +107,7 @@ The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridg
 │   │   ├── common.cpp      # WebServer instance, route registration, auth, sendGzip, log
 │   │   ├── api.cpp         # /api dispatch (actions 0-10), ZB firmware download
 │   │   ├── pages.cpp       # getRootData() + per-page handlers (root/status/general/...)
-│   │   ├── save.cpp        # /saveParams, /saveFile, wifi commit-on-connect
+│   │   ├── save.cpp        # /saveParams, wifi commit-on-connect
 │   │   ├── events.cpp      # /events SSE endpoint
 │   │   └── ota.cpp         # ESP OTA (web/URL) + ZB checkFwHexTask
 │   ├── mqtt.cpp/h          # MQTT client + HA auto-discovery
@@ -195,7 +195,7 @@ Up to `MAX_SOCKET_CLIENTS` (5) `WiFiClient`s. Each loop iteration:
 
 ### 4.5 `web/` — web server, API, pages
 
-`common.cpp` owns the `WebServer serverWeb(80)` instance and registers all routes (page routes, `/api`, `/status`, `/saveParams`, `/saveFile`, `/update`, `/updateZB`, `/events`, `/logout`) plus the ~50 auto-generated static asset routes (`web_routes.h`).
+`common.cpp` owns the `WebServer serverWeb(80)` instance and registers all routes (page routes, `/api`, `/status`, `/saveParams`, `/update`, `/updateZB`, `/events`, `/logout`) plus the auto-generated static asset routes (`web_routes.h`).
 
 `pages.cpp` `getRootData()` builds the shared device-status JSON into a **reused module-level `JsonDocument`** (steady allocation, no per-poll churn). `/status` serializes it to a reused String.
 
@@ -203,7 +203,7 @@ Up to `MAX_SOCKET_CLIENTS` (5) `WiFiClient`s. Each loop iteration:
 
 `events.cpp` is a single-slot SSE endpoint (`/events`), now **auth-gated** like every other protected endpoint. `sendEvent()` writes via `printf`.
 
-`save.cpp` handles `/saveParams` (per page) and `/saveFile`. WiFi changes follow **commit-on-connect**: a *new* network is staged in RAM and only persisted after the STA link to that SSID succeeds (`wifi_save_logic.h`); tweaks to the already-saved network persist immediately.
+`save.cpp` handles `/saveParams` (per page). WiFi changes follow **commit-on-connect**: a *new* network is staged in RAM and only persisted after the STA link to that SSID succeeds (`wifi_save_logic.h`); tweaks to the already-saved network persist immediately.
 
 `ota.cpp` ESP OTA (web upload + URL fetch) and the CC2652P `checkFwHexTask`.
 
@@ -396,7 +396,7 @@ Design (all in `etc.cpp`):
 ## 16. OTA & Releases
 
 - **Web**: `POST /update` (multipart `AVATTO-GW90-Ti.bin`) or URL fetch (`/api?cmd=10`).
-- **ZB**: `POST /updateZB` or `/api?action=10&fwurl=...`.
+- **ZB**: `POST /updateZB` or `/api?action=8&fwurl=...`.
 - **Release flow** (`scripts/release.sh` + the GitHub `Release` workflow):
   1. Bump `tools/version` + `manifest.json`, commit + tag `vX.Y.Z` (workflow_dispatch with `patch`/`minor`/`major`/`X.Y.Z`)
   2. Build `prod` with the pinned version
@@ -437,21 +437,18 @@ Observed on a live PoE gateway: loop min ~1.26 ms, typical ~2 ms, ~30 ms periodi
 | `GET /api?action=1&param=X` | Single param (`refreshLogs`, `coordMode`, `zbRev`, `espVer`) |
 | `GET /api?action=2` | Start WiFi scan |
 | `GET /api?action=3` | WiFi scan status/results |
-| `GET /api?action=4` | `/config` file list |
-| `GET /api?action=5&filename=X` | Read a config file |
-| `GET /api?action=7` | WiFi connect status |
-| `GET /api?action=8&cmd=N` | Execute command (see below) |
-| `GET /api?action=9` | Log buffer |
-| `GET /api?action=10&fwurl=X` | Download + flash CC2652P firmware from URL |
+| `GET /api?action=5` | WiFi connect status |
+| `GET /api?action=6&cmd=N` | Execute command (see below) |
+| `GET /api?action=7` | Log buffer (`&src=zb` for the ZB frame ring, default event ring) |
+| `GET /api?action=8&fwurl=X` | Download + flash CC2652P firmware from URL |
 | `POST /saveParams` | Save config (pageId) |
-| `POST /saveFile` | Write a config file |
 | `POST /update` | ESP32 OTA upload |
 | `POST /updateZB` | CC2652P upload |
 | `GET /events` | SSE event stream (auth-gated) |
 | `GET /status` | Full device status JSON |
 | `GET /logout` | Logout |
 
-**Commands** (`cmd`): 0 router rejoin · 1 ZB restart · 2 ZB BSL · 3 ESP restart · 6 LED power toggle · 7 LED USB toggle · 8 clear log · 9 ESP OTA from URL · 10 ZB check rev · 11 ZB check conn · 12 ZB LED toggle.
+**Commands** (`cmd`): 0 router rejoin · 1 ZB restart · 2 ZB BSL · 3 ESP restart · 6 LED power toggle · 7 LED USB toggle · 8 clear log · 9 ESP OTA from URL · 10 ZB check rev · 11 ZB check conn · 12 ZB LED toggle (4 and 5 were removed toggles; numbers reserved).
 
 ---
 

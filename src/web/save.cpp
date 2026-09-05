@@ -164,6 +164,23 @@ void handleSaveParams()
             {
                 doc[disableLedUSB] = zero;
             }
+            const char *refreshLogs = "refreshLogs";
+            const char *hostname = "hostname";
+            if (serverWeb.hasArg(refreshLogs))
+            {
+                ConfigSettings.refreshLogs = serverWeb.arg(refreshLogs).toInt();
+                doc[refreshLogs] = ConfigSettings.refreshLogs;
+            }
+            if (serverWeb.hasArg(hostname))
+            {
+                doc[hostname] = serverWeb.arg(hostname);
+                strlcpy(ConfigSettings.hostname, serverWeb.arg(hostname).c_str(), sizeof(ConfigSettings.hostname));
+            }
+            const char *timeZoneName = "timeZoneName";
+            if (serverWeb.hasArg(timeZoneName))
+            {
+                doc[timeZoneName] = serverWeb.arg(timeZoneName);
+            }
             configFile = LittleFS.open(configFileGeneral, FILE_WRITE);
             serializeJson(doc, configFile);
             configFile.close();
@@ -382,79 +399,15 @@ void handleSaveParams()
             configFile.close();
         }
         break;
-        case API_PAGE_SYSTOOLS:
-        {
-            const char *refreshLogs = "refreshLogs";
-            const char *hostname = "hostname";
-            configFile = LittleFS.open(configFileGeneral, FILE_READ);
-            deserializeJson(doc, configFile);
-            configFile.close();
-            if (serverWeb.hasArg(refreshLogs))
-            {
-                ConfigSettings.refreshLogs = serverWeb.arg(refreshLogs).toInt();
-                doc[refreshLogs] = ConfigSettings.refreshLogs;
-            }
-            if (serverWeb.hasArg(hostname))
-            {
-                doc[hostname] = serverWeb.arg(hostname);
-                strlcpy(ConfigSettings.hostname, serverWeb.arg(hostname).c_str(), sizeof(ConfigSettings.hostname));
-            }
-            const char *timeZoneName = "timeZoneName";
-            if (serverWeb.hasArg(timeZoneName))
-            {
-                doc[timeZoneName] = serverWeb.arg(timeZoneName);
-            }
-            configFile = LittleFS.open(configFileGeneral, FILE_WRITE);
-            serializeJson(doc, configFile);
-            configFile.close();
-        }
-        break;
 
         default:
             break;
         }
+        printLogMsg(String("Websave page ") + serverWeb.arg(pageId));
         serverWeb.send(HTTP_CODE_OK, contTypeText, "ok");
     }
     else
     {
         serverWeb.send(500, contTypeText, "bad args");
-    }
-}
-
-void handleSavefile()
-{
-    if (checkAuth())
-    {
-        if (serverWeb.method() != HTTP_POST)
-        {
-            serverWeb.send(405, contTypeText, F("Method Not Allowed"));
-        }
-        else
-        {
-            String filename = "/config/" + serverWeb.arg(0);
-            String content = serverWeb.arg(1);
-            File file = LittleFS.open(filename, "w");
-            if (!file)
-            {
-                DEBUG_PRINT(F("Failed to open file for reading\r\n"));
-                return;
-            }
-
-            int bytesWritten = file.print(content);
-
-            if (bytesWritten > 0)
-            {
-                DEBUG_PRINTLN(F("File was written"));
-                DEBUG_PRINTLN(bytesWritten);
-            }
-            else
-            {
-                DEBUG_PRINTLN(F("File write failed"));
-            }
-
-            file.close();
-            serverWeb.sendHeader(F("Location"), F("/sys-tools"));
-            serverWeb.send(303);
-        }
     }
 }

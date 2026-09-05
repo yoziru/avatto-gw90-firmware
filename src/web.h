@@ -64,7 +64,6 @@ void handleSysTools();
 void handleAbout();
 
 void handleSaveParams();
-void handleSavefile();
 void wifiCommitPending();
 
 void checkFwHexTask(void *param);

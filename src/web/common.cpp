@@ -134,7 +134,6 @@ void initWebServer()
     serverWeb.on("/saveParams", HTTP_POST, handleSaveParams);
     serverWeb.on("/cmdZigRST", handleZigbeeRestart);
     serverWeb.on("/cmdZigBSL", handleZigbeeBSL);
-    serverWeb.on("/saveFile", handleSavefile);
     serverWeb.on("/switch/firmware_update/toggle", handleZigbeeBSL);
     serverWeb.on("/api", handleApi);
     serverWeb.on("/status", handleStatus);
