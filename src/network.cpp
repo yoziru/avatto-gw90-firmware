@@ -400,6 +400,10 @@ void connectWifi()
 void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw)
 {
   WiFi.persistent(false);
+  // Retries are driven by the overseer and the wifi save flow, never by the
+  // radio itself - otherwise a join to a non-existent SSID would retry
+  // forever on its own and flood the event handler.
+  WiFi.setAutoReconnect(false);
   if (ConfigSettings.apStarted)
   {
     WiFi.mode(WIFI_AP_STA); // keep the AP alive while joining as STA

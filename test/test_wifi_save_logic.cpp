@@ -89,6 +89,28 @@ static void test_not_connecting_always_begins(void)
     TEST_ASSERT_TRUE(wifiShouldBeginConnect(false, 60000));
 }
 
+// --- Staged joins give up instead of retrying forever ---
+
+// A staged join that never connects is abandoned after the timeout (wrong
+// password, AP out of range) - the saved network is kept.
+static void test_pending_gives_up_after_timeout(void)
+{
+    TEST_ASSERT_TRUE(wifiPendingGiveUp(false, false, 46000));
+    TEST_ASSERT_FALSE(wifiPendingGiveUp(false, false, 44999));
+    // Connected to the staged network: commit, never give up.
+    TEST_ASSERT_FALSE(wifiPendingGiveUp(true, false, 600000));
+}
+
+// The STA connecting to a different network decides the join early: the saved
+// network won the race. A short grace period covers the first seconds, where
+// the radio may still report the previous association.
+static void test_pending_gives_up_when_other_network_won(void)
+{
+    TEST_ASSERT_TRUE(wifiPendingGiveUp(false, true, 16000));
+    TEST_ASSERT_FALSE(wifiPendingGiveUp(false, true, 14000));
+    TEST_ASSERT_FALSE(wifiPendingGiveUp(false, false, 1000)); // still trying
+}
+
 void run_wifi_save_logic_tests(void)
 {
     RUN_TEST(test_new_network_is_connect_first);
@@ -101,4 +123,6 @@ void run_wifi_save_logic_tests(void)
     RUN_TEST(test_connect_in_progress_recently_not_restarted);
     RUN_TEST(test_stuck_connect_is_retried_after_throttle);
     RUN_TEST(test_not_connecting_always_begins);
+    RUN_TEST(test_pending_gives_up_after_timeout);
+    RUN_TEST(test_pending_gives_up_when_other_network_won);
 }

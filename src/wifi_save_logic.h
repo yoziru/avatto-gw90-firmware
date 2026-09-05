@@ -64,4 +64,22 @@ inline bool wifiShouldBeginConnect(bool connecting, uint32_t lastBeginAgeMs) noe
     return !(connecting && lastBeginAgeMs < 20000);
 }
 
+// True when a staged join must be abandoned instead of retried forever: the
+// STA connected to a different network for a while (the saved one won the
+// race), or never connected at all within the timeout (wrong password, AP out
+// of range). A short grace period guards the first seconds, where WiFi.SSID()
+// may still report the previous association while the new one is starting.
+inline bool wifiPendingGiveUp(bool connectedToPending, bool connectedToOther, uint32_t ageMs) noexcept
+{
+    if (connectedToPending)
+    {
+        return false;
+    }
+    if (connectedToOther)
+    {
+        return ageMs > 15000;
+    }
+    return ageMs > 45000;
+}
+
 #endif

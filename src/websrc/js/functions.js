@@ -793,17 +793,44 @@ function modalConstructor(type, params) {
 
 function getWifiList() {
 	const list = getEl("wifiList");
-	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name"><span class="wifi-spinner"></span> Scanning…</span></div>';
+	// While scanning there is nothing to interact with - the join row only
+	// appears once results are in, so a mid-scan join can't race the list.
+	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-spinner"></span><span class="wifi-name">Scanning…</span></div>';
+	let polls = 0;
+	const giveUp = () => {
+		if (!list) return;
+		list.innerHTML = '<div class="wifi-item wifi-placeholder" onclick="getWifiList()"><span class="wifi-name">Scan timed out. Tap to retry.</span></div>' + _wifiJoinRow;
+	};
 	fetch(apiLink + api.actions.API_STARTWIFISCAN).then(() => {
 		const tmrUpdWifi = setInterval(() => {
+			const expire = () => { clearInterval(tmrUpdWifi); giveUp(); }; // ~30s
 			fetch(apiLink + api.actions.API_WIFISCANSTATUS).then(r => r.json()).then(data => {
-				if (!data.scanDone) return;
+				if (!data.scanDone) {
+					if (++polls >= 15) expire();
+					return;
+				}
 				clearInterval(tmrUpdWifi);
 				_wifiScanCache = data.wifi || [];
 				renderWifiList();
-			});
+			}).catch(() => { if (++polls >= 15) expire(); });
 		}, 2000);
-	});
+	}).catch(giveUp);
+}
+
+// Masked text input where the engine supports -webkit-text-security (Webkit/
+// Blink); a real password input otherwise (Firefox). Avoids browser password
+// managers latching onto the wifi join form. The field starts readonly and is
+// unlocked on first interaction - Safari/Chrome evaluate autofill (incl. the
+// strong-password suggestion) on page load, before the user can type.
+const _wifiPwType = (window.CSS && CSS.supports && CSS.supports("-webkit-text-security", "disc")) ? "text" : "password";
+const _wifiPwInput = '<input type="' + _wifiPwType + '" class="form-control form-control-sm' + (_wifiPwType === "text" ? " wifi-pw" : "") + '" placeholder="Password" autocomplete="' + (_wifiPwType === "text" ? "off" : "new-password") + '" readonly />';
+
+// Unlock a readonly-anti-autofill input on first pointer/focus interaction.
+function wifiUnlockInput(input) {
+	const unlock = () => { input.readOnly = false; };
+	input.addEventListener("pointerdown", unlock, { once: true });
+	input.addEventListener("focus", unlock, { once: true });
+	input.addEventListener("input", () => input.classList.remove("is-invalid"));
 }
 
 // Turn a raw dBm value into 0-3 iOS-style signal bars.
@@ -833,8 +860,27 @@ const _wifiOpenSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"
 const _wifiChevSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M6 3.5 10.5 8 6 12.5"/></svg>';
 const _wifiCheckSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M3 8.5 6.5 12 13 4.5"/></svg>';
 
+// "Join Other Network…" row: always the last entry of the network list.
+const _wifiJoinRow = '<div class="wifi-item" id="wifiJoinOtherRow" onclick="wifiShowOther()">' +
+	'<div class="wifi-row-main">' +
+		'<span class="wifi-plus" aria-hidden="true">+</span>' +
+		'<span class="wifi-name">Join Other Network…</span>' +
+		'<span class="wifi-chev">' + _wifiChevSvg + '</span>' +
+	'</div></div>';
+
 // Last scan results, cached so forget/join can re-render without rescanning.
 let _wifiScanCache = [];
+
+// Security of the saved network: set on join, else looked up in the scan
+// cache; defaults to secured (the overwhelmingly common case).
+let _wifiSavedSecure = null;
+
+function wifiSavedSecure() {
+	const saved = wifiSavedSsid();
+	if (_wifiSavedSecure !== null && saved) return _wifiSavedSecure;
+	const hit = _wifiScanCache.find(n => n.ssid === saved);
+	return hit ? hit.secure !== 7 : true;
+}
 
 // The SSID currently saved on the device (filled by data-replace on load).
 function wifiSavedSsid() {
@@ -852,38 +898,67 @@ function wifiFormData() {
 // Join a network: POST the target creds, then poll the connect state. The
 // backend only commits the config after a successful connection (commit-on-
 // connect), so the saved-network UI is updated only once the link is really up.
-function wifiJoin(ssid, pass, statusEl) {
+function wifiBusyBtn(btn, busy) {
+	if (btn) btn.disabled = busy;
+}
+
+// Sequence token: a fresh join invalidates the poll loop of a previous one,
+// so a stale poll can't overwrite the newer attempt's status.
+let _wifiJoinSeq = 0;
+
+function wifiJoin(ssid, pass, statusEl, btn, secure) {
+	const seq = ++_wifiJoinSeq;
 	const fd = wifiFormData();
 	fd.set("WIFISSID", ssid);
 	fd.set("WIFIpassword", pass);
-	if (statusEl) { statusEl.className = "wifi-join-status"; statusEl.textContent = "Connecting…"; }
+	if (secure !== undefined) _wifiSavedSecure = !!secure;
+	if (statusEl) { statusEl.className = "wifi-join-status connecting"; statusEl.textContent = "Connecting…"; }
+	wifiBusyBtn(btn, true);
 	fetch("/saveParams", { method: "POST", body: fd }).catch(() => {
+		if (seq !== _wifiJoinSeq) return;
 		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Save failed. Check your network."; }
+		wifiBusyBtn(btn, false);
 	});
-	wifiPollConnect(statusEl, ssid, pass);
+	wifiPollConnect(seq, statusEl, ssid, pass, btn);
 }
 
 // Poll the STA connect state until it resolves, then refresh the UI.
-function wifiPollConnect(statusEl, ssid, pass) {
+function wifiPollConnect(seq, statusEl, ssid, pass, btn) {
 	let tries = 0;
 	const tmr = setInterval(() => {
+		if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
 		fetch(apiLink + api.actions.API_WIFICONNECTSTAT).then(r => r.json()).then(data => {
+			if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
 			tries++;
 			if (data.connected) {
 				clearInterval(tmr);
+				wifiBusyBtn(btn, false);
 				if (statusEl) { statusEl.className = "wifi-join-status ok"; statusEl.textContent = "Connected"; }
 				const si = getEl("WIFISSID");
 				const pi = getEl("WIFIpassword");
 				if (si) si.value = ssid;
 				if (pi) pi.value = pass;
+				// Join-other succeeded: fold its form back up.
+				if (statusEl && statusEl.id === "wifiOtherStatus") {
+					toggleCollapse("wifiOtherForm", false);
+					const row = getEl("wifiJoinOtherRow");
+					if (row) row.classList.remove("open");
+					["otherSsid", "otherPass"].forEach(id => { const e = getEl(id); if (e) e.value = ""; });
+				}
 				renderWifiYourNetwork();
 				renderWifiList();
 			} else if (tries >= 15) {
 				clearInterval(tmr);
+				wifiBusyBtn(btn, false);
 				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Could not connect. Check the password."; }
 			}
 		}).catch(() => {
-			if (++tries >= 15) { clearInterval(tmr); if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Connection status unavailable."; } }
+			if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
+			if (++tries >= 15) {
+				clearInterval(tmr);
+				wifiBusyBtn(btn, false);
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Connection status unavailable."; }
+			}
 		});
 	}, 1000);
 }
@@ -907,6 +982,8 @@ function renderWifiYourNetwork() {
 	if (sig) sig.innerHTML = wifiSignalBars(-40); // connected/remembered = full bars
 	const check = getEl("wifiYourCheck");
 	if (check) check.innerHTML = _wifiCheckSvg;
+	const sec = getEl("wifiYourSec");
+	if (sec) sec.innerHTML = wifiSavedSecure() ? _wifiLockSvg : _wifiOpenSvg;
 }
 
 // Render the scanned networks as an iOS-style list (from _wifiScanCache).
@@ -917,7 +994,7 @@ function renderWifiList() {
 	wifiTable.innerHTML = "";
 
 	if (!_wifiScanCache || _wifiScanCache.length === 0) {
-		wifiTable.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name">No Wi-Fi networks found.</span></div>';
+		wifiTable.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name">No Wi-Fi networks found.</span></div>' + _wifiJoinRow;
 		return;
 	}
 
@@ -953,7 +1030,7 @@ function renderWifiList() {
 				'<span class="wifi-chev">' + _wifiChevSvg + '</span>' +
 			'</div>' +
 			'<div class="wifi-connect">' +
-				(open ? "" : '<input type="password" class="form-control form-control-sm" placeholder="Password" autocomplete="off" />') +
+				(open ? "" : _wifiPwInput) +
 				'<button type="button" class="btn btn-outline-primary btn-sm wifi-join">' + (open ? "Join" : "Connect") + '</button>' +
 				'<span class="wifi-join-status"></span>' +
 			'</div>';
@@ -964,12 +1041,12 @@ function renderWifiList() {
 			if (e.target.closest(".wifi-connect")) return;
 			getQA(".wifi-item.open").forEach(o => { if (o !== item) o.classList.remove("open"); });
 			item.classList.toggle("open");
-			const pass = item.querySelector(".wifi-connect input[type='password']");
+			const pass = item.querySelector(".wifi-connect input");
 			if (pass && item.classList.contains("open")) pass.focus();
 		});
 
 		item.querySelector(".wifi-join").addEventListener("click", function () {
-			const passInput = item.querySelector(".wifi-connect input[type='password']");
+			const passInput = item.querySelector(".wifi-connect input");
 			const pass = passInput ? passInput.value : "";
 			const statusEl = item.querySelector(".wifi-join-status");
 			if (!open && pass.length < 8) {
@@ -977,11 +1054,21 @@ function renderWifiList() {
 				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Password must be at least 8 characters."; }
 				return;
 			}
-			wifiJoin(n.ssid, pass, statusEl);
+			wifiJoin(n.ssid, pass, statusEl, this, !open);
 		});
+
+		const passInput = item.querySelector(".wifi-connect input");
+		if (passInput) {
+			wifiUnlockInput(passInput);
+			passInput.addEventListener("keydown", e => {
+				if (e.key === "Enter") { e.preventDefault(); item.querySelector(".wifi-join").click(); }
+			});
+		}
 
 		wifiTable.appendChild(item);
 	});
+
+	wifiTable.insertAdjacentHTML("beforeend", _wifiJoinRow);
 }
 
 function toggleCollapseIp(show) {
@@ -1004,6 +1091,8 @@ function wifiToggleInfo() {
 	if (!panel) return;
 	const showing = panel.style.display !== "none";
 	toggleCollapseIp(!showing);
+	const row = getEl("wifiYourRow");
+	if (row) row.classList.toggle("info-open", !showing);
 	if (!showing) {
 		const dhcp = getEl("dhcpWiFi");
 		if (dhcp) WifiDhcpDsbl(dhcp.checked);
@@ -1060,6 +1149,7 @@ function wifiForget() {
 	const pwdInput = getEl("WIFIpassword");
 	if (ssidInput) ssidInput.value = "";
 	if (pwdInput) pwdInput.value = "";
+	_wifiSavedSecure = null;
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
 	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = "Forgetting…"; }
@@ -1074,25 +1164,35 @@ function wifiForget() {
 }
 
 function wifiShowOther() {
-	toggleCollapse("wifiOtherForm", true);
-	const other = getEl("otherSsid");
-	if (other) other.focus();
+	const form = getEl("wifiOtherForm");
+	const wasOpen = form && form.classList.contains("show");
+	toggleCollapse("wifiOtherForm", !wasOpen);
+	const row = getEl("wifiJoinOtherRow");
+	if (row) row.classList.toggle("open", !wasOpen);
+	if (!wasOpen) {
+		const other = getEl("otherSsid");
+		if (other) other.focus();
+	}
 }
 
 function wifiJoinOther() {
-	const ssid = (getEl("otherSsid") || {}).value || "";
+	const statusEl = getEl("wifiOtherStatus");
+	const ssid = ((getEl("otherSsid") || {}).value || "").trim();
 	const pass = (getEl("otherPass") || {}).value || "";
+	const openNet = (getEl("otherSec") || {}).value === "open";
 	if (ssid.length < 2) {
 		const other = getEl("otherSsid");
 		if (other) other.classList.add("is-invalid");
+		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Enter a network name."; }
 		return;
 	}
-	if (pass.length < 8) {
+	if (!openNet && pass.length < 8) {
 		const other = getEl("otherPass");
 		if (other) other.classList.add("is-invalid");
+		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Password must be at least 8 characters."; }
 		return;
 	}
-	wifiJoin(ssid, pass, getEl("wifiOtherStatus"));
+	wifiJoin(ssid, openNet ? "" : pass, statusEl, getQ("#wifiOtherForm .btn"), !openNet);
 }
 
 // iOS-like auto behaviour: render the saved network immediately and start a
