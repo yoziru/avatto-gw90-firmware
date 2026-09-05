@@ -6,7 +6,6 @@
 #include "config.h"
 #include "config_utils.h"
 #include "etc.h"
-#include "ip_utils.h"
 #include "log.h"
 
 ConfigSettingsStruct ConfigSettings;
@@ -15,16 +14,17 @@ WgSettingsStruct WgSettings;
 
 IPAddress parse_ip_address(const char *str)
 {
+  // fromString() rejects anything that is not strict dotted-decimal IPv4
+  // (bad octet, wrong dot count, trailing garbage); on failure callers get
+  // 0.0.0.0, same as before. The colon guard keeps the old contract that a
+  // ':' is never valid - without it fromString()'s IPv6 fallback would turn
+  // garbage into a :: address instead of 0.0.0.0.
   IPAddress result;
-  uint8_t octets[4];
-  if (parseIpv4(str, octets))
+  if (str != nullptr && strchr(str, ':') == nullptr && result.fromString(str))
   {
-    for (int i = 0; i < 4; i++)
-    {
-      result[i] = octets[i];
-    }
+    return result;
   }
-  return result;
+  return IPAddress();
 }
 
 // Open a config file, deserialize it and handle the shared error path
