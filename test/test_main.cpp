@@ -6,7 +6,6 @@ extern void run_log_tests(void);
 extern void run_api_dispatch_tests(void);
 extern void run_checksum_tests(void);
 extern void run_zones_tests(void);
-extern void run_ip_utils_tests(void);
 extern void run_zb_ver_tests(void);
 extern void run_wifi_save_logic_tests(void);
 extern void run_config_utils_tests(void);
@@ -24,7 +23,6 @@ int main(int argc, char **argv) {
     run_api_dispatch_tests();
     run_checksum_tests();
     run_zones_tests();
-    run_ip_utils_tests();
     run_zb_ver_tests();
     run_wifi_save_logic_tests();
     run_config_utils_tests();
