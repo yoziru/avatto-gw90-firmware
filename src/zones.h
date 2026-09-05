@@ -3,14 +3,21 @@
 
 #include <cstring>
 
+// Host unit tests have no Arduino pgmspace.h - PROGMEM is a no-op there.
+// On ESP32 flash is memory-mapped, so pointers into this table stay directly
+// readable with plain strcmp (no _P accessors needed on either target).
+#ifndef PROGMEM
+#define PROGMEM
+#endif
+
 // Structure for key-value pairs
 struct TimeZone {
     const char* zone;
     const char* gmtOffset;
 };
 
-// Data array stored directly in RAM
-const TimeZone timeZones[] = {
+// Data array stored in flash (~3.8 KiB of pointers), not DRAM.
+const TimeZone timeZones[] PROGMEM = {
     {"Africa/Abidjan", "GMT0"},
     {"Africa/Accra", "GMT0"},
     {"Africa/Addis_Ababa", "EAT-3"},
