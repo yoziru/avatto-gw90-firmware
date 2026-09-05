@@ -63,6 +63,7 @@ void runEspUpdateFirmware(uint8_t *data, size_t len)
 void getEspUpdate(String esp_fw_url)
 {
     DEBUG_PRINTLN("getEspUpdate: " + esp_fw_url);
+    printLogMsg("ESP OTA download start");
     HTTPClient clientWeb;
     NetworkClientSecure client;
     client.setInsecure();
@@ -102,6 +103,7 @@ void getEspUpdate(String esp_fw_url)
     else
     {
         DEBUG_PRINTLN("Cannot download firmware file.");
+        printLogMsg("ESP OTA download failed");
     }
     clientWeb.end();
 }

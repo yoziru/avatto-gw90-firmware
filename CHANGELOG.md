@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+### Features
+
+- **Logs that don't drown each other.** Zigbee frames now go to their own history buffer instead of sharing the event log, so busy mesh traffic can no longer push device events out — with real clock timestamps once NTP has synced.
+- **More useful device events.** The ESP32 log now records Ethernet/WiFi up-down, MQTT connect results and OTA downloads.
+
 ### Improvements
 
 - Timezone table moved from DRAM to flash (~3.7 KiB freed); MQTT command dispatch extracted into pure `mqtt_cmd.h` with 9 native tests.

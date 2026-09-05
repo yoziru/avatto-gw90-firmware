@@ -47,27 +47,81 @@ void socketClientDisconnected(int client)
   }
 }
 
+// Hex dump of a bridge byte run into the web-console frame ring. sprintf() is
+// far too heavy for the bridge hot path, so use a nibble lookup table instead.
+static void logFrameHex(const char *arrow, const uint8_t *buf, size_t len)
+{
+  static const char hexDigits[] = "0123456789abcdef";
+  printLogTimeZb();
+  for (const char *a = arrow; *a; a++)
+  {
+    zbLogConsole.push(*a);
+  }
+  for (size_t i = 0; i < len; i++)
+  {
+    zbLogConsole.push(' ');
+    zbLogConsole.push(hexDigits[buf[i] >> 4]);
+    zbLogConsole.push(hexDigits[buf[i] & 0x0F]);
+  }
+  zbLogConsole.push('\n');
+}
+
 void printRecvSocket(size_t bytes_read, const uint8_t *net_buf)
 {
   if (bytes_read == 0)
   {
     return;
   }
-  // Hex dump into the web-console ring buffer. sprintf() is far too heavy for
-  // the bridge hot path, so use a nibble lookup table instead.
-  static const char hexDigits[] = "0123456789abcdef";
-  printLogTime();
-  logPush(' ');
-  logPush('-');
-  logPush('>');
+  logFrameHex(" ->", net_buf, bytes_read);
+}
 
-  for (size_t i = 0; i < bytes_read; i++)
+// Serial->net frames are logged through a tiny ZNP framer: the coordinator's
+// bytes arrive in arbitrary read() chunks, so dumping per-chunk produced
+// headless tails and glued lines the browser dissector couldn't decode. Here
+// bytes accumulate until a whole frame (SOF + len + cmd + data + FCS) is
+// present and that exact frame becomes one log line. Partial data flushes raw
+// after 50 ms of silence.
+static uint8_t zbAcc[512];
+static size_t zbAccLen = 0;
+static uint32_t zbAccStart = 0;
+
+static void zbFramerFlush()
+{
+  if (zbAccLen)
   {
-    logPush(' ');
-    logPush(hexDigits[net_buf[i] >> 4]);
-    logPush(hexDigits[net_buf[i] & 0x0F]);
+    logFrameHex(" <-", zbAcc, zbAccLen);
+    zbAccLen = 0;
   }
-  logPush('\n');
+}
+
+static void zbFramerFeed(const uint8_t *buf, size_t len)
+{
+  for (size_t i = 0; i < len; i++)
+  {
+    if (zbAccLen < sizeof(zbAcc))
+    {
+      zbAcc[zbAccLen++] = buf[i];
+    }
+    else
+    {
+      zbFramerFlush(); // overlong garbage, start over
+    }
+    if (zbAccLen == 1 && zbAcc[0] != 0xFE)
+    {
+      zbAccLen = 0; // not an SOF, drop
+    }
+  }
+  while (zbAccLen >= 2)
+  {
+    const size_t need = 5 + zbAcc[1]; // SOF + len + c0 + c1 + data[len] + FCS
+    if (zbAccLen < need)
+    {
+      break; // wait for the rest of the frame
+    }
+    logFrameHex(" <-", zbAcc, need);
+    zbAccLen -= need;
+    memmove(zbAcc, zbAcc + need, zbAccLen);
+  }
 }
 
 void printSendSocket(size_t bytes_read, const uint8_t *serial_buf)
@@ -76,18 +130,11 @@ void printSendSocket(size_t bytes_read, const uint8_t *serial_buf)
   {
     return;
   }
-  static const char hexDigits[] = "0123456789abcdef";
-  printLogTime();
-  logPush(' ');
-  logPush('<');
-  logPush('-');
-  for (size_t i = 0; i < bytes_read; i++)
+  if (!zbAccLen)
   {
-    logPush(' ');
-    logPush(hexDigits[serial_buf[i] >> 4]);
-    logPush(hexDigits[serial_buf[i] & 0x0F]);
+    zbAccStart = millis();
   }
-  logPush('\n');
+  zbFramerFeed(serial_buf, bytes_read);
 }
 
 void processSocketBridge()
@@ -171,5 +218,9 @@ void processSocketBridge()
     }
     // print to web console
     printSendSocket(serial_bytes_read, serial_buf);
+  }
+  if (zbAccLen && millis() - zbAccStart > 50)
+  {
+    zbFramerFlush(); // stalled partial frame
   }
 }
