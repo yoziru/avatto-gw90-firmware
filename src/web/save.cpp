@@ -19,6 +19,7 @@ extern bool loadConfigWg();
 struct PendingWifi
 {
     bool active = false;
+    unsigned long started = 0;
     String ssid;
     String pass;
     bool dhcp;
@@ -52,6 +53,7 @@ static void writeWifiConfig(const char *ssid, const char *pass, bool dhcp, const
 static void wifiStagePending(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw)
 {
     pendingWifi.active = true;
+    pendingWifi.started = millis();
     pendingWifi.ssid = ssid;
     pendingWifi.pass = pass;
     pendingWifi.dhcp = dhcp;
@@ -61,8 +63,10 @@ static void wifiStagePending(const char *ssid, const char *pass, bool dhcp, cons
 }
 
 // Called from the main loop: once the STA is connected to the very network we
-// staged, commit it to disk. If the connect never succeeds (wrong password,
-// AP out of reach) the pending config is silently dropped and never saved.
+// staged, commit it to disk. A join that never connects (wrong password, AP
+// out of range) gives up after a timeout: the staged config is dropped, the
+// retry loop is stopped, and the previously saved network is left intact
+// (the overseer brings it back up when WiFi is the active uplink).
 void wifiCommitPending()
 {
     if (!pendingWifi.active)
@@ -70,14 +74,38 @@ void wifiCommitPending()
         return;
     }
     const bool connected = (WiFi.status() == WL_CONNECTED);
-    if (!wifiShouldCommit(pendingWifi.active, connected, WiFi.SSID().c_str(), pendingWifi.ssid.c_str()))
+    const String staSsid = WiFi.SSID();
+    const bool toPending = wifiShouldCommit(pendingWifi.active, connected, staSsid.c_str(), pendingWifi.ssid.c_str());
+    if (toPending)
+    {
+        writeWifiConfig(pendingWifi.ssid.c_str(), pendingWifi.pass.c_str(), pendingWifi.dhcp,
+                        pendingWifi.ip.c_str(), pendingWifi.mask.c_str(), pendingWifi.gw.c_str());
+        pendingWifi.active = false;
+        printLogMsg("WiFi: saved '" + pendingWifi.ssid + "' after successful connection");
+        return;
+    }
+    if (!wifiPendingGiveUp(toPending, connected && staSsid != pendingWifi.ssid, millis() - pendingWifi.started))
     {
         return;
     }
-    writeWifiConfig(pendingWifi.ssid.c_str(), pendingWifi.pass.c_str(), pendingWifi.dhcp,
-                    pendingWifi.ip.c_str(), pendingWifi.mask.c_str(), pendingWifi.gw.c_str());
     pendingWifi.active = false;
-    printLogMsg("WiFi: saved '" + pendingWifi.ssid + "' after successful connection");
+    if (connected)
+    {
+        // The saved network won the race: stay on it, just note the miss.
+        printLogMsg("WiFi: join to '" + pendingWifi.ssid + "' abandoned, staying on '" + staSsid + "'");
+    }
+    else
+    {
+        // Stop retrying the staged SSID. With Ethernet up the radio goes idle;
+        // otherwise the disconnect event restarts the overseer, which retries
+        // the saved network.
+        WiFi.disconnect();
+        if (ConfigSettings.connectedEther)
+        {
+            WiFi.mode(WIFI_OFF);
+        }
+        printLogMsg("WiFi: could not connect to '" + pendingWifi.ssid + "' - kept saved network");
+    }
 }
 
 void handleSaveParams()

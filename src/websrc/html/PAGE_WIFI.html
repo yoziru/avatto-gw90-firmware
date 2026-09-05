@@ -9,17 +9,20 @@
           <div class="wifi-section-title">Your Network</div>
           <div class="wifi-list">
             <div class="wifi-item wifi-current" id="wifiYourRow" style="display:none">
-              <div class="wifi-row-main">
+              <div
+                class="wifi-row-main"
+                role="button"
+                tabindex="0"
+                title="IP settings"
+                onclick="wifiToggleInfo()"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wifiToggleInfo();}"
+              >
                 <span class="wifi-signal" id="wifiYourSignal"></span>
                 <span class="wifi-name" id="wifiYourName"></span>
                 <span class="wifi-check" id="wifiYourCheck"></span>
-                <button
-                  type="button"
-                  class="wifi-info"
-                  id="wifiInfoBtn"
-                  title="IP settings"
-                  onclick="wifiToggleInfo()"
-                ></button>
+                <span class="wifi-lock" id="wifiYourSec"></span>
+                <span class="wifi-chev" aria-hidden="true"
+                ><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M6 3.5 10.5 8 6 12.5"/></svg></span>
               </div>
               <div class="wifi-ip-panel" id="wifiIpPanel" style="display:none">
                 <div class="wifi-ip-title">IP Settings</div>
@@ -105,26 +108,36 @@
             </div>
           </div>
 
-          <div class="wifi-join-other">
-            <button type="button" class="btn btn-link btn-sm" onclick="wifiShowOther()">
-              Join Other Network…
-            </button>
-          </div>
           <div class="wifi-other collapse" id="wifiOtherForm">
             <div class="wifi-other-inner">
               <input
                 type="text"
                 class="form-control form-control-sm"
                 id="otherSsid"
-                placeholder="Network name"
+                placeholder="Network name (SSID)"
                 autocomplete="off"
+                oninput="this.classList.remove('is-invalid')"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();wifiJoinOther();}"
               />
-              <input
-                type="password"
+              <select
                 class="form-control form-control-sm"
+                id="otherSec"
+                onchange="getEl('otherPass').disabled = this.value === 'open';"
+              >
+                <option value="wpa" selected>WPA2/WPA3</option>
+                <option value="open">Open</option>
+              </select>
+              <input
+                type="text"
+                class="form-control form-control-sm wifi-pw"
                 id="otherPass"
                 placeholder="Password"
                 autocomplete="off"
+                readonly
+                onpointerdown="this.readOnly=false"
+                onfocus="this.readOnly=false"
+                oninput="this.classList.remove('is-invalid')"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();wifiJoinOther();}"
               />
               <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiJoinOther()">
                 Join
@@ -194,13 +207,24 @@
   .wifi-item:last-child { border-bottom: none; }
   .wifi-item:hover { background: var(--bg-muted); }
   .wifi-item.wifi-current { background: var(--accent-light); }
-  .wifi-item.wifi-placeholder { cursor: default; }
+  .wifi-item.wifi-placeholder { cursor: default; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 8px; }
   .wifi-item.wifi-placeholder:hover { background: var(--bg-card); }
+  .wifi-plus {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    line-height: 16px;
+  }
   /* Expanded rows and their inner panels are not clickable rows */
   .wifi-item.open,
   .wifi-item.open:hover { cursor: default; background: inherit; }
   .wifi-item.open .wifi-connect,
   .wifi-ip-panel { cursor: default; }
+  /* ...but the header of an open row still collapses it on tap */
+  .wifi-item.open .wifi-row-main { cursor: pointer; }
+  .wifi-item.open .wifi-row-main:hover { background: var(--bg-muted); }
   .wifi-ip-panel input[type="text"],
   .wifi-ip-panel input[type="password"] { cursor: text; user-select: text; }
   .wifi-ip-panel label,
@@ -252,30 +276,14 @@
     color: var(--success);
   }
 
-  /* Fixed-size (i) button - water.css adds 30px padding + 6px margins to all
-     buttons, so force padding:0/margin:0 + explicit flex-basis for a circle. */
-  .wifi-info {
-    flex: 0 0 22px;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    margin: 0;
-    border: none;
-    border-radius: 50%;
-    background: var(--bg-muted);
-    color: var(--text-muted);
-    font-weight: 700;
-    font-size: 0.8rem;
+  .wifi-chev {
+    flex-shrink: 0;
+    color: var(--text-light);
+    font-size: 1.1rem;
     line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     cursor: pointer;
-    text-decoration: none;
-    vertical-align: middle;
   }
-  .wifi-info::after { content: "i"; }
-  .wifi-info:hover { background: var(--border-color); }
+  #wifiYourRow.info-open .wifi-chev svg { transform: rotate(-90deg); }
 
   .wifi-lock,
   .wifi-open {
@@ -295,21 +303,57 @@
     font-size: 1.1rem;
     line-height: 1;
   }
+  /* Chevron points down when closed, up when open */
+  .wifi-chev svg { transform: rotate(90deg); transition: transform 0.2s ease; }
+  .wifi-item.open .wifi-chev svg { transform: rotate(-90deg); }
+
+  /* Shimmering "Connecting…" (text sweep, left to right). Linear keeps the
+     sweep visible for the whole cycle; slower duration reads as calmer. */
+  .wifi-join-status.connecting {
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--text-muted) 25%, var(--accent) 50%, var(--text-muted) 75%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: wifi-shimmer 6s linear infinite;
+  }
+  @keyframes wifi-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
 
   /* Expanded join row (slides in below the tapped network) */
   .wifi-connect {
     display: none;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 1rem 0.85rem 2.6rem;
+    padding: 0.75rem 1rem;
     flex-wrap: wrap;
   }
   .wifi-item.open .wifi-connect { display: flex; }
-  .wifi-connect input {
-    flex: 1;
+  /* Input takes all remaining width; both share one height and center
+     their text via normal line-height + flex (no line-height:40px hack,
+     which rendered 1-2px off between input and button) */
+  .wifi-connect .form-control {
+    flex: 1 1 auto;
+    width: auto;
     min-width: 0;
+    height: 40px;
+    margin: 0;
+    padding: 0 1rem;
   }
-  .wifi-connect .btn { flex-shrink: 0; }
+  .wifi-connect .btn,
+  .wifi-other-inner .btn {
+    flex: 0 0 auto;
+    height: 40px;
+    margin: 0;
+    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
   .wifi-join-status {
     flex-basis: 100%;
     font-size: 0.8rem;
@@ -378,35 +422,47 @@
   .wifi-ip-status.ok { color: var(--success); }
   .wifi-ip-status.err { color: var(--danger); }
 
-  .wifi-join-other {
-    margin-top: 0.75rem;
-    text-align: left;
+  /* Join-other inputs share the same height */
+  .wifi-other-inner .form-control {
+    height: 40px;
+    padding: 0 1rem;
   }
-  .wifi-join-other .btn { padding-left: 0; }
+  /* Masked text input instead of type=password: keeps Safari/Chrome from
+     offering to save the password (this form saves credentials for the
+     device, not for the browser). Firefox lacks text-security and falls
+     back to a real password input via JS. */
+  input.wifi-pw { -webkit-text-security: disc; }
+
+  /* Join-other panel attaches seamlessly to the bottom of the network card */
+  .wifi-other {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    overflow: hidden;
+  }
 
   .wifi-other-inner {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr 150px;
+    gap: 8px;
     align-items: center;
     padding: 0.75rem;
-    background: var(--bg-muted);
-    border-radius: var(--radius-lg);
   }
-  .wifi-other-inner input {
-    flex: 1 1 140px;
-    min-width: 120px;
-  }
+  .wifi-other-inner #otherSsid { grid-column: 1; }
+  .wifi-other-inner #otherSec { grid-column: 2; width: 100%; }
+  .wifi-other-inner #otherPass { grid-column: 1; }
+  .wifi-other-inner .btn { grid-column: 2; justify-self: stretch; }
+  .wifi-other-inner .wifi-join-status { grid-column: 1 / -1; }
 
   @media (max-width: 768px) {
     .wifi-row-main { padding: 0.65rem 0.85rem; }
-    .wifi-connect { padding-left: 2.3rem; }
+    .wifi-connect { padding: 0.65rem 0.85rem; }
     .wifi-name { font-size: 0.95rem; }
   }
 
   [data-theme="dark"] .wifi-list { background: var(--bg-card); border-color: var(--border-color); }
   [data-theme="dark"] .wifi-item.wifi-current { background: rgba(245, 166, 35, 0.12); }
-  [data-theme="dark"] .wifi-other-inner,
   [data-theme="dark"] .wifi-info { background: #2a2a4a; }
   [data-theme="dark"] .wifi-ip-panel { background: var(--bg-card); }
   [data-theme="dark"] .wifi-ip-current { border-color: var(--border-color); }
