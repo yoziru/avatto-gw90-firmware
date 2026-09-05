@@ -75,10 +75,6 @@ protected:
             return "7x7mm";
         case 0x03:
             return "Wafer";
-        case 0x04:
-            return "2.7x2.7";
-        case 0x05:
-            return "7x7mm Q1";
         default:
             return "Unknown";
         }
