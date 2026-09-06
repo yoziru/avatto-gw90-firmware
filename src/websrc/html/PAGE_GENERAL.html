@@ -6,7 +6,7 @@
         <div class="card mb-4">
           <div class="card-header">
             <img src="workMode_selection.svg" class="title_icon_style" />
-            <span>Work Mode</span>
+            <span data-i18n="g.workMode">Work Mode</span>
           </div>
           <div class="card-body">
             <div
@@ -28,10 +28,10 @@
                     <img src="lan_connection.svg" alt="" class="mode-icon" />
                     <span class="mode-text">
                       <span class="mode-title">
-                        <strong>Network Mode</strong>
-                        <span class="recommended-badge">Recommended</span>
+                        <strong data-i18n="g.netMode">Network Mode</strong>
+                        <span class="recommended-badge" data-i18n="g.recommended">Recommended</span>
                       </span>
-                      <span class="mode-desc">Ethernet with automatic Wi-Fi fallback</span>
+                      <span class="mode-desc" data-i18n="g.netDesc">Ethernet with automatic Wi-Fi fallback</span>
                     </span>
                   </label>
                 </div>
@@ -51,8 +51,8 @@
                     />
                     <img src="usb_connection.svg" alt="" class="mode-icon" />
                     <span class="mode-text">
-                      <span class="mode-title"><strong>Serial Mode</strong></span>
-                      <span class="mode-desc">Directly connect to computer via USB (serial test)</span>
+                      <span class="mode-title"><strong data-i18n="g.serMode">Serial Mode</strong></span>
+                      <span class="mode-desc" data-i18n="g.serDesc">Directly connect to computer via USB (serial test)</span>
                     </span>
                   </label>
                   <div class="mode-option-extra">
@@ -64,11 +64,11 @@
                         name="keepWeb"
                         data-replace="keepWeb"
                       />
-                      <label class="form-check-label" for="keepWeb">
+                      <label class="form-check-label" for="keepWeb" data-i18n="g.keepWeb">
                         Keep Network &amp; Web
                       </label>
                     </div>
-                    <p class="mode-extra-hint">
+                    <p class="mode-extra-hint" data-i18n="g.keepHint">
                       Keeps one channel active (Wi-Fi, Ethernet or Wi-Fi AP, in that order) so the web interface stays reachable.
                     </p>
                   </div>
@@ -82,22 +82,22 @@
         <div class="card mb-4">
           <div class="card-header">
             <img src="realTime_control.svg" class="title_icon_style" />
-            <span>Real-time Control</span>
+            <span data-i18n="g.rtControl">Real-time Control</span>
           </div>
           <div class="card-body">
             <div class="row">
               <!-- LED Control Buttons -->
               <div class="col-12 mb-3">
                 <div class="text-center mb-3">
-                  <small class="text-muted"
+                  <small class="text-muted" data-i18n="g.ledHint"
                     > Use toggle buttons to control LED status (current session, not saved after reboot)</small
                   >
                 </div>
                 <div class="d-flex justify-content-center flex-wrap gap-2">
-                  <button type="button" data-cmd="6" class="btn btn-info">
+                  <button type="button" data-cmd="6" class="btn btn-info" data-i18n="g.pwrLed">
                     Power Indicator LED
                   </button>
-                  <button type="button" data-cmd="7" class="btn btn-danger">
+                  <button type="button" data-cmd="7" class="btn btn-danger" data-i18n="g.wifiLed">
                     Wi-Fi/Serial Mode LED
                   </button>
                 </div>
@@ -107,8 +107,8 @@
               <div class="col-12">
                 <div class="p-3 bg-light rounded">
                   <div class="mb-2">
-                    <small class="text-muted"
-                     >Use the switches below to control LED behavior (saved after reboot)</small
+                    <small class="text-muted" data-i18n="g.ledSaveHint"
+                      >Use the switches below to control LED behavior (saved after reboot)</small
                     >
                   </div>
                   <div class="form-check form-switch mb-2">
@@ -120,7 +120,7 @@
                       role="switch"
                       name="disableLedPwr"
                     />
-                    <label class="form-check-label" for="disableLedPwr">
+                    <label class="form-check-label" for="disableLedPwr" data-i18n="g.disPwr">
                       Disable Power LED
                     </label>
                   </div>
@@ -133,7 +133,7 @@
                       role="switch"
                       name="disableLedUSB"
                     />
-                    <label class="form-check-label" for="disableLedUSB">
+                    <label class="form-check-label" for="disableLedUSB" data-i18n="g.disUsb">
                         Disable USB LED
                     </label>
                   </div>
@@ -147,12 +147,12 @@
         <div class="card mb-4">
           <div class="card-header">
             <img src="icon_config_generator.svg" class="title_icon_style" />
-            <span>System Variables</span>
+            <span data-i18n="g.sysVar">System Variables</span>
           </div>
           <div class="card-body">
             <div class="container">
               <div class="row">
-                <label for="hostname">
+                <label for="hostname" data-i18n="g.hostname">
                   Hostname (The device will be displayed on the network with this name)
                 </label>
                 <input
@@ -165,7 +165,7 @@
                   maxlength="50"
                   required
                 />
-                <label for="refreshLogs">Log refresh interval (milliseconds)</label>
+                <label for="refreshLogs" data-i18n="g.logRefresh">Log refresh interval (milliseconds)</label>
                 <input
                   data-replace="refreshLogs"
                   class="form-control"
@@ -179,7 +179,7 @@
                   placeholder="ms"
                   required
                 />
-                <label for="timeZoneId">Time Zone</label>
+                <label for="timeZoneId" data-i18n="g.timezone">Time Zone</label>
                 <select
                   data-replace="timeZones"
                   id="timeZoneId"
@@ -197,6 +197,7 @@
             type="submit"
             class="btn btn-outline-primary"
             name="save"
+            data-i18n="c.save"
           >
             Save
           </button>

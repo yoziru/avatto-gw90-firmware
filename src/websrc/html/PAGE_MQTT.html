@@ -5,7 +5,7 @@
         <div class="card">
           <div class="card-header">
             <img src="icon_mqtt_settings.svg" class="title_icon_style" />
-            <span>Connection</span>
+            <span data-i18n="m.conn">Connection</span>
           </div>
           <div class="card-body">
             <div class="mb-2 form-check form-switch">
@@ -18,10 +18,10 @@
                 name="MqttEnable"
                 onclick="MqttInputDsbl(!this.checked)"
               />
-              <label class="form-check-label" for="MqttEnable">Enable</label>
+              <label class="form-check-label" for="MqttEnable" data-i18n="c.enable">Enable</label>
             </div>
             <div class="mb-2">
-              <label for="MqttServer">Server</label>
+              <label for="MqttServer" data-i18n="m.server">Server</label>
               <input
                 data-replace="serverMqtt"
                 class="form-control"
@@ -32,7 +32,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="MqttPort">Port</label>
+              <label for="MqttPort" data-i18n="m.port">Port</label>
               <input
                 data-replace="portMqtt"
                 class="form-control"
@@ -45,7 +45,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="MqttUser">Username</label>
+              <label for="MqttUser" data-i18n="m.user">Username</label>
               <input
                 data-replace="userMqtt"
                 class="form-control"
@@ -56,7 +56,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="MqttPass">Password</label>
+              <label for="MqttPass" data-i18n="m.pass">Password</label>
               <input
                 data-replace="passMqtt"
                 class="form-control"
@@ -72,11 +72,11 @@
         <div class="card">
           <div class="card-header">
             <img src="icon_mqtt_settings.svg" class="title_icon_style" />
-            <span>Topic &amp; Discovery</span>
+            <span data-i18n="m.topicDisc">Topic &amp; Discovery</span>
           </div>
           <div class="card-body">
             <div class="mb-2">
-              <label for="MqttTopic">Topic</label>
+              <label for="MqttTopic" data-i18n="m.topic">Topic</label>
               <input
                 data-replace="topicMqtt"
                 class="form-control"
@@ -87,7 +87,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="MqttInterval">Interval (seconds)</label>
+              <label for="MqttInterval" data-i18n="m.interval">Interval (seconds)</label>
               <input
                 data-replace="intervalMqtt"
                 class="form-control"
@@ -107,7 +107,7 @@
                 role="switch"
                 name="MqttDiscovery"
               />
-              <label class="form-check-label" for="MqttDiscovery"
+              <label class="form-check-label" for="MqttDiscovery" data-i18n="m.haDisc"
                 >Enable Home Assistant Discovery</label
               >
             </div>
@@ -119,6 +119,7 @@
             type="submit"
             class="btn btn-outline-primary"
             name="save"
+            data-i18n="c.save"
           >
             Save
           </button>

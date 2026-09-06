@@ -30,16 +30,16 @@ const GITHUB_REPO_OWNER = "AVATTO-smart";
 const GITHUB_REPO_NAME = "avatto-gw90-firmware";
 
 const pages = {
-	API_PAGE_ROOT: { num: 0, str: "/", title: "Status" },
-	API_PAGE_GENERAL: { num: 1, str: "/general", title: "General" },
-	API_PAGE_ETHERNET: { num: 2, str: "/ethernet", title: "Ethernet" },
-	API_PAGE_WIFI: { num: 3, str: "/wifi", title: "WiFi" },
-	API_PAGE_SERIAL: { num: 4, str: "/zha-z2m", title: "ZHA/Z2M" },
-	API_PAGE_SECURITY: { num: 5, str: "/security", title: "Security" },
-	API_PAGE_SYSTOOLS: { num: 6, str: "/sys-tools", title: "Tools" },
-	API_PAGE_ABOUT: { num: 7, str: "/about", title: "About" },
-	API_PAGE_MQTT: { num: 8, str: "/mqtt", title: "MQTT Configuration" },
-	API_PAGE_WG: { num: 9, str: "/wg", title: "WireGuard" }
+	API_PAGE_ROOT: { num: 0, str: "/", title: "Status", titleKey: "l.st" },
+	API_PAGE_GENERAL: { num: 1, str: "/general", title: "General", titleKey: "l.ge" },
+	API_PAGE_ETHERNET: { num: 2, str: "/ethernet", title: "Ethernet", titleKey: "l.ne" },
+	API_PAGE_WIFI: { num: 3, str: "/wifi", title: "WiFi", titleKey: "l.wf" },
+	API_PAGE_SERIAL: { num: 4, str: "/zha-z2m", title: "ZHA/Z2M", titleKey: "l.zi" },
+	API_PAGE_SECURITY: { num: 5, str: "/security", title: "Security", titleKey: "l.se" },
+	API_PAGE_SYSTOOLS: { num: 6, str: "/sys-tools", title: "Tools", titleKey: "l.to" },
+	API_PAGE_ABOUT: { num: 7, str: "/about", title: "About", titleKey: "l.ab" },
+	API_PAGE_MQTT: { num: 8, str: "/mqtt", title: "MQTT Configuration", titleKey: "l.mq" },
+	API_PAGE_WG: { num: 9, str: "/wg", title: "WireGuard", titleKey: "l.vp" }
 };
 
 const api = {
@@ -316,7 +316,7 @@ function apiGetPage(page, doneCall) {
 					fetch(e.currentTarget.action, { method: "POST", body: formData }).then(() => {
 						modalConstructor("saveOk");
 					}).catch(() => {
-						alert("Error saving settings. Check your network");
+						alert(t("d.saveErr"));
 					}).finally(() => {
 						sp.remove();
 						sp2.remove();
@@ -350,7 +350,7 @@ function apiGetPage(page, doneCall) {
 								self.classList.add(btnStndrt);
 							}, 1000);
 						}).catch(() => {
-							alert("Error. Check your network");
+							alert(t("d.netErr"));
 						}).finally(() => {
 							const self = this;
 							setTimeout(() => {
@@ -363,9 +363,9 @@ function apiGetPage(page, doneCall) {
 				});
 			});
 
-			getQA("[data-replace='pageName']").forEach(e => e.textContent = page.title);
-			const titleEl = document.querySelector("title[data-replace='pageName']");
-			if (titleEl) titleEl.textContent = page.title + " - AVATTO-GW90-Ti Zigbee Ethernet POE USB Adapter";
+		getQA("[data-replace='pageName']").forEach(e => e.textContent = (microI18n && page.titleKey) ? microI18n.t(page.titleKey) : page.title);
+		const titleEl = document.querySelector("title[data-replace='pageName']");
+		if (titleEl) titleEl.textContent = ((microI18n && page.titleKey) ? microI18n.t(page.titleKey) : page.title) + " - AVATTO-GW90-Ti Zigbee Ethernet POE USB Adapter";
 
 			if (respValues === null) return;
 			console.log("[apiGetPage] starting parse values");
@@ -406,7 +406,7 @@ function apiGetPage(page, doneCall) {
 							} else {
 								const pill = statusPill(valueToSet);
 								if (pill) elem.innerHTML = pill;
-								else elem.textContent = valueToSet;
+								else elem.textContent = (typeof tStatus == "function") ? tStatus(valueToSet) : valueToSet;
 							}
 							break;
 					}
@@ -450,9 +450,13 @@ function apiGetPage(page, doneCall) {
 				else diagram.classList.remove("wifi-ready");
 			}
 
-			if (typeof locCall == "function") locCall();
+			// Freshly injected page HTML carries data-i18n markers - localize it
+		// now (initLanguage only covered the static shell).
+		if (typeof updateLocalizedContent == "function") updateLocalizedContent();
+
+		if (typeof locCall == "function") locCall();
 		}).catch(err => {
-			alert("Page load error: " + err.message);
+			alert(t("d.pageErr") + err.message);
 		});
 	}, animDuration);
 }
@@ -496,7 +500,7 @@ function espFlashGitWait() {
 		fetch(apiLink + api.actions.API_CMD + "&cmd=9");
 		console.log("[flash] start");
 		const prg = getEl("prg");
-		if (prg) prg.innerHTML = "Github download starting...";
+		if (prg) prg.innerHTML = t("d.githubStart");
 	}, 500);
 }
 
@@ -523,7 +527,7 @@ function startZbFlashFromGit() {
 		const prgZb = getEl("prg_zb");
 		const barZb = getEl("bar_zb");
 		const updBtnZb = getEl("updButton_zb");
-		if (prgZb) prgZb.innerHTML = "Preparing device...";
+		if (prgZb) prgZb.innerHTML = t("d.prepDev");
 		if (barZb) barZb.style.width = "0%";
 		if (updBtnZb) updBtnZb.disabled = true;
 		ZBfwStartEvents();
@@ -532,7 +536,7 @@ function startZbFlashFromGit() {
 			console.log("Firmware URL:", firmwareUrl);
 			if (!firmwareUrl) {
 				console.error("Firmware URL is empty!");
-				if (prgZb) prgZb.innerHTML = '<span style="color:red">Invalid firmware link</span>';
+				if (prgZb) prgZb.innerHTML = '<span style="color:red">' + t("d.invalidLink") + "</span>";
 				if (updBtnZb) updBtnZb.disabled = false;
 				return;
 			}
@@ -559,13 +563,13 @@ function startFlashProcess(fwUrl) {
 	console.log("Starting flash process with URL:", fwUrl);
 	const prgZb = getEl("prg_zb");
 	const barZb = getEl("bar_zb");
-	if (prgZb) prgZb.innerHTML = "Downloading firmware...";
+	if (prgZb) prgZb.innerHTML = t("d.dlFw");
 	if (barZb) barZb.style.width = "5%";
 	fetch(apiLink + api.actions.API_FLASH_ZB + "&fwurl=" + encodeURIComponent(fwUrl)).then(r => r.text()).then(data => {
 		console.log("API Response:", data);
 	}).catch(err => {
 		console.error("Download failed:", err);
-		if (prgZb) prgZb.innerHTML = '<span style="color:red">Download failed: ' + err + "</span>";
+		if (prgZb) prgZb.innerHTML = '<span style="color:red">' + t("d.dlFail") + err + "</span>";
 		if (barZb) barZb.style.width = "0%";
 		const updBtnZb = getEl("updButton_zb");
 		if (updBtnZb) updBtnZb.disabled = false;
@@ -584,11 +588,11 @@ function ESPfwStartEvents() {
 		console.log("[ESP_FW_prgs] " + val);
 		const prg = getEl("prg");
 		const bar = getEl("bar");
-		if (prg) prg.innerHTML = "progress: " + Math.round(e.data) + "%";
+		if (prg) prg.innerHTML = t("d.progress") + Math.round(e.data) + "%";
 		if (bar) bar.style.width = Math.round(e.data) + "%";
 		if (Math.round(e.data) > 99.5) {
 			setTimeout(() => {
-				if (prg) prg.innerHTML = "Update completed!<br>Rebooting!";
+				if (prg) prg.innerHTML = t("d.updDoneReboot");
 				rebootWait();
 			}, 250);
 		}
@@ -603,7 +607,7 @@ function ZBfwStartEvents() {
 	zbEventConnectTimeout = setTimeout(() => {
 		console.log("EventSource connection timeout");
 		const prgZb = getEl("prg_zb");
-		if (prgZb) prgZb.innerHTML = '<span style="color:orange">EventSource timeout</span>';
+		if (prgZb) prgZb.innerHTML = '<span style="color:orange">' + t("d.evTimeout") + "</span>";
 		if (zbEventSource) { zbEventSource.close(); zbEventSource = null; }
 	}, 60000);
 	zbEventSource.addEventListener("open", () => {
@@ -616,7 +620,7 @@ function ZBfwStartEvents() {
 		if (e.target.readyState != EventSource.OPEN) {
 			console.log("EventSource connection failed, using polling mode...");
 			const prgZb = getEl("prg_zb");
-			if (prgZb) prgZb.innerHTML = '<span style="color:orange">Connection failed, using polling mode...</span>';
+			if (prgZb) prgZb.innerHTML = '<span style="color:orange">' + t("d.connFailPoll") + "</span>";
 			if (zbEventSource) { zbEventSource.close(); zbEventSource = null; }
 		}
 	});
@@ -625,10 +629,10 @@ function ZBfwStartEvents() {
 		console.log("Downloaded: " + pct + "%");
 		const prgZb = getEl("prg_zb");
 		const barZb = getEl("bar_zb");
-		if (prgZb) prgZb.innerHTML = "Downloading... " + pct + "%";
+		if (prgZb) prgZb.innerHTML = t("d.downloaded") + pct + "%";
 		if (barZb) barZb.style.width = pct + "%";
 		if (pct >= 100) {
-			if (prgZb) prgZb.innerHTML = "Download complete, starting flash...";
+			if (prgZb) prgZb.innerHTML = t("d.dlComplete");
 			if (barZb) barZb.style.width = "100%";
 		}
 	});
@@ -637,11 +641,11 @@ function ZBfwStartEvents() {
 		console.log("Flashing progress: " + pct + "%");
 		const prgZb = getEl("prg_zb");
 		const barZb = getEl("bar_zb");
-		if (prgZb) prgZb.innerHTML = "Flashing... " + pct + "%";
+		if (prgZb) prgZb.innerHTML = t("d.flashing") + pct + "%";
 		if (barZb) barZb.style.width = pct + "%";
 		if (pct >= 100) {
 			setTimeout(() => {
-				if (prgZb) prgZb.innerHTML = '<span style="color:green">Flash complete!</span>';
+				if (prgZb) prgZb.innerHTML = '<span style="color:green">' + t("d.flashDone") + "</span>";
 				if (zbEventSource) { zbEventSource.close(); zbEventSource = null; }
 				const updBtnZb = getEl("updButton_zb");
 				if (updBtnZb) updBtnZb.disabled = false;
@@ -654,7 +658,7 @@ function ZBfwStartEvents() {
 		if (e.data.includes("Validating")) {
 			const prgZb = getEl("prg_zb");
 			const barZb = getEl("bar_zb");
-			if (prgZb) prgZb.innerHTML = "Validating and flashing...";
+			if (prgZb) prgZb.innerHTML = t("d.validating");
 			if (barZb) barZb.style.width = "0%";
 		}
 	});
@@ -684,75 +688,75 @@ function modalConstructor(type, params) {
 	if (mBtns) mBtns.innerHTML = "";
 	switch (type) {
 		case "flashWarning":
-			if (hText) { hText.textContent = "WARNING"; hText.style.color = "red"; }
-			if (mBody) { mBody.textContent = "Flashing unofficial, incorrect or corrupted firmware can damage or brick your device!!!"; mBody.style.color = "red"; }
+			if (hText) { hText.textContent = t("md.warn"); hText.style.color = "red"; }
+			if (mBody) { mBody.textContent = t("md.warnBody"); mBody.style.color = "red"; }
 			if (mBtns) {
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Close", click: closeModal }));
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: "I agree and I am taking the risk", click: () => { closeModal(); localStorage.setItem("flash_warning", 1); const ub = getEl("updButton"); if (ub) ub.removeAttribute("disabled"); } }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: t("c.close"), click: closeModal }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: t("md.agree"), click: () => { closeModal(); localStorage.setItem("flash_warning", 1); const ub = getEl("updButton"); if (ub) ub.removeAttribute("disabled"); } }));
 			}
 			break;
 		case "confirmRestart":
-			if (hText) hText.textContent = "Restart ESP32";
-			if (mBody) mBody.textContent = "The device will restart and the connection will be interrupted for a few seconds. Continue?";
+			if (hText) hText.textContent = t("md.rstEsp");
+			if (mBody) mBody.textContent = t("md.rstBody");
 			if (mBtns) {
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-secondary", text: "Cancel", click: closeModal }));
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: "Restart", click: () => { closeModal(); espReboot(); rebootWait(); } }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-secondary", text: t("c.cancel"), click: closeModal }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: t("c.restart"), click: () => { closeModal(); espReboot(); rebootWait(); } }));
 			}
 			break;
 		case "espFwDetails":
-			if (hText) hText.textContent = "ESP32 firmware";
+			if (hText) hText.textContent = t("md.espFw");
 			if (mBody) { mBody.textContent = params.text; mBody.insertAdjacentHTML("beforeend", params.chglog); }
 			if (mBtns) {
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
-				if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update now", click: () => { closeModal(); localStorage.setItem("update_notify", 0); espFlashGitWait(); } }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("c.close"), click: closeModal }));
+				if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("md.updateNow"), click: () => { closeModal(); localStorage.setItem("update_notify", 0); espFlashGitWait(); } }));
 			}
 			break;
 		case "espFlashGitWait":
-			if (hText) hText.textContent = "ESP32 GIT UPDATE";
-			if (mBody) mBody.textContent = "Downloading and flashing latest release from Github. This window will automatically close when the device reboots.";
+			if (hText) hText.textContent = t("md.gitUpd");
+			if (mBody) mBody.textContent = t("md.gitUpdBody");
 			if (mBtns) mBtns.appendChild(el("div", { role: "status", "class": "spinner-border text-primary", append: el("span", { "class": classHide }) }));
 			var waitTmr = setInterval(() => { fetch("/").then(() => { clearInterval(waitTmr); clearTimeout(timeoutTmr); closeModal(); console.log("[espFlashGitWait] hide modal"); window.location = "/"; }).catch(() => {}); }, 3000);
-			var timeoutTmr = setTimeout(() => { clearInterval(waitTmr); if (mBtns) mBtns.innerHTML = ""; if (mBody) { mBody.textContent = "No response from the device, this may happen if the device changed IP address or if the USB mode was selected."; mBody.style.color = "red"; } if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Close", click: closeModal })); }, 90000);
+			var timeoutTmr = setTimeout(() => { clearInterval(waitTmr); if (mBtns) mBtns.innerHTML = ""; if (mBody) { mBody.textContent = t("md.noResp"); mBody.style.color = "red"; } if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("c.close"), click: closeModal })); }, 90000);
 			break;
 		case "espGitUpdate":
-			if (hText) { hText.textContent = "ESP32 update available"; hText.style.color = "#f7a623"; }
+			if (hText) { hText.textContent = t("md.espUpdAvail"); hText.style.color = "#f7a623"; }
 			if (mBody) mBody.textContent = params;
 			if (mBtns) {
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Later", click: () => { closeModal(); localStorage.setItem("update_notify", 0); } }));
-				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: "Don't remind", click: () => { closeModal(); localStorage.setItem("update_notify", 1); } }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("md.later"), click: () => { closeModal(); localStorage.setItem("update_notify", 0); } }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: t("md.noRemind"), click: () => { closeModal(); localStorage.setItem("update_notify", 1); } }));
 			}
 			break;
 		case "zbFirmwareSelect":
-			if (hText) hText.textContent = "Select Zigbee Firmware Type";
+			if (hText) hText.textContent = t("md.zbSel");
 			if (mBody) mBody.innerHTML = "";
 			if (mBtns) mBtns.innerHTML = "";
 			if (mBody) mBody.appendChild(el("div", { "class": "container", style: "max-width: 400px", append: el("div", { "class": "row", id: "zbFirmwareSelectRow" }) }));
 			const selRow = getEl("zbFirmwareSelectRow");
 			if (selRow) {
-				selRow.appendChild(el("button", { "class": "col-sm-12 mb-2 btn btn-primary", text: "Coordinator", click: () => showZigbeeVersionInfo("coordinator") }));
-				selRow.appendChild(el("button", { "class": "col-sm-12 mb-2 btn btn-outline-primary", text: "Router", click: () => showZigbeeVersionInfo("router") }));
-				selRow.appendChild(el("button", { type: "button", "class": "col-sm-12 btn btn-outline-secondary", text: "Cancel", click: closeModal }));
+				selRow.appendChild(el("button", { "class": "col-sm-12 mb-2 btn btn-primary", text: t("md.coord"), click: () => showZigbeeVersionInfo("coordinator") }));
+				selRow.appendChild(el("button", { "class": "col-sm-12 mb-2 btn btn-outline-primary", text: t("md.router"), click: () => showZigbeeVersionInfo("router") }));
+				selRow.appendChild(el("button", { type: "button", "class": "col-sm-12 btn btn-outline-secondary", text: t("c.cancel"), click: closeModal }));
 			}
 			break;
 		case "zbVersionInfo":
-			if (hText) hText.textContent = "Latest Zigbee Firmware";
+			if (hText) hText.textContent = t("md.latestZb");
 			if (mBody) { mBody.innerHTML = params.chglog; const alertDiv = el("div", { "class": "alert alert-info", html: params.text }); mBody.insertBefore(alertDiv, mBody.firstChild); }
 		if (mBtns) {
-			mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: "Close", click: closeModal }));
-			if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Update Now", click: () => { closeModal(); zbFlashGitWait(); } }));
+			mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("c.close"), click: closeModal }));
+			if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("md.updateNow"), click: () => { closeModal(); zbFlashGitWait(); } }));
 		}
 		break;
 		case "rebootWait":
-			if (hText) hText.textContent = "DEVICE RESTART";
-			if (mBody) mBody.textContent = "Waiting for device... This window will automatically close when the device reboots.";
+			if (hText) hText.textContent = t("md.devRestart");
+			if (mBody) mBody.textContent = t("md.waitDev");
 			if (mBtns) mBtns.appendChild(el("div", { role: "status", "class": "spinner-border text-primary", append: el("span", { "class": classHide }) }));
 			var waitTmr = setInterval(() => { fetch("/").then(() => { clearInterval(waitTmr); clearTimeout(timeoutTmr); closeModal(); console.log("[rebootWait] hide modal"); window.location = "/"; }).catch(() => {}); }, 2000);
-			var timeoutTmr = setTimeout(() => { clearInterval(waitTmr); if (mBtns) mBtns.innerHTML = ""; if (mBody) { mBody.textContent = "No response from the device, this may happen if the device changed IP address or if the USB mode was selected."; mBody.style.color = "red"; } if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Close", click: closeModal })); }, 20000);
+			var timeoutTmr = setTimeout(() => { clearInterval(waitTmr); if (mBtns) mBtns.innerHTML = ""; if (mBody) { mBody.textContent = t("md.noResp"); mBody.style.color = "red"; } if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("c.close"), click: closeModal })); }, 20000);
 			break;
 		case "saveOk":
 			if (window.location.pathname == "/wifi") {
-				if (hText) hText.textContent = "Wi-Fi network connection";
-				if (mBody) mBody.textContent = "Connecting to the network in progress... Wait for the result.";
+				if (hText) hText.textContent = t("md.wifiConn");
+				if (mBody) mBody.textContent = t("md.wifiConnecting");
 				if (mBtns) mBtns.appendChild(el("div", { role: "status", "class": "spinner-border text-primary", append: el("span", { "class": classHide }) }));
 				let counter = 0;
 				var getWifiIp = setInterval(() => {
@@ -762,28 +766,26 @@ function modalConstructor(type, params) {
 								espReboot();
 								clearInterval(getWifiIp);
 								setTimeout(() => {
-									if (mBody) mBody.innerHTML = '<span style="color: green">Connected!</span><br>New IP address is ' + data.ip + '<br>Device will now reboot for the new settings to take effect.';
+									if (mBody) mBody.innerHTML = '<span style="color: green">' + t("d.connectedEx") + '</span><br>' + t("d.newIp") + data.ip + '<br>' + t("d.devReboot");
 									if (mBtns) mBtns.innerHTML = "";
-									if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Go to " + data.ip, click: () => { window.location = "http://" + data.ip + "/"; } }));
+									if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: t("d.goTo") + data.ip, click: () => { window.location = "http://" + data.ip + "/"; } }));
 								}, 5000);
 							} else { counter++; }
 						});
 					} else {
 						clearInterval(getWifiIp);
-						if (mBody) { mBody.textContent = "Connection error, check SSID, PASSWORD and try again"; mBody.style.color = "red"; }
+						if (mBody) { mBody.textContent = t("md.connErr"); mBody.style.color = "red"; }
 						if (mBtns) mBtns.innerHTML = "";
-						if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Close", click: closeModal }));
+						if (mBtns) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: t("c.close"), click: closeModal }));
 					}
 				}, 1000);
 			} else {
-				let body = "New parameters saved. ";
-				if (hText) hText.textContent = "Settings saved";
-				body += "Some settings require a reboot.";
+				if (hText) hText.textContent = t("md.setSaved");
 				if (mBtns) {
-					mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: "Restart manually later", click: closeModal }));
-					mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: "Restart now", click: () => { closeModal(); espReboot(); rebootWait(); } }));
+					mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("md.later2"), click: closeModal }));
+					mBtns.appendChild(el("button", { type: "button", "class": "btn btn-success", text: t("md.restartNow"), click: () => { closeModal(); espReboot(); rebootWait(); } }));
 				}
-				if (mBody) mBody.textContent = body;
+				if (mBody) mBody.textContent = t("md.savedBody");
 			}
 			break;
 		default:
@@ -796,11 +798,11 @@ function getWifiList() {
 	const list = getEl("wifiList");
 	// While scanning there is nothing to interact with - the join row only
 	// appears once results are in, so a mid-scan join can't race the list.
-	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-spinner"></span><span class="wifi-name">Scanning…</span></div>';
+	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-spinner"></span><span class="wifi-name">' + t("w.scanning") + '</span></div>';
 	let polls = 0;
 	const giveUp = () => {
 		if (!list) return;
-		list.innerHTML = '<div class="wifi-item wifi-placeholder" onclick="getWifiList()"><span class="wifi-name">Scan timed out. Tap to retry.</span></div>' + _wifiJoinRow;
+		list.innerHTML = '<div class="wifi-item wifi-placeholder" onclick="getWifiList()"><span class="wifi-name">' + t("w.scanTimeout") + '</span></div>' + wifiJoinRowHTML();
 	};
 	fetch(apiLink + api.actions.API_STARTWIFISCAN).then(() => {
 		const tmrUpdWifi = setInterval(() => {
@@ -824,7 +826,10 @@ function getWifiList() {
 // unlocked on first interaction - Safari/Chrome evaluate autofill (incl. the
 // strong-password suggestion) on page load, before the user can type.
 const _wifiPwType = (window.CSS && CSS.supports && CSS.supports("-webkit-text-security", "disc")) ? "text" : "password";
-const _wifiPwInput = '<input type="' + _wifiPwType + '" class="form-control form-control-sm' + (_wifiPwType === "text" ? " wifi-pw" : "") + '" placeholder="Password" autocomplete="' + (_wifiPwType === "text" ? "off" : "new-password") + '" readonly />';
+// Built per call so the placeholder follows the active language.
+function wifiPwInputHTML() {
+	return '<input type="' + _wifiPwType + '" class="form-control form-control-sm' + (_wifiPwType === "text" ? " wifi-pw" : "") + '" placeholder="' + t("w.passPh") + '" autocomplete="' + (_wifiPwType === "text" ? "off" : "new-password") + '" readonly />';
+}
 
 // Unlock a readonly-anti-autofill input on first pointer/focus interaction.
 function wifiUnlockInput(input) {
@@ -852,7 +857,7 @@ function wifiSecurityLabel(secure) {
 		case 5: return "WEP";
 		case 7: return "OPEN";
 		case 8: return "AUTO";
-		default: return "UNKNOWN";
+		default: return t("d.unknown");
 	}
 }
 
@@ -862,12 +867,15 @@ const _wifiChevSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"
 const _wifiCheckSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M3 8.5 6.5 12 13 4.5"/></svg>';
 
 // "Join Other Network…" row: always the last entry of the network list.
-const _wifiJoinRow = '<div class="wifi-item" id="wifiJoinOtherRow" onclick="wifiShowOther()">' +
-	'<div class="wifi-row-main">' +
-		'<span class="wifi-plus" aria-hidden="true">+</span>' +
-		'<span class="wifi-name">Join Other Network…</span>' +
-		'<span class="wifi-chev">' + _wifiChevSvg + '</span>' +
-	'</div></div>';
+// Built per call so it follows the active language (see setLanguage).
+function wifiJoinRowHTML() {
+	return '<div class="wifi-item" id="wifiJoinOtherRow" onclick="wifiShowOther()">' +
+		'<div class="wifi-row-main">' +
+			'<span class="wifi-plus" aria-hidden="true">+</span>' +
+			'<span class="wifi-name">' + t("w.joinOther") + '</span>' +
+			'<span class="wifi-chev">' + _wifiChevSvg + '</span>' +
+		'</div></div>';
+}
 
 // Last scan results, cached so forget/join can re-render without rescanning.
 let _wifiScanCache = [];
@@ -913,11 +921,11 @@ function wifiJoin(ssid, pass, statusEl, btn, secure) {
 	fd.set("WIFISSID", ssid);
 	fd.set("WIFIpassword", pass);
 	if (secure !== undefined) _wifiSavedSecure = !!secure;
-	if (statusEl) { statusEl.className = "wifi-join-status connecting"; statusEl.textContent = "Connecting…"; }
+	if (statusEl) { statusEl.className = "wifi-join-status connecting"; statusEl.textContent = t("w.connecting"); }
 	wifiBusyBtn(btn, true);
 	fetch("/saveParams", { method: "POST", body: fd }).catch(() => {
 		if (seq !== _wifiJoinSeq) return;
-		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Save failed. Check your network."; }
+		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.saveFail"); }
 		wifiBusyBtn(btn, false);
 	});
 	wifiPollConnect(seq, statusEl, ssid, pass, btn);
@@ -934,7 +942,7 @@ function wifiPollConnect(seq, statusEl, ssid, pass, btn) {
 			if (data.connected) {
 				clearInterval(tmr);
 				wifiBusyBtn(btn, false);
-				if (statusEl) { statusEl.className = "wifi-join-status ok"; statusEl.textContent = "Connected"; }
+				if (statusEl) { statusEl.className = "wifi-join-status ok"; statusEl.textContent = t("w.connected"); }
 				const si = getEl("WIFISSID");
 				const pi = getEl("WIFIpassword");
 				if (si) si.value = ssid;
@@ -951,14 +959,14 @@ function wifiPollConnect(seq, statusEl, ssid, pass, btn) {
 			} else if (tries >= 15) {
 				clearInterval(tmr);
 				wifiBusyBtn(btn, false);
-				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Could not connect. Check the password."; }
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.connFailPw"); }
 			}
 		}).catch(() => {
 			if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
 			if (++tries >= 15) {
 				clearInterval(tmr);
 				wifiBusyBtn(btn, false);
-				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Connection status unavailable."; }
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.connNoStatus"); }
 			}
 		});
 	}, 1000);
@@ -995,7 +1003,7 @@ function renderWifiList() {
 	wifiTable.innerHTML = "";
 
 	if (!_wifiScanCache || _wifiScanCache.length === 0) {
-		wifiTable.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name">No Wi-Fi networks found.</span></div>' + _wifiJoinRow;
+		wifiTable.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-name">' + t("w.noFound") + '</span></div>' + wifiJoinRowHTML();
 		return;
 	}
 
@@ -1018,8 +1026,8 @@ function renderWifiList() {
 		item.className = "wifi-item";
 
 		const secIcon = open
-			? '<span class="wifi-open" title="Open network">' + _wifiOpenSvg + '</span>'
-			: '<span class="wifi-lock" title="Protected · ' + wifiSecurityLabel(n.secure) + '">' + _wifiLockSvg + '</span>';
+			? '<span class="wifi-open" title="' + t("d.openNet") + '">' + _wifiOpenSvg + '</span>'
+			: '<span class="wifi-lock" title="' + t("d.protected") + wifiSecurityLabel(n.secure) + '">' + _wifiLockSvg + '</span>';
 		const currentMark = "";
 
 		item.innerHTML =
@@ -1031,8 +1039,8 @@ function renderWifiList() {
 				'<span class="wifi-chev">' + _wifiChevSvg + '</span>' +
 			'</div>' +
 			'<div class="wifi-connect">' +
-				(open ? "" : _wifiPwInput) +
-				'<button type="button" class="btn btn-outline-primary btn-sm wifi-join">' + (open ? "Join" : "Connect") + '</button>' +
+				(open ? "" : wifiPwInputHTML()) +
+				'<button type="button" class="btn btn-outline-primary btn-sm wifi-join">' + (open ? t("w.join") : t("w.connect")) + '</button>' +
 				'<span class="wifi-join-status"></span>' +
 			'</div>';
 
@@ -1052,7 +1060,7 @@ function renderWifiList() {
 			const statusEl = item.querySelector(".wifi-join-status");
 			if (!open && pass.length < 8) {
 				if (passInput) passInput.classList.add("is-invalid");
-				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Password must be at least 8 characters."; }
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.pw8"); }
 				return;
 			}
 			wifiJoin(n.ssid, pass, statusEl, this, !open);
@@ -1069,7 +1077,7 @@ function renderWifiList() {
 		wifiTable.appendChild(item);
 	});
 
-	wifiTable.insertAdjacentHTML("beforeend", _wifiJoinRow);
+	wifiTable.insertAdjacentHTML("beforeend", wifiJoinRowHTML());
 }
 
 function toggleCollapseIp(show) {
@@ -1135,17 +1143,17 @@ function WifiDhcpDsbl(state) {
 function wifiSaveIp() {
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
-	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = "Saving…"; }
+	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = t("d.saving"); }
 	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
-		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = "Saved"; }
+		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = t("w.saved"); }
 	}).catch(() => {
-		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = "Save failed. Check your network."; }
+		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = t("w.saveFail"); }
 	});
 }
 
 // Forget the saved network: clear config, disconnect STA, update the UI.
 function wifiForget() {
-	if (!confirm("Forget this Wi-Fi network?")) return;
+	if (!confirm(t("w.forgetConfirm"))) return;
 	const ssidInput = getEl("WIFISSID");
 	const pwdInput = getEl("WIFIpassword");
 	if (ssidInput) ssidInput.value = "";
@@ -1153,14 +1161,14 @@ function wifiForget() {
 	_wifiSavedSecure = null;
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
-	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = "Forgetting…"; }
+	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = t("w.forgetting"); }
 	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
-		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = "Network forgotten."; }
+		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = t("w.forgotten"); }
 		toggleCollapseIp(false);
 		renderWifiYourNetwork();
 		renderWifiList();   // drop the checkmark from the list too
 	}).catch(() => {
-		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = "Failed to forget network."; }
+		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = t("w.forgetFail"); }
 	});
 }
 
@@ -1184,13 +1192,13 @@ function wifiJoinOther() {
 	if (ssid.length < 2) {
 		const other = getEl("otherSsid");
 		if (other) other.classList.add("is-invalid");
-		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Enter a network name."; }
+		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.enterSsid"); }
 		return;
 	}
 	if (!openNet && pass.length < 8) {
 		const other = getEl("otherPass");
 		if (other) other.classList.add("is-invalid");
-		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = "Password must be at least 8 characters."; }
+		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.pw8"); }
 		return;
 	}
 	wifiJoin(ssid, openNet ? "" : pass, statusEl, getQ("#wifiOtherForm .btn"), !openNet);
@@ -1278,7 +1286,7 @@ function refreshStatusData() {
 				} else {
 					const pill = statusPill(valueToSet);
 					if (pill) elem.innerHTML = pill;
-					else elem.textContent = valueToSet;
+					else elem.textContent = (typeof tStatus == "function") ? tStatus(valueToSet) : valueToSet;
 				}
 			});
 		});
@@ -1298,7 +1306,7 @@ function statusPill(value) {
 	else if (s.indexOf("connecting") === 0) tone = "warning";
 	else if (s === "no" || s === "off" || s === "not connected" || s === "not started" || s === "disconnected" || s === "not configured" || s === "ap not started") tone = "secondary";
 	if (!tone) return null;
-	return '<span class="status-pill ' + tone + '">' + String(value) + '</span>';
+	return '<span class="status-pill ' + tone + '">' + tStatus(value) + '</span>';
 }
 
 function toggleWgKeyVisibility() {
@@ -1537,8 +1545,9 @@ async function processResponses() {
 
 function checkLatestESPrelease() {
 	processResponses().then(combinedData => {
+		if (!combinedData || !combinedData.jsonData) return;
 		var downloadCount = (combinedData.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
-		var releaseInfo = "New firmware (" + combinedData.jsonData.tag_name + ") was found on GitHub. It was downloaded " + downloadCount.toLocaleString() + " times. Go -> About -> ESP32 Firmware to update.";
+		var releaseInfo = microI18n.t("d.newFw", { tag: combinedData.jsonData.tag_name, count: downloadCount.toLocaleString() });
 		if (verIsNewer(combinedData.jsonData.tag_name, combinedData.textData)) {
 			setTimeout(() => {
 				if (!(localStorage.getItem("update_notify") == 1)) modalConstructor("espGitUpdate", releaseInfo);
@@ -1555,7 +1564,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 	if (isZbVersionLoading) { console.log("Already loading, ignore..."); return; }
 	isZbVersionLoading = true;
 	try {
-		modalConstructor("zbVersionInfo", { text: "Loading firmware information...", chglog: "<div class='spinner-border text-primary' role='status'></div> Loading..." });
+		modalConstructor("zbVersionInfo", { text: t("d.loadingFw"), chglog: "<div class='spinner-border text-primary' role='status'></div> " + t("d.loading") });
 		let fwData = null;
 		let localVerData = null;
 		try {
@@ -1565,7 +1574,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 		}
 		if (!fwData || (Array.isArray(fwData) && fwData.length === 0)) {
 			const mBody = getQ(".modal-body");
-			if (mBody) mBody.innerHTML = "<div class='alert alert-warning'><strong>No firmware data available.</strong><br>Please check your internet connection or try again later.</div>";
+			if (mBody) mBody.innerHTML = "<div class='alert alert-warning'><strong>" + t("d.noFwData") + "</strong><br>" + t("d.noFwDataSub") + "</div>";
 			isZbVersionLoading = false;
 			return;
 		}
@@ -1578,24 +1587,27 @@ async function showZigbeeVersionInfo(firmwareType) {
 		}) : null;
 		if (!selectedFw) {
 			const mBody = getQ(".modal-body");
-			if (mBody) mBody.innerHTML = "<div class='alert alert-warning'><strong>No firmware found for '" + firmwareType + "'</strong><br>Available firmware types:<br><ul>" + (Array.isArray(fwData) ? fwData.map(fw => "<li>" + (fw.name || "N/A") + " - " + (fw.firmwareType || "N/A") + "</li>").join("") : "<li>Unknown format</li>") + "</ul></div>";
+			if (mBody) mBody.innerHTML = "<div class='alert alert-warning'><strong>" + t("d.noFwFor") + t(firmwareType === "router" ? "md.router" : "md.coord") + "'</strong><br>" + t("d.availTypes") + "<br><ul>" + (Array.isArray(fwData) ? fwData.map(fw => "<li>" + escHtml(fw.name || "N/A") + " - " + escHtml(fw.firmwareType || "N/A") + "</li>").join("") : "<li>" + t("d.unknown") + "</li>") + "</ul></div>";
 			isZbVersionLoading = false;
 			return;
 		}
 		latestZbFirmware = { ...selectedFw, localVersion: localVerData ? localVerData.trim() : "unknown" };
 		const localVer = latestZbFirmware.localVersion, remoteVer = latestZbFirmware.version || "unknown";
-		const hasUpdate = localVer === "unknown" || verIsNewer(remoteVer, localVer);
-		const text = "Local version: v" + localVer + "<br>GitHub version: " + remoteVer + "<br>File: " + latestZbFirmware.name + "<br>Description: " + (latestZbFirmware.firmwareDesc || "N/A");
-		let chglog = `<p><strong>Firmware Details:</strong></p><ul><li><strong>Name:</strong> ${latestZbFirmware.name}</li><li><strong>Version:</strong> ${latestZbFirmware.version}</li><li><strong>Type:</strong> ${latestZbFirmware.firmwareType || "N/A"}</li><li><strong>Description:</strong> ${latestZbFirmware.firmwareDesc || "N/A"}</li><li><strong>Baud Rate:</strong> ${latestZbFirmware.baudRate || "N/A"}</li><li><strong>Dongle Type:</strong> ${latestZbFirmware.dongleType || "N/A"}</li></ul>`;
-		if (localVer !== "unknown" && remoteVer !== "unknown")
+		// Compare raw backend tokens ("unknown" is always English on the wire);
+		// only the display strings below are localized.
+		const unknownRaw = localVer === "unknown", unknownRemote = remoteVer === "unknown";
+		const hasUpdate = unknownRaw || verIsNewer(remoteVer, localVer);
+		const text = t("d.localVer") + tStatus(localVer) + "<br>" + t("d.ghVer") + tStatus(remoteVer) + "<br>" + t("d.file") + escHtml(latestZbFirmware.name) + "<br>" + t("d.desc") + " " + escHtml(latestZbFirmware.firmwareDesc || "N/A");
+		let chglog = `<p><strong>${t("d.fwDetails")}</strong></p><ul><li><strong>${t("d.name")}</strong> ${escHtml(latestZbFirmware.name)}</li><li><strong>${t("d.version")}</strong> ${escHtml(latestZbFirmware.version)}</li><li><strong>${t("d.type")}</strong> ${escHtml(latestZbFirmware.firmwareType || "N/A")}</li><li><strong>${t("d.desc")}</strong> ${escHtml(latestZbFirmware.firmwareDesc || "N/A")}</li><li><strong>${t("d.baud")}</strong> ${escHtml(latestZbFirmware.baudRate || "N/A")}</li><li><strong>${t("d.dongle")}</strong> ${escHtml(latestZbFirmware.dongleType || "N/A")}</li></ul>`;
+		if (!unknownRaw && !unknownRemote)
 			chglog += hasUpdate
-				? "<div class='alert alert-success mt-2'><strong>Update Available!</strong><br>Current: v" + localVer + " -> Latest: v" + remoteVer + "</div>"
-				: "<div class='alert alert-secondary mt-2'><strong>Up to date</strong><br>Current version: v" + localVer + "</div>";
+				? "<div class='alert alert-success mt-2'><strong>" + t("d.updateAvailEx") + "</strong><br>" + t("d.currentLatest") + localVer + " -> " + t("d.latestIs") + remoteVer + "</div>"
+				: "<div class='alert alert-secondary mt-2'><strong>" + t("d.upToDateEx") + "</strong><br>" + t("d.currentVer") + localVer + "</div>";
 		modalConstructor("zbVersionInfo", { text, chglog, hasUpdate });
 	} catch (error) {
 		console.error("Error while getting Zigbee version info:", error);
 		const mBody = getQ(".modal-body");
-		if (mBody) mBody.innerHTML = "<div class='alert alert-danger'><strong>Error fetching version information.</strong><br>Please check your network connection.<br><small>" + (error.message || error) + "</small></div>";
+		if (mBody) mBody.innerHTML = "<div class='alert alert-danger'><strong>" + t("d.errFetch") + "</strong><br>" + t("c.checkNet") + "<br><small>" + escHtml(error.message || error) + "</small></div>";
 	} finally {
 		isZbVersionLoading = false;
 	}
@@ -1618,8 +1630,8 @@ let espFwInfo = null;
 // available for any version (not just when an update is pending).
 function showEspFwDetails() {
 	if (!espFwInfo) { checkEspFirmware(); return; }
-	const text = "Installed v" + espFwInfo.local + ". Latest " + espFwInfo.tag + ".";
-	const chglog = "<pre>" + escHtml(espFwInfo.body || "(no release notes)") + "</pre>";
+	const text = t("c.installed") + " v" + espFwInfo.local + ". " + t("d.latestIs") + espFwInfo.tag + ".";
+	const chglog = "<pre>" + escHtml(espFwInfo.body || t("d.noNotes")) + "</pre>";
 	modalConstructor("espFwDetails", { text, chglog, hasUpdate: espFwInfo.hasUpdate });
 }
 
@@ -1628,7 +1640,7 @@ function showEspFwDetails() {
 async function checkEspFirmware() {
 	const st = getEl("espFwStatus");
 	if (!st) return;
-	st.innerHTML = "<span class='text-muted'>Checking for updates...</span>";
+	st.innerHTML = "<span class='text-muted'>" + t("c.checking") + "</span>";
 	let combined = null;
 	try {
 		combined = await processResponses();
@@ -1637,7 +1649,7 @@ async function checkEspFirmware() {
 	const log = getEl("espFwChglog");
 	espFwInfo = null;
 	if (!combined || !combined.jsonData || !combined.jsonData.tag_name) {
-		st.innerHTML = "<span class='text-muted'>Could not reach GitHub. Use file upload below.</span>";
+		st.innerHTML = "<span class='text-muted'>" + t("d.noGh") + "</span>";
 		if (upd) upd.style.display = "none";
 		if (log) log.style.display = "none";
 		return;
@@ -1648,11 +1660,11 @@ async function checkEspFirmware() {
 	espFwInfo = { tag, local, body: combined.jsonData.body || "", hasUpdate };
 	if (hasUpdate) {
 		const count = (combined.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
-		st.innerHTML = "Update available: <strong>" + tag + "</strong> (downloaded " + count.toLocaleString() + " times)";
+		st.innerHTML = t("d.updAvail") + "<strong>" + escHtml(tag) + "</strong> (" + microI18n.t("d.dlCount", { count: count.toLocaleString() }) + ")";
 		if (log) { log.style.display = ""; log.textContent = combined.jsonData.body || ""; }
 		if (upd) upd.style.display = "";
 	} else {
-		st.innerHTML = "Up to date (<strong>" + escHtml(local) + "</strong>)";
+		st.innerHTML = t("d.upToDate") + " (<strong>" + escHtml(local) + "</strong>)";
 		if (upd) upd.style.display = "none";
 		if (log) log.style.display = "none";
 	}
@@ -1663,7 +1675,7 @@ async function checkEspFirmware() {
 async function checkZbFirmware() {
 	const st = getEl("zbFwStatus");
 	if (!st) return;
-	st.innerHTML = "<span class='text-muted'>Checking for updates...</span>";
+	st.innerHTML = "<span class='text-muted'>" + t("c.checking") + "</span>";
 	let fwData = null, rev = "";
 	try {
 		[fwData, rev] = await Promise.all([fetchData(zbFwInfoUrl, true), fetchData("/api?action=1&param=zbRev", false)]);
@@ -1671,13 +1683,13 @@ async function checkZbFirmware() {
 	const localRev = (rev || "").trim();
 	const box = getEl("zbFwList");
 	if (!Array.isArray(fwData) || !fwData.length) {
-		st.innerHTML = "<span class='text-muted'>Could not reach the firmware index. Use file upload below.</span>";
+		st.innerHTML = "<span class='text-muted'>" + t("d.noZbIdx") + "</span>";
 		if (box) box.innerHTML = "";
 		return;
 	}
 	const fws = fwData.filter(fw => (fw.firmwareType || "").toLowerCase() === "zigbee");
 	if (!fws.length) {
-		st.innerHTML = "<span class='text-muted'>No Zigbee firmware in the index.</span>";
+		st.innerHTML = "<span class='text-muted'>" + t("d.noZbFw") + "</span>";
 		if (box) box.innerHTML = "";
 		return;
 	}
@@ -1691,17 +1703,17 @@ async function checkZbFirmware() {
 			if (hasUpdate) newer++;
 			const row = el("div", { "class": "zb-fw-row" });
 			const info = el("div", { "class": "zb-fw-info" });
-			info.innerHTML = "<strong>" + (isRouter ? "Router" : "Coordinator") + "</strong>" +
-				(isRouter ? "" : " <span class='default-badge'>default</span>") +
-				"<div class='text-muted zb-fw-sub'>latest " + escHtml(remote) + " - " +
-				(hasUpdate ? "<span style='color:#f7a623'>update available</span>" : "up to date") + "</div>";
+			info.innerHTML = "<strong>" + (isRouter ? t("d.router") : t("d.coord")) + "</strong>" +
+				(isRouter ? "" : " <span class='default-badge'>" + t("d.default") + "</span>") +
+				"<div class='text-muted zb-fw-sub'>" + t("d.latestIs") + escHtml(remote) + " - " +
+				(hasUpdate ? "<span style='color:#f7a623'>" + t("d.updAvailShort") + "</span>" : t("d.upToDate")) + "</div>";
 			row.appendChild(info);
 			const wrap = el("span", { "class": "zb-fw-btns" });
-			wrap.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary btn-sm", text: "Details", click: () => showZigbeeVersionInfo(isRouter ? "router" : "coordinator") }));
+			wrap.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary btn-sm", text: t("c.details"), click: () => showZigbeeVersionInfo(isRouter ? "router" : "coordinator") }));
 			if (hasUpdate) {
 				wrap.appendChild(document.createTextNode(" "));
 				wrap.appendChild(el("button", {
-					type: "button", "class": "btn btn-warning btn-sm", text: "Flash " + remote, click: () => {
+					type: "button", "class": "btn btn-warning btn-sm", text: t("d.flash") + remote, click: () => {
 						if (!fw.link) return;
 						latestZbFirmware = { ...fw, localVersion: localRev || "unknown" };
 						startZbFlashFromGit();
@@ -1712,12 +1724,68 @@ async function checkZbFirmware() {
 			box.appendChild(row);
 		});
 	}
-	st.innerHTML = newer ? ("<span style='color:#f7a623'><strong>" + newer + " update" + (newer > 1 ? "s" : "") + " available</strong></span>")
-		: "All variants up to date (local rev <strong>" + (localRev || "unknown") + "</strong>)";
+	st.innerHTML = newer ? ("<span style='color:#f7a623'><strong>" + microI18n.t("d.updatesAvail", { n: newer }) + "</strong></span>")
+		: t("d.allUpToDate") + " (" + t("d.localRev") + " <strong>" + escHtml(localRev || tStatus("unknown")) + "</strong>)";
 }
 
 
 // ========== Lightweight i18n (MicroI18n) ==========
+// Culturally adapted, not word-for-word: DE uses WLAN (not WiFi),
+// neutral infinitives and Sie-free short labels; ZH uses Simplified,
+// iOS-style terms (忽略此网络, 热点) familiar to Chinese users.
+const I18N = {
+en: {
+"l.st": "Status", "l.ge": "General", "l.ne": "Ethernet", "l.wf": "WiFi", "l.zi": "Z2M/ZHA", "l.se": "Security", "l.mq": "MQTT", "l.vp": "WireGuard", "l.to": "Tools", "l.ab": "About", "l.lo": "Logout",
+"c.save": "Save", "c.cancel": "Cancel", "c.close": "Close", "c.restart": "Restart", "c.details": "Details", "c.checkUpd": "Check for updates", "c.checking": "Checking for updates...", "c.selFile": "Select File...", "c.uploading": "Uploading firmware...", "c.uplFail": "Firmware upload failed!", "c.checkNet": "Please check network connection and retry", "c.enable": "Enable", "c.installed": "Installed:",
+"s.opMode": "Operating mode", "s.zbConn": "Zigbee connection", "s.conn": "Connection:", "s.clientIp": "Client IP:", "s.connFor": "Connected for:", "s.coordStatus": "Coordinator status:", "s.coordResets": "Coordinator auto-resets:", "s.eth": "Ethernet", "s.ethStatus": "Connection status:", "s.dhcp": "DHCP:", "s.ip": "IP Address:", "s.mask": "Mask:", "s.gw": "Gateway:", "s.speed": "Connection Speed:", "s.mac": "MAC:", "s.devStatus": "Device Status", "s.opModeRow": "Operating mode:", "s.ethernet": "Ethernet:", "s.uplink": "Network uplink:", "s.uptime": "Uptime:", "s.temp": "Temperature:", "s.wifiEn": "WiFi Enabled:", "s.wifiStatus": "WiFi Status:", "s.wifiApEn": "WiFi Access Point Enabled:", "s.wifiApStatus": "WiFi Access Point Status:", "s.wifi": "WiFi", "s.mode": "Mode:", "s.ssid": "SSID:", "s.subnet": "Subnet Mask:", "s.signal": "Signal:", "s.vpn": "VPN", "s.init": "Initialized:", "s.remote": "Remote Address:",
+"g.workMode": "Work Mode", "g.netMode": "Network Mode", "g.recommended": "Recommended", "g.netDesc": "Ethernet with automatic Wi-Fi fallback", "g.serMode": "Serial Mode", "g.serDesc": "Directly connect to computer via USB (serial test)", "g.keepWeb": "Keep Network & Web", "g.keepHint": "Keeps one channel active (Wi-Fi, Ethernet or Wi-Fi AP, in that order) so the web interface stays reachable.", "g.rtControl": "Real-time Control", "g.ledHint": "Use toggle buttons to control LED status (current session, not saved after reboot)", "g.pwrLed": "Power Indicator LED", "g.wifiLed": "Wi-Fi/Serial Mode LED", "g.ledSaveHint": "Use the switches below to control LED behavior (saved after reboot)", "g.disPwr": "Disable Power LED", "g.disUsb": "Disable USB LED", "g.sysVar": "System Variables", "g.hostname": "Hostname (The device will be displayed on the network with this name)", "g.logRefresh": "Log refresh interval (milliseconds)", "g.timezone": "Time Zone",
+"e.conn": "Connection", "e.dhcp": "Enable DHCP (recommended)", "e.ipSet": "IP Settings", "e.ip": "IP", "e.mask": "Subnet Mask", "e.gw": "Default Gateway",
+"w.title": "Wi-Fi", "w.yourNet": "Your Network", "w.ipSet": "IP Settings", "w.dhcp": "DHCP", "w.asleep": "WiFi is asleep (Ethernet is the active uplink) - live IP appears here when WiFi is used.", "w.ip": "IP Address", "w.mask": "Subnet Mask", "w.router": "Router", "w.save": "Save", "w.forget": "Forget This Network", "w.noNet": "No network configured", "w.otherNet": "Other Networks", "w.joinOther": "Join Other Network…", "w.ssidPh": "Network name (SSID)", "w.passPh": "Password", "w.join": "Join", "w.connect": "Connect", "w.scanning": "Scanning…", "w.scanTimeout": "Scan timed out. Tap to retry.", "w.noFound": "No Wi-Fi networks found.", "w.connecting": "Connecting…", "w.connected": "Connected", "w.connFailPw": "Could not connect. Check the password.", "w.connNoStatus": "Connection status unavailable.", "w.saveFail": "Save failed. Check your network.", "w.saved": "Saved", "w.forgetting": "Forgetting…", "w.forgotten": "Network forgotten.", "w.forgetFail": "Failed to forget network.", "w.forgetConfirm": "Forget this Wi-Fi network?", "w.enterSsid": "Enter a network name.", "w.pw8": "Password must be at least 8 characters.", "w.wpa": "WPA2/WPA3", "w.open": "Open", "w.noNetsYet": "No networks yet.",
+"z.serSet": "Serial Settings", "z.baud": "Baud Rate", "z.port": "Port", "z.cfgGen": "Config Generator", "z.apAlert": "It seems that AVATTO-GW90-Ti is operating in access point mode (IP address is 192.168.1.1). The IP address will change after connecting to Ethernet or Wi-Fi, and the configuration needs to be regenerated.", "z.cfgGenLabel": "Config Generator", "z.copy": "Copy to Clipboard",
+"sec.webSrv": "Web Server", "sec.disWeb": "Disable Web Server when interface is connected", "sec.enAuth": "Enable Web Server Authentication", "sec.user": "Username", "sec.pass": "Password", "sec.access": "Access Control", "sec.enWhite": "Enable Connection IP Whitelist", "sec.allowed": "Allowed IPs",
+"m.conn": "Connection", "m.server": "Server", "m.port": "Port", "m.user": "Username", "m.pass": "Password", "m.topicDisc": "Topic & Discovery", "m.topic": "Topic", "m.interval": "Interval (seconds)", "m.haDisc": "Enable Home Assistant Discovery",
+"wg.tunnel": "Tunnel", "wg.localAddr": "Local Address", "wg.localAddrEx": "e.g. 10.0.0.2/24", "wg.privKey": "Local Private Key", "wg.privKeyPh": "Enter WireGuard private key", "wg.privNote": "44-character base64 private key", "wg.endpoint": "Endpoint", "wg.remoteAddr": "Remote Endpoint Address", "wg.remoteNote": "IP address or domain of the remote endpoint", "wg.remotePub": "Remote Public Key", "wg.remotePubNote": "44-character base64 public key", "wg.port": "Port", "wg.portNote": "UDP port, 1-65535",
+"t.logs": "Logs", "t.esp": "ESP32", "t.zbFrames": "Zigbee ZNP Frames", "t.human": "Human-readable frames", "t.clear": "Clear Console", "t.checkConn": "Check Zigbee Connection", "t.checkVer": "Check Zigbee Version", "t.modCtrl": "Module Control", "t.rstZb": "Restart Zigbee", "t.zbRefresh": "Zigbee Refresh Mode", "t.routerRe": "Router Reconnect", "t.rstEsp": "Restart ESP32",
+"a.device": "Device", "a.brand": "Brand:", "a.name": "Name:", "a.nameVal": "AVATTO Zigbee Smart Gateway", "a.fw": "Firmware:", "a.date": "Date:", "a.sysInfo": "System Information", "a.zstar": "Zig-Star Model:", "a.mcu": "MCU:", "a.zb": "Zigbee:", "a.eth": "Ethernet:", "a.ifaces": "Interfaces:", "a.if1": "RJ45 Ethernet (Supports PoE)", "a.if2": "USB Type-C", "a.if3": "Zigbee Antenna Interface", "a.espFwVer": "ESP32 Firmware Version:", "a.espFreq": "ESP32 Frequency:", "a.cores": "Cores @", "a.flashSize": "ESP32 Flash Size:", "a.mem": "ESP32 Memory (Free/Total):", "a.zbHw": "CC2652P Hardware Version:", "a.zbFw": "CC2652P Firmware Version:", "a.espFw": "ESP32 Firmware", "a.installGh": "Install update from GitHub", "a.coordNote": "Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.", "a.zbFwCard": "Zigbee Firmware", "a.rev": "rev", "a.espFwUpd": "ESP32 file update", "a.zbFwUpd": "Zigbee File Update",
+"md.warn": "WARNING", "md.warnBody": "Flashing unofficial, incorrect or corrupted firmware can damage or brick your device!!!", "md.agree": "I agree and I am taking the risk", "md.rstEsp": "Restart ESP32", "md.rstBody": "The device will restart and the connection will be interrupted for a few seconds. Continue?", "md.espFw": "ESP32 firmware", "md.updateNow": "Update now", "md.gitUpd": "ESP32 GIT UPDATE", "md.gitUpdBody": "Downloading and flashing latest release from Github. This window will automatically close when the device reboots.", "md.later": "Later", "md.noRemind": "Don't remind", "md.zbSel": "Select Zigbee Firmware Type", "md.coord": "Coordinator", "md.router": "Router", "md.latestZb": "Latest Zigbee Firmware", "md.devRestart": "DEVICE RESTART", "md.waitDev": "Waiting for device... This window will automatically close when the device reboots.", "md.wifiConn": "Wi-Fi network connection", "md.wifiConnecting": "Connecting to the network in progress... Wait for the result.", "md.connErr": "Connection error, check SSID, PASSWORD and try again", "md.setSaved": "Settings saved", "md.savedBody": "New parameters saved. Some settings require a reboot.", "md.later2": "Restart manually later", "md.restartNow": "Restart now", "md.noResp": "No response from the device, this may happen if the device changed IP address or if the USB mode was selected.",
+"d.saveErr": "Error saving settings. Check your network", "d.netErr": "Error. Check your network", "d.pageErr": "Page load error: ", "d.githubStart": "Github download starting...", "d.prepDev": "Preparing device...", "d.invalidLink": "Invalid firmware link", "d.dlFw": "Downloading firmware...", "d.dlFail": "Download failed: ", "d.evTimeout": "EventSource timeout", "d.connFailPoll": "Connection failed, using polling mode...", "d.downloaded": "Downloading... ", "d.dlComplete": "Download complete, starting flash...", "d.flashing": "Flashing... ", "d.flashDone": "Flash complete!", "d.validating": "Validating and flashing...", "d.progress": "progress: ", "d.updDoneReboot": "Update completed!<br>Rebooting!", "d.updAvail": "Update available: ", "d.upToDate": "Up to date", "d.noGh": "Could not reach GitHub. Use file upload below.", "d.noZbIdx": "Could not reach the firmware index. Use file upload below.", "d.noZbFw": "No Zigbee firmware in the index.", "d.updAvailShort": "update available", "d.allUpToDate": "All variants up to date", "d.noFwData": "No firmware data available.", "d.noFwDataSub": "Please check your internet connection or try again later.", "d.noFwFor": "No firmware found for '", "d.availTypes": "Available firmware types:", "d.fwDetails": "Firmware Details:", "d.name": "Name:", "d.version": "Version:", "d.type": "Type:", "d.desc": "Description:", "d.baud": "Baud Rate:", "d.dongle": "Dongle Type:", "d.localVer": "Local version: v", "d.ghVer": "GitHub version: ", "d.file": "File: ", "d.errFetch": "Error fetching version information.", "d.updateAvailEx": "Update Available!", "d.currentLatest": "Current: v", "d.upToDateEx": "Up to date", "d.currentVer": "Current version: v", "d.router": "Router", "d.coord": "Coordinator", "d.default": "default", "d.flash": "Flash ", "d.protected": "Protected · ", "d.unknown": "UNKNOWN", "d.uploadPct": "Uploading: ", "d.uplComplete": "Upload complete! <br>Start verifing & flashing...", "d.opTimeout": "Operation timed out. Please check device status.", "d.showHidePw": "Show / hide password", "d.showHideKey": "Show / hide private key", "d.darkMode": "Dark Mode", "d.lightMode": "Light Mode", "d.ipSettings": "IP settings", "d.loadingFw": "Loading firmware information...", "d.loading": "Loading...", "d.goTo": "Go to ", "d.newIp": "New IP address is ", "d.devReboot": "Device will now reboot for the new settings to take effect.", "d.connectedEx": "Connected!", "d.logFilter": "Log filter", "md.espUpdAvail": "ESP32 update available", "d.newFw": "New firmware (${tag}) was found on GitHub. It was downloaded ${count} times. Go -> About -> ESP32 Firmware to update.", "d.latestIs": "Latest: ", "d.dlCount": "downloaded ${count} times", "d.updatesAvail": "${n} update(s) available", "d.localRev": "local rev", "d.noNotes": "(no release notes)", "d.saving": "Saving…", "d.openNet": "Open network", "d.language": "Language", "d.toggleDark": "Toggle dark mode",
+"sv.yes": "Yes", "sv.no": "No", "sv.on": "On", "sv.off": "Off", "sv.connected": "Connected", "sv.notConn": "Not connected", "sv.active": "Active", "sv.asleep": "Asleep", "sv.notCfg": "Not configured", "sv.client": "Client", "sv.ap": "AP", "sv.accessPoint": "Access Point", "sv.ethernet": "Ethernet", "sv.wifi": "WiFi", "sv.wifiFb": "WiFi (fallback)", "sv.none": "None", "sv.apStarted": "AP started", "sv.notStarted": "Not started", "sv.serialPass": "Serial passthrough", "sv.usbPass": "USB passthrough", "sv.zbNet": "Zigbee-to-Network", "sv.zbSer": "Zigbee-to-Serial", "sv.unknown": "unknown", "sv.embedded": "embedded", "sv.external": "external"
+},
+de: {
+"l.st": "Status", "l.ge": "Allgemein", "l.ne": "Ethernet", "l.wf": "WLAN", "l.zi": "Z2M/ZHA", "l.se": "Sicherheit", "l.mq": "MQTT", "l.vp": "WireGuard", "l.to": "Werkzeuge", "l.ab": "Über", "l.lo": "Abmelden",
+"c.save": "Speichern", "c.cancel": "Abbrechen", "c.close": "Schließen", "c.restart": "Neustart", "c.details": "Details", "c.checkUpd": "Nach Updates suchen", "c.checking": "Suche nach Updates …", "c.selFile": "Datei wählen …", "c.uploading": "Firmware wird hochgeladen …", "c.uplFail": "Firmware-Upload fehlgeschlagen!", "c.checkNet": "Bitte Netzwerkverbindung prüfen und erneut versuchen", "c.enable": "Aktivieren", "c.installed": "Installiert:",
+"s.opMode": "Betriebsmodus", "s.zbConn": "Zigbee-Verbindung", "s.conn": "Verbindung:", "s.clientIp": "Client-IP:", "s.connFor": "Verbunden seit:", "s.coordStatus": "Koordinatorstatus:", "s.coordResets": "Auto-Neustarts des Koordinators:", "s.eth": "Ethernet", "s.ethStatus": "Verbindungsstatus:", "s.dhcp": "DHCP:", "s.ip": "IP-Adresse:", "s.mask": "Netzmaske:", "s.gw": "Gateway:", "s.speed": "Verbindungsgeschwindigkeit:", "s.mac": "MAC:", "s.devStatus": "Gerätestatus", "s.opModeRow": "Betriebsmodus:", "s.ethernet": "Ethernet:", "s.uplink": "Netzwerk-Uplink:", "s.uptime": "Betriebszeit:", "s.temp": "Temperatur:", "s.wifiEn": "WLAN aktiviert:", "s.wifiStatus": "WLAN-Status:", "s.wifiApEn": "WLAN-Zugangspunkt aktiviert:", "s.wifiApStatus": "Status des WLAN-Zugangspunkts:", "s.wifi": "WLAN", "s.mode": "Modus:", "s.ssid": "SSID:", "s.subnet": "Netzmaske:", "s.signal": "Signal:", "s.vpn": "VPN", "s.init": "Initialisiert:", "s.remote": "Remote-Adresse:",
+"g.workMode": "Betriebsart", "g.netMode": "Netzwerkmodus", "g.recommended": "Empfohlen", "g.netDesc": "Ethernet mit automatischem WLAN-Fallback", "g.serMode": "Serieller Modus", "g.serDesc": "Direkt per USB mit dem Computer verbinden (serieller Test)", "g.keepWeb": "Netzwerk & Web behalten", "g.keepHint": "Hält einen Kanal aktiv (WLAN, Ethernet oder WLAN-AP, in dieser Reihenfolge), damit die Weboberfläche erreichbar bleibt.", "g.rtControl": "Echtzeitsteuerung", "g.ledHint": "LEDs per Tastendruck schalten (nur aktuelle Sitzung, geht nach Neustart verloren)", "g.pwrLed": "Power-LED", "g.wifiLed": "WLAN/Seriell-LED", "g.ledSaveHint": "Schalter unten steuern das LED-Verhalten dauerhaft (bleibt nach Neustart)", "g.disPwr": "Power-LED deaktivieren", "g.disUsb": "USB-LED deaktivieren", "g.sysVar": "Systemvariablen", "g.hostname": "Hostname (unter diesem Namen erscheint das Gerät im Netzwerk)", "g.logRefresh": "Log-Aktualisierung (Millisekunden)", "g.timezone": "Zeitzone",
+"e.conn": "Verbindung", "e.dhcp": "DHCP aktivieren (empfohlen)", "e.ipSet": "IP-Einstellungen", "e.ip": "IP", "e.mask": "Netzmaske", "e.gw": "Standard-Gateway",
+"w.title": "WLAN", "w.yourNet": "Eigenes Netzwerk", "w.ipSet": "IP-Einstellungen", "w.dhcp": "DHCP", "w.asleep": "WLAN ist im Standby (Ethernet ist der aktive Uplink) – Live-IP erscheint hier, sobald WLAN genutzt wird.", "w.ip": "IP-Adresse", "w.mask": "Netzmaske", "w.router": "Router", "w.save": "Speichern", "w.forget": "Dieses Netzwerk entfernen", "w.noNet": "Kein Netzwerk eingerichtet", "w.otherNet": "Weitere Netzwerke", "w.joinOther": "Anderes Netzwerk hinzufügen …", "w.ssidPh": "Netzwerkname (SSID)", "w.passPh": "Passwort", "w.join": "Beitreten", "w.connect": "Verbinden", "w.scanning": "Suche läuft …", "w.scanTimeout": "Suche abgelaufen. Zum Wiederholen tippen.", "w.noFound": "Keine WLAN-Netzwerke gefunden.", "w.connecting": "Verbinde …", "w.connected": "Verbunden", "w.connFailPw": "Verbindung fehlgeschlagen. Passwort prüfen.", "w.connNoStatus": "Verbindungsstatus nicht verfügbar.", "w.saveFail": "Speichern fehlgeschlagen. Netzwerk prüfen.", "w.saved": "Gespeichert", "w.forgetting": "Wird entfernt …", "w.forgotten": "Netzwerk entfernt.", "w.forgetFail": "Entfernen fehlgeschlagen.", "w.forgetConfirm": "Dieses WLAN-Netzwerk entfernen?", "w.enterSsid": "Netzwerknamen eingeben.", "w.pw8": "Das Passwort braucht mindestens 8 Zeichen.", "w.wpa": "WPA2/WPA3", "w.open": "Offen", "w.noNetsYet": "Noch keine Netzwerke.",
+"z.serSet": "Serielle Einstellungen", "z.baud": "Baudrate", "z.port": "Port", "z.cfgGen": "Konfigurationsgenerator", "z.apAlert": "Das Gerät läuft wohl im Access-Point-Modus (IP 192.168.1.1). Nach Verbindung per Ethernet oder WLAN ändert sich die IP – bitte Konfiguration neu erzeugen.", "z.cfgGenLabel": "Konfigurationsgenerator", "z.copy": "In Zwischenablage kopieren",
+"sec.webSrv": "Webserver", "sec.disWeb": "Webserver bei aktiver Verbindung deaktivieren", "sec.enAuth": "Webserver-Authentifizierung aktivieren", "sec.user": "Benutzername", "sec.pass": "Passwort", "sec.access": "Zugriffskontrolle", "sec.enWhite": "IP-Whitelist für Verbindungen aktivieren", "sec.allowed": "Erlaubte IPs",
+"m.conn": "Verbindung", "m.server": "Server", "m.port": "Port", "m.user": "Benutzername", "m.pass": "Passwort", "m.topicDisc": "Topic & Discovery", "m.topic": "Topic", "m.interval": "Intervall (Sekunden)", "m.haDisc": "Home-Assistant-Discovery aktivieren",
+"wg.tunnel": "Tunnel", "wg.localAddr": "Lokale Adresse", "wg.localAddrEx": "z. B. 10.0.0.2/24", "wg.privKey": "Lokaler privater Schlüssel", "wg.privKeyPh": "WireGuard-Private-Key eingeben", "wg.privNote": "44-stelliger Base64-Private-Key", "wg.endpoint": "Endpunkt", "wg.remoteAddr": "Remote-Endpunkt-Adresse", "wg.remoteNote": "IP-Adresse oder Domain des Remote-Endpunkts", "wg.remotePub": "Öffentlicher Schlüssel (Remote)", "wg.remotePubNote": "44-stelliger Base64-Public-Key", "wg.port": "Port", "wg.portNote": "UDP-Port, 1–65535",
+"t.logs": "Protokolle", "t.esp": "ESP32", "t.zbFrames": "Zigbee-ZNP-Frames", "t.human": "Lesbare Frame-Ansicht", "t.clear": "Konsole leeren", "t.checkConn": "Zigbee-Verbindung prüfen", "t.checkVer": "Zigbee-Version prüfen", "t.modCtrl": "Modulsteuerung", "t.rstZb": "Zigbee neu starten", "t.zbRefresh": "Zigbee-Auffrischmodus", "t.routerRe": "Router erneut verbinden", "t.rstEsp": "ESP32 neu starten",
+"a.device": "Gerät", "a.brand": "Marke:", "a.name": "Name:", "a.nameVal": "AVATTO Zigbee Smart Gateway", "a.fw": "Firmware:", "a.date": "Datum:", "a.sysInfo": "Systeminformationen", "a.zstar": "Zig-Star-Modell:", "a.mcu": "MCU:", "a.zb": "Zigbee:", "a.eth": "Ethernet:", "a.ifaces": "Schnittstellen:", "a.if1": "RJ45-Ethernet (mit PoE)", "a.if2": "USB Typ-C", "a.if3": "Zigbee-Antennenanschluss", "a.espFwVer": "ESP32-Firmware-Version:", "a.espFreq": "ESP32-Takt:", "a.cores": "Kerne @", "a.flashSize": "ESP32-Flashgröße:", "a.mem": "ESP32-Speicher (frei/gesamt):", "a.zbHw": "CC2652P-Hardwareversion:", "a.zbFw": "CC2652P-Firmwareversion:", "a.espFw": "ESP32-Firmware", "a.installGh": "Update von GitHub installieren", "a.coordNote": "Koordinator ist die Standardwahl für ZHA und Zigbee2MQTT. Router nur flashen, um einem anderen Zigbee-Netz beizutreten oder es zu erweitern.", "a.zbFwCard": "Zigbee-Firmware", "a.rev": "Rev.", "a.espFwUpd": "ESP32-Datei-Update", "a.zbFwUpd": "Zigbee-Datei-Update",
+"md.warn": "WARNUNG", "md.warnBody": "Das Flashen inoffizieller, falscher oder beschädigter Firmware kann das Gerät beschädigen oder unbrauchbar machen!!!", "md.agree": "Ich stimme zu und trage das Risiko", "md.rstEsp": "ESP32 neu starten", "md.rstBody": "Das Gerät startet neu, die Verbindung wird kurz unterbrochen. Fortfahren?", "md.espFw": "ESP32-Firmware", "md.updateNow": "Jetzt updaten", "md.gitUpd": "ESP32-GIT-UPDATE", "md.gitUpdBody": "Lade das neueste Release von GitHub und flashe es. Dieses Fenster schließt sich automatisch nach dem Neustart.", "md.later": "Später", "md.noRemind": "Nicht mehr erinnern", "md.zbSel": "Zigbee-Firmwaretyp wählen", "md.coord": "Koordinator", "md.router": "Router", "md.latestZb": "Neueste Zigbee-Firmware", "md.devRestart": "GERÄTENEUSTART", "md.waitDev": "Warte auf Gerät … Das Fenster schließt sich automatisch nach dem Neustart.", "md.wifiConn": "WLAN-Verbindung", "md.wifiConnecting": "Verbinde mit Netzwerk … Bitte auf Ergebnis warten.", "md.connErr": "Verbindungsfehler, SSID und Passwort prüfen und erneut versuchen", "md.setSaved": "Einstellungen gespeichert", "md.savedBody": "Neue Parameter gespeichert. Manche brauchen einen Neustart.", "md.later2": "Später manuell neu starten", "md.restartNow": "Jetzt neu starten", "md.noResp": "Keine Antwort vom Gerät – evtl. hat es die IP gewechselt oder der USB-Modus ist aktiv.",
+"d.saveErr": "Fehler beim Speichern. Netzwerk prüfen", "d.netErr": "Fehler. Netzwerk prüfen", "d.pageErr": "Seitenladefehler: ", "d.githubStart": "GitHub-Download startet …", "d.prepDev": "Gerät wird vorbereitet …", "d.invalidLink": "Ungültiger Firmware-Link", "d.dlFw": "Firmware wird geladen …", "d.dlFail": "Download fehlgeschlagen: ", "d.evTimeout": "EventSource-Timeout", "d.connFailPoll": "Verbindung fehlgeschlagen, Polling-Modus …", "d.downloaded": "Lade … ", "d.dlComplete": "Download fertig, flashe …", "d.flashing": "Flashe … ", "d.flashDone": "Flashen abgeschlossen!", "d.validating": "Prüfe und flashe …", "d.progress": "Fortschritt: ", "d.updDoneReboot": "Update fertig!<br>Neustart!", "d.updAvail": "Update verfügbar: ", "d.upToDate": "Aktuell", "d.noGh": "GitHub nicht erreichbar. Datei-Upload unten nutzen.", "d.noZbIdx": "Firmware-Index nicht erreichbar. Datei-Upload unten nutzen.", "d.noZbFw": "Keine Zigbee-Firmware im Index.", "d.updAvailShort": "Update verfügbar", "d.allUpToDate": "Alle Varianten aktuell", "d.noFwData": "Keine Firmware-Daten verfügbar.", "d.noFwDataSub": "Bitte Internetverbindung prüfen oder später erneut versuchen.", "d.noFwFor": "Keine Firmware gefunden für '", "d.availTypes": "Verfügbare Firmwaretypen:", "d.fwDetails": "Firmware-Details:", "d.name": "Name:", "d.version": "Version:", "d.type": "Typ:", "d.desc": "Beschreibung:", "d.baud": "Baudrate:", "d.dongle": "Dongle-Typ:", "d.localVer": "Lokale Version: v", "d.ghVer": "GitHub-Version: ", "d.file": "Datei: ", "d.errFetch": "Fehler beim Laden der Versionsinfos.", "d.updateAvailEx": "Update verfügbar!", "d.currentLatest": "Aktuell: v", "d.upToDateEx": "Aktuell", "d.currentVer": "Aktuelle Version: v", "d.router": "Router", "d.coord": "Koordinator", "d.default": "Standard", "d.flash": "Flashe ", "d.protected": "Geschützt · ", "d.unknown": "UNBEKANNT", "d.uploadPct": "Lade hoch: ", "d.uplComplete": "Upload fertig! <br>Prüfe & flashe …", "d.opTimeout": "Zeitüberschreitung. Bitte Gerätestatus prüfen.", "d.showHidePw": "Passwort zeigen / verbergen", "d.showHideKey": "Private-Key zeigen / verbergen", "d.darkMode": "Dunkelmodus", "d.lightMode": "Hellmodus", "d.ipSettings": "IP-Einstellungen", "d.loadingFw": "Lade Firmware-Infos …", "d.loading": "Lade …", "d.goTo": "Zu ", "d.newIp": "Neue IP-Adresse: ", "d.devReboot": "Das Gerät startet neu, damit die Einstellungen wirken.", "d.connectedEx": "Verbunden!", "d.logFilter": "Log-Filter", "md.espUpdAvail": "ESP32-Update verfügbar", "d.newFw": "Neue Firmware (${tag}) auf GitHub gefunden. ${count}× heruntergeladen. Updaten unter Über -> ESP32-Firmware.", "d.latestIs": "Neueste: ", "d.dlCount": "${count}× heruntergeladen", "d.updatesAvail": "${n} Update(s) verfügbar", "d.localRev": "lokale Rev.", "d.noNotes": "(keine Release-Notes)", "d.saving": "Speichere …", "d.openNet": "Offenes Netzwerk", "d.language": "Sprache", "d.toggleDark": "Dunkelmodus umschalten",
+"sv.yes": "Ja", "sv.no": "Nein", "sv.on": "Ein", "sv.off": "Aus", "sv.connected": "Verbunden", "sv.notConn": "Nicht verbunden", "sv.active": "Aktiv", "sv.asleep": "Standby", "sv.notCfg": "Nicht konfiguriert", "sv.client": "Client", "sv.ap": "AP", "sv.accessPoint": "Zugangspunkt", "sv.ethernet": "Ethernet", "sv.wifi": "WLAN", "sv.wifiFb": "WLAN (Fallback)", "sv.none": "Keine", "sv.apStarted": "AP gestartet", "sv.notStarted": "Nicht gestartet", "sv.serialPass": "Serieller Passthrough", "sv.usbPass": "USB-Passthrough", "sv.zbNet": "Zigbee-zu-Netzwerk", "sv.zbSer": "Zigbee-zu-Seriell", "sv.unknown": "unbekannt", "sv.embedded": "integriert", "sv.external": "extern"
+},
+zh: {
+"l.st": "状态", "l.ge": "通用", "l.ne": "以太网", "l.wf": "Wi-Fi", "l.zi": "Z2M/ZHA", "l.se": "安全", "l.mq": "MQTT", "l.vp": "WireGuard", "l.to": "工具", "l.ab": "关于", "l.lo": "退出登录",
+"c.save": "保存", "c.cancel": "取消", "c.close": "关闭", "c.restart": "重启", "c.details": "详情", "c.checkUpd": "检查更新", "c.checking": "正在检查更新…", "c.selFile": "选择文件…", "c.uploading": "正在上传固件…", "c.uplFail": "固件上传失败！", "c.checkNet": "请检查网络连接后重试", "c.enable": "启用", "c.installed": "已安装：",
+"s.opMode": "运行模式", "s.zbConn": "Zigbee 连接", "s.conn": "连接状态：", "s.clientIp": "客户端 IP：", "s.connFor": "已连接时长：", "s.coordStatus": "协调器状态：", "s.coordResets": "协调器自动重启：", "s.eth": "以太网", "s.ethStatus": "连接状态：", "s.dhcp": "DHCP：", "s.ip": "IP 地址：", "s.mask": "子网掩码：", "s.gw": "网关：", "s.speed": "连接速率：", "s.mac": "MAC 地址：", "s.devStatus": "设备状态", "s.opModeRow": "运行模式：", "s.ethernet": "以太网：", "s.uplink": "网络上行：", "s.uptime": "运行时间：", "s.temp": "温度：", "s.wifiEn": "Wi-Fi 已启用：", "s.wifiStatus": "Wi-Fi 状态：", "s.wifiApEn": "Wi-Fi 热点已启用：", "s.wifiApStatus": "Wi-Fi 热点状态：", "s.wifi": "Wi-Fi", "s.mode": "模式：", "s.ssid": "无线名称：", "s.subnet": "子网掩码：", "s.signal": "信号：", "s.vpn": "VPN", "s.init": "已初始化：", "s.remote": "远端地址：",
+"g.workMode": "工作模式", "g.netMode": "网络模式", "g.recommended": "推荐", "g.netDesc": "以太网连接，Wi-Fi 自动备用", "g.serMode": "串口模式", "g.serDesc": "通过 USB 直连电脑（串口测试）", "g.keepWeb": "保持网络和 Web 访问", "g.keepHint": "按顺序保持一个通道可用（Wi-Fi、以太网或 Wi-Fi 热点），确保 Web 界面始终可以打开。", "g.rtControl": "实时控制", "g.ledHint": "点击按钮切换 LED 状态（仅本次有效，重启后恢复）", "g.pwrLed": "电源指示灯", "g.wifiLed": "Wi-Fi/串口模式灯", "g.ledSaveHint": "以下开关控制 LED 行为（保存后重启依然有效）", "g.disPwr": "关闭电源灯", "g.disUsb": "关闭 USB 灯", "g.sysVar": "系统参数", "g.hostname": "主机名（设备在网络中显示的名称）", "g.logRefresh": "日志刷新间隔（毫秒）", "g.timezone": "时区",
+"e.conn": "连接", "e.dhcp": "启用 DHCP（推荐）", "e.ipSet": "IP 设置", "e.ip": "IP 地址", "e.mask": "子网掩码", "e.gw": "默认网关",
+"w.title": "Wi-Fi", "w.yourNet": "我的网络", "w.ipSet": "IP 设置", "w.dhcp": "DHCP", "w.asleep": "Wi-Fi 待机中（当前走以太网）— 使用 Wi-Fi 时在此显示实时 IP。", "w.ip": "IP 地址", "w.mask": "子网掩码", "w.router": "路由器", "w.save": "保存", "w.forget": "忽略此网络", "w.noNet": "尚未配置网络", "w.otherNet": "其他网络", "w.joinOther": "加入其他网络…", "w.ssidPh": "网络名称（SSID）", "w.passPh": "密码", "w.join": "加入", "w.connect": "连接", "w.scanning": "正在扫描…", "w.scanTimeout": "扫描超时，点击重试。", "w.noFound": "未发现 Wi-Fi 网络。", "w.connecting": "正在连接…", "w.connected": "已连接", "w.connFailPw": "连接失败，请检查密码。", "w.connNoStatus": "无法获取连接状态。", "w.saveFail": "保存失败，请检查网络。", "w.saved": "已保存", "w.forgetting": "正在忽略…", "w.forgotten": "已忽略该网络。", "w.forgetFail": "忽略网络失败。", "w.forgetConfirm": "确定忽略此 Wi-Fi 网络吗？", "w.enterSsid": "请输入网络名称。", "w.pw8": "密码至少需要 8 位。", "w.wpa": "WPA2/WPA3", "w.open": "开放网络", "w.noNetsYet": "暂无网络。",
+"z.serSet": "串口设置", "z.baud": "波特率", "z.port": "端口", "z.cfgGen": "配置生成器", "z.apAlert": "设备当前处于热点模式（IP 为 192.168.1.1）。连接以太网或 Wi-Fi 后 IP 会变化，需要重新生成配置。", "z.cfgGenLabel": "配置生成器", "z.copy": "复制到剪贴板",
+"sec.webSrv": "Web 服务", "sec.disWeb": "连接建立后关闭 Web 服务", "sec.enAuth": "启用 Web 登录验证", "sec.user": "用户名", "sec.pass": "密码", "sec.access": "访问控制", "sec.enWhite": "启用连接 IP 白名单", "sec.allowed": "允许的 IP",
+"m.conn": "连接", "m.server": "服务器", "m.port": "端口", "m.user": "用户名", "m.pass": "密码", "m.topicDisc": "主题与发现", "m.topic": "主题", "m.interval": "上报间隔（秒）", "m.haDisc": "启用 Home Assistant 自动发现",
+"wg.tunnel": "隧道", "wg.localAddr": "本地地址", "wg.localAddrEx": "例如 10.0.0.2/24", "wg.privKey": "本地私钥", "wg.privKeyPh": "输入 WireGuard 私钥", "wg.privNote": "44 位 Base64 私钥", "wg.endpoint": "对端", "wg.remoteAddr": "对端地址", "wg.remoteNote": "对端的 IP 地址或域名", "wg.remotePub": "对端公钥", "wg.remotePubNote": "44 位 Base64 公钥", "wg.port": "端口", "wg.portNote": "UDP 端口，1-65535",
+"t.logs": "日志", "t.esp": "ESP32", "t.zbFrames": "Zigbee ZNP 帧", "t.human": "帧解析显示", "t.clear": "清空控制台", "t.checkConn": "检查 Zigbee 连接", "t.checkVer": "检查 Zigbee 版本", "t.modCtrl": "模块控制", "t.rstZb": "重启 Zigbee", "t.zbRefresh": "Zigbee 刷新模式", "t.routerRe": "路由器重连", "t.rstEsp": "重启 ESP32",
+"a.device": "设备", "a.brand": "品牌：", "a.name": "名称：", "a.nameVal": "AVATTO Zigbee 智能网关", "a.fw": "固件：", "a.date": "日期：", "a.sysInfo": "系统信息", "a.zstar": "Zig-Star 型号：", "a.mcu": "主控：", "a.zb": "Zigbee：", "a.eth": "以太网：", "a.ifaces": "接口：", "a.if1": "RJ45 以太网（支持 PoE）", "a.if2": "USB Type-C", "a.if3": "Zigbee 天线接口", "a.espFwVer": "ESP32 固件版本：", "a.espFreq": "ESP32 主频：", "a.cores": "核 @", "a.flashSize": "ESP32 闪存：", "a.mem": "ESP32 内存（可用/总计）：", "a.zbHw": "CC2652P 硬件版本：", "a.zbFw": "CC2652P 固件版本：", "a.espFw": "ESP32 固件", "a.installGh": "从 GitHub 安装更新", "a.coordNote": "ZHA 和 Zigbee2MQTT 默认使用协调器固件。只有加入或扩展其他 Zigbee 网络时才刷路由器固件。", "a.zbFwCard": "Zigbee 固件", "a.rev": "版本", "a.espFwUpd": "ESP32 文件更新", "a.zbFwUpd": "Zigbee 文件更新",
+"md.warn": "警告", "md.warnBody": "刷入非官方、错误或损坏的固件可能损坏设备甚至变砖！！！", "md.agree": "我已知晓风险并同意", "md.rstEsp": "重启 ESP32", "md.rstBody": "设备即将重启，连接会中断几秒钟，继续吗？", "md.espFw": "ESP32 固件", "md.updateNow": "立即更新", "md.gitUpd": "ESP32 GIT 更新", "md.gitUpdBody": "正在从 GitHub 下载并刷入最新版本，设备重启后本窗口会自动关闭。", "md.later": "稍后", "md.noRemind": "不再提醒", "md.zbSel": "选择 Zigbee 固件类型", "md.coord": "协调器", "md.router": "路由器", "md.latestZb": "最新 Zigbee 固件", "md.devRestart": "设备重启", "md.waitDev": "正在等待设备…设备重启后本窗口会自动关闭。", "md.wifiConn": "Wi-Fi 网络连接", "md.wifiConnecting": "正在连接网络…请等待结果。", "md.connErr": "连接失败，请检查 SSID 和密码后重试", "md.setSaved": "设置已保存", "md.savedBody": "新参数已保存，部分设置需要重启生效。", "md.later2": "稍后手动重启", "md.restartNow": "立即重启", "md.noResp": "设备无响应，可能是 IP 已变化或当前为 USB 模式。",
+"d.saveErr": "保存设置失败，请检查网络", "d.netErr": "出错了，请检查网络", "d.pageErr": "页面加载失败：", "d.githubStart": "GitHub 下载开始…", "d.prepDev": "正在准备设备…", "d.invalidLink": "固件链接无效", "d.dlFw": "正在下载固件…", "d.dlFail": "下载失败：", "d.evTimeout": "事件推送超时", "d.connFailPoll": "连接失败，使用轮询模式…", "d.downloaded": "正在下载…", "d.dlComplete": "下载完成，开始刷机…", "d.flashing": "正在刷机…", "d.flashDone": "刷机完成！", "d.validating": "正在校验并刷机…", "d.progress": "进度：", "d.updDoneReboot": "更新完成！<br>正在重启！", "d.updAvail": "有可用更新：", "d.upToDate": "已是最新", "d.noGh": "无法连接 GitHub，请用下方文件上传。", "d.noZbIdx": "无法获取固件索引，请用下方文件上传。", "d.noZbFw": "索引中没有 Zigbee 固件。", "d.updAvailShort": "有可用更新", "d.allUpToDate": "所有版本均为最新", "d.noFwData": "暂无固件信息。", "d.noFwDataSub": "请检查网络连接，稍后再试。", "d.noFwFor": "未找到固件：'", "d.availTypes": "可用固件类型：", "d.fwDetails": "固件详情：", "d.name": "名称：", "d.version": "版本：", "d.type": "类型：", "d.desc": "描述：", "d.baud": "波特率：", "d.dongle": "适配器类型：", "d.localVer": "本地版本：v", "d.ghVer": "GitHub 版本：", "d.file": "文件：", "d.errFetch": "获取版本信息失败。", "d.updateAvailEx": "有可用更新！", "d.currentLatest": "当前：v", "d.upToDateEx": "已是最新", "d.currentVer": "当前版本：v", "d.router": "路由器", "d.coord": "协调器", "d.default": "默认", "d.flash": "刷入 ", "d.protected": "加密 · ", "d.unknown": "未知", "d.uploadPct": "正在上传：", "d.uplComplete": "上传完成！<br>开始校验并刷机…", "d.opTimeout": "操作超时，请检查设备状态。", "d.showHidePw": "显示 / 隐藏密码", "d.showHideKey": "显示 / 隐藏私钥", "d.darkMode": "深色模式", "d.lightMode": "浅色模式", "d.ipSettings": "IP 设置", "d.loadingFw": "正在加载固件信息…", "d.loading": "正在加载…", "d.goTo": "前往 ", "d.newIp": "新 IP 地址为 ", "d.devReboot": "设备即将重启以应用新设置。", "d.connectedEx": "已连接！", "d.logFilter": "日志过滤", "md.espUpdAvail": "ESP32 有可用更新", "d.newFw": "GitHub 发现新固件（${tag}），已被下载 ${count} 次。请前往“关于 -> ESP32 固件”更新。", "d.latestIs": "最新：", "d.dlCount": "已被下载 ${count} 次", "d.updatesAvail": "${n} 个可用更新", "d.localRev": "本地版本", "d.noNotes": "（暂无更新说明）", "d.saving": "正在保存…", "d.openNet": "开放网络", "d.language": "语言", "d.toggleDark": "切换深色模式",
+"sv.yes": "是", "sv.no": "否", "sv.on": "开", "sv.off": "关", "sv.connected": "已连接", "sv.notConn": "未连接", "sv.active": "正常", "sv.asleep": "待机中", "sv.notCfg": "未配置", "sv.client": "客户端", "sv.ap": "热点", "sv.accessPoint": "接入点", "sv.ethernet": "以太网", "sv.wifi": "Wi-Fi", "sv.wifiFb": "Wi-Fi（备用）", "sv.none": "无", "sv.apStarted": "热点已启动", "sv.notStarted": "未启动", "sv.serialPass": "串口直通", "sv.usbPass": "USB 直通", "sv.zbNet": "Zigbee 转网络", "sv.zbSer": "Zigbee 转串口", "sv.unknown": "未知", "sv.embedded": "内置", "sv.external": "外置"
+}
+};
 const languages = [
 	{ value: "en", text: "English", flag: "🇬🇧" },
 	{ value: "zh", text: "中文", flag: "🇨🇳" },
@@ -1727,14 +1795,10 @@ const languages = [
 class MicroI18n {
 	constructor(lang = "en") {
 		this.locale = languages.some((l) => l.value === lang) ? lang : "en";
-		this.vocabulary = {
-			en: { "l.st": "Status", "l.ge": "General", "l.ne": "Ethernet", "l.zi": "Z2M/ZHA", "l.se": "Security", "l.mq": "MQTT", "l.vp": "WireGuard", "l.to": "Tools", "l.ab": "About", "l.lo": "Logout" },
-			zh: { "l.st": "状态", "l.ge": "通用", "l.ne": "以太网", "l.zi": "Z2M/ZHA", "l.se": "安全", "l.mq": "MQTT", "l.vp": "WireGuard", "l.to": "工具", "l.ab": "关于", "l.lo": "退出" },
-			de: { "l.st": "Status", "l.ge": "Allgemein", "l.ne": "Ethernet", "l.zi": "Z2M/ZHA", "l.se": "Sicherheit", "l.mq": "MQTT", "l.vp": "WireGuard", "l.to": "Werkzeuge", "l.ab": "Über", "l.lo": "Abmelden" }
-		};
+		this.vocabulary = (typeof I18N !== "undefined") ? I18N : { en: {} };
 	}
 	t(key, vars = {}) {
-		let text = (this.vocabulary[this.locale] && this.vocabulary[this.locale][key]) || this.vocabulary.en[key] || key;
+		let text = (this.vocabulary[this.locale] && this.vocabulary[this.locale][key]) || (this.vocabulary.en && this.vocabulary.en[key]) || key;
 		Object.keys(vars).forEach((v) => { text = text.replace(`\${${v}}`, vars[v]); });
 		return text;
 	}
@@ -1743,11 +1807,63 @@ class MicroI18n {
 
 let microI18n;
 
+// Shortcut with English fallback even before initLanguage ran.
+function t(key) {
+	if (typeof microI18n !== "undefined" && microI18n) return microI18n.t(key);
+	if (typeof I18N !== "undefined" && I18N.en && I18N.en[key]) return I18N.en[key];
+	return key;
+}
+
+// Backend status tokens arrive in English (getRootData); map them to the
+// active locale for display. Tone detection in statusPill keeps using the
+// English source, so pass that in separately where needed.
+function tStatus(val) {
+	if (val === undefined || val === null) return val;
+	const s = String(val);
+	const exact = {
+		"Yes": "sv.yes", "No": "sv.no", "On": "sv.on", "Off": "sv.off",
+		"Connected": "sv.connected", "Not connected": "sv.notConn",
+		"Active": "sv.active", "Asleep": "sv.asleep", "Not configured": "sv.notCfg",
+		"Client": "sv.client", "AP": "sv.ap", "Access Point": "sv.accessPoint",
+		"Ethernet": "sv.ethernet", "WiFi": "sv.wifi", "WiFi (fallback)": "sv.wifiFb",
+		"None": "sv.none", "AP started": "sv.apStarted", "Not started": "sv.notStarted",
+		"Serial passthrough": "sv.serialPass", "USB passthrough": "sv.usbPass",
+		"Zigbee-to-Network": "sv.zbNet", "Zigbee-to-Serial": "sv.zbSer",
+		"unknown": "sv.unknown", "Unknown": "sv.unknown",
+		"embedded": "sv.embedded", "external": "sv.external",
+		"On (Access point)": "sv.on", "N/A": "sv.unknown", "n/a": "sv.unknown", "-": "sv.unknown"
+	};
+	if (exact[s] !== undefined) return t(exact[s]);
+	let m;
+	if ((m = s.match(/^Yes, (\d+) connections?$/))) {
+		if (!microI18n || microI18n.locale === "en") return s;
+		if (microI18n.locale === "de") return "Ja, " + m[1] + (m[1] === "1" ? " Verbindung" : " Verbindungen");
+		return "是，" + m[1] + " 个连接";
+	}
+	if ((m = s.match(/^Silent (\d+)s$/))) {
+		if (!microI18n || microI18n.locale === "en") return s;
+		if (microI18n.locale === "de") return "Still seit " + m[1] + "s";
+		return "静默 " + m[1] + "s";
+	}
+	if (s.indexOf("Connected to ") === 0) {
+		const rest = s.slice("Connected to ".length);
+		if (!microI18n || microI18n.locale === "en") return s;
+		if (microI18n.locale === "de") return "Verbunden mit " + rest;
+		return "已连接到 " + rest;
+	}
+	if (s.indexOf("Connecting") === 0) {
+		if (!microI18n || microI18n.locale === "en") return s;
+		return t("w.connecting") + s.slice("Connecting".length);
+	}
+	return s;
+}
+
 function initLanguage() {
 	const savedLang = localStorage.getItem("selected-lang");
 	const browserLang = (navigator.language || navigator.userLanguage || "").substring(0, 2);
 	const preferredLang = savedLang || (languages.some((l) => l.value === browserLang) ? browserLang : "en");
 	microI18n = new MicroI18n(preferredLang);
+	document.documentElement.setAttribute("lang", preferredLang);
 	updateLangFlags(preferredLang);
 	updateLocalizedContent();
 }
@@ -1755,9 +1871,18 @@ function initLanguage() {
 function setLanguage(lng) {
 	if (!languages.some((l) => l.value === lng)) return;
 	localStorage.setItem("selected-lang", lng);
+	if (!microI18n) microI18n = new MicroI18n(lng);
 	microI18n.setLanguage(lng);
+	document.documentElement.setAttribute("lang", lng);
 	updateLangFlags(lng);
 	updateLocalizedContent();
+	// Dynamically rendered rows are built with t() at creation time - rebuild
+	// them from cached data so the switch applies without a rescan/reload.
+	try {
+		if (getEl("wifiList") && typeof renderWifiList == "function") renderWifiList();
+		if (getEl("wifiYourRow") && typeof renderWifiYourNetwork == "function") renderWifiYourNetwork();
+		if (getQ("[data-replace='z2mLink']") && typeof refreshStatusData == "function") refreshStatusData();
+	} catch (e) {}
 }
 
 function setLanguageFlag(lng) {
@@ -1813,11 +1938,12 @@ function localize() {
 	elements.forEach((element) => {
 		const keys = element.getAttribute("data-i18n").split(";");
 		keys.forEach((key) => {
-			if (key.trim()) {
+			key = key.trim();
+			if (key) {
 				if (key.includes("[")) {
 					const parts = key.split("[");
-					const attr = parts[1].slice(0, -1);
-					element.setAttribute(attr, microI18n.t(parts[0]));
+					const attr = parts[1].slice(0, -1).trim();
+					element.setAttribute(attr, microI18n.t(parts[0].trim()));
 				} else {
 					const inputChild = element.querySelector("input");
 					if (inputChild) {
@@ -1838,11 +1964,10 @@ function localizeTitle(pathname) {
 	for (let key in pages) {
 		if (pages[key].str === pathname) {
 			const titleKey = pages[key].titleKey;
-			if (titleKey) {
-				document.title = microI18n.t(titleKey);
-				const pn = document.getElementById("pagenamePC");
-				if (pn) pn.textContent = microI18n.t(titleKey);
-			}
+			const label = titleKey ? microI18n.t(titleKey) : pages[key].title;
+			document.title = label + " - AVATTO-GW90-Ti Zigbee Ethernet POE USB Adapter";
+			const pn = document.getElementById("pagenamePC");
+			if (pn) pn.textContent = label;
 			break;
 		}
 	}

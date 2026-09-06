@@ -3,13 +3,13 @@
     <div class="card">
       <div class="card-header">
         <img src="icon_serial_settings.svg" class="title_icon_style" />
-        <span>Serial Settings</span>
+        <span data-i18n="z.serSet">Serial Settings</span>
       </div>
       <div class="card-body">
         <div class="row">
           <div class="col-sm-12 col-md-6 mb-4">
             <div class="form-group">
-              <label for="baud">Baud Rate</label>
+              <label for="baud" data-i18n="z.baud">Baud Rate</label>
               <select class="form-select" id="baud" name="baud">
                 <option data-replace="9600" value="9600">9600 Baud</option>
                 <option data-replace="19200" value="19200">19200 Baud</option>
@@ -23,7 +23,7 @@
           </div>
           <div class="col-sm-12 col-md-6 mb-4">
             <div class="form-group">
-              <label for="port">Port</label>
+              <label for="port" data-i18n="z.port">Port</label>
               <input
                 data-replace="socketPort"
                 class="form-control"
@@ -44,6 +44,7 @@
         type="submit"
         class="btn btn-outline-primary"
         name="save"
+        data-i18n="c.save"
       >
         Save
       </button>
@@ -53,7 +54,7 @@
   <div class="card mt-2">
     <div class="card-header">
       <img src="icon_config_generator.svg" class="title_icon_style" />
-      <span>Config Generator</span>
+      <span data-i18n="z.cfgGen">Config Generator</span>
     </div>
     <div class="card-body">
       <div class="row">
@@ -63,11 +64,12 @@
               class="alert alert-warning visually-hidden"
               role="alert"
               id="apAlert"
+              data-i18n="z.apAlert"
             >
               It seems that AVATTO-GW90-Ti is operating in access point mode (IP address is 192.168.1.1).
               The IP address will change after connecting to Ethernet or Wi-Fi, and the configuration needs to be regenerated.
             </div>
-            <label for="generatedFile">Config Generator</label>
+            <label for="generatedFile" data-i18n="z.cfgGenLabel">Config Generator</label>
             <div class="generator-options mb-2">
               <div class="form-check form-check-inline">
                 <input
@@ -117,6 +119,7 @@
       type="button"
       class="btn btn-outline-primary"
       onclick="copyCode()"
+      data-i18n="z.copy"
     >
       Copy to Clipboard
     </button>

@@ -168,20 +168,20 @@
             <div class="card">
                  <div class="card-header">
                     <img src="icon_brand_info.svg" class="title_icon_style" />
-                    <span>Device</span>
+                     <span data-i18n="a.device">Device</span>
                 </div>
                 <div class="card-body brand-content">
                     <div class="product-img-wrapper">
                         <img src="device_about_info.png" alt="product-img" class="product-img">
                     </div>
                     <div class="info-list" style="margin-top: 10px">
-                        <div class="info-item"><span class="label">Brand:</span><span>AVATTO</span></div>
-                        <div class="info-item"><span class="label">Name:</span><span>AVATTO Zigbee Smart Gateway</span></div>
+                        <div class="info-item"><span class="label" data-i18n="a.brand">Brand:</span><span>AVATTO</span></div>
+                        <div class="info-item"><span class="label" data-i18n="a.name">Name:</span><span data-i18n="a.nameVal">AVATTO Zigbee Smart Gateway</span></div>
                         <div class="info-item">
-                            <span class="label">Firmware:</span>
+                            <span class="label" data-i18n="a.fw">Firmware:</span>
                             <span class="version-badge" data-replace="firmwareVersion"></span>
                         </div>
-                        <div class="info-item"><span class="label">Date:</span><span data-replace="buildDate"></span></div>
+                        <div class="info-item"><span class="label" data-i18n="a.date">Date:</span><span data-replace="buildDate"></span></div>
                     </div>
                 </div>
             </div>
@@ -193,68 +193,68 @@
             <div class="card">
                   <div class="card-header">
                     <img src="icon_hardware_info.svg" class="title_icon_style" />
-                    <span>System Information</span>
+                     <span data-i18n="a.sysInfo">System Information</span>
                 </div>
                 <div class="card-body">
                     <table class="table">
                         <tbody>
                             <tr>
-                                <td>Zig-Star Model:</td>
+                                <td data-i18n="a.zstar">Zig-Star Model:</td>
                                 <td data-replace="hwRev"></td>
                             </tr>
                             <tr>
-                                <td>MCU:</td>
+                                <td data-i18n="a.mcu">MCU:</td>
                                 <td data-replace="espModel"></td>
                             </tr>
                             <tr>
-                                <td>Zigbee:</td>
+                                <td data-i18n="a.zb">Zigbee:</td>
                                 <td>CC2652P</td>
                             </tr>
                             <tr>
-                                <td>Ethernet:</td>
+                                <td data-i18n="a.eth">Ethernet:</td>
                                 <td>LAN8720</td>
                             </tr>
                             <tr style="align-items: flex-start;">
-                                <td>Interfaces:</td>
+                                <td data-i18n="a.ifaces">Interfaces:</td>
                                 <td>
                                     <div class="radio-list">
-                                        <div class="radio-item"><span class="dot active"></span> RJ45 Ethernet (Supports PoE)</div>
-                                        <div class="radio-item"><span class="dot active"></span> USB Type-C</div>
-                                        <div class="radio-item"><span class="dot active"></span> Zigbee Antenna Interface</div>
+                                        <div class="radio-item"><span class="dot active"></span><span data-i18n="a.if1"> RJ45 Ethernet (Supports PoE)</span></div>
+                                        <div class="radio-item"><span class="dot active"></span><span data-i18n="a.if2"> USB Type-C</span></div>
+                                        <div class="radio-item"><span class="dot active"></span><span data-i18n="a.if3"> Zigbee Antenna Interface</span></div>
                                     </div>
                                 </td>
                             </tr>
                             <tr>
-                                <td>ESP32 Firmware Version:</td>
+                                <td data-i18n="a.espFwVer">ESP32 Firmware Version:</td>
                                 <td data-replace="VERSION"></td>
                             </tr>
                             <tr>
-                                <td>ESP32 Frequency:</td>
+                                <td data-i18n="a.espFreq">ESP32 Frequency:</td>
                                 <td>
-                                    <span data-replace="espCores"></span> Cores @
+                                    <span data-replace="espCores"></span> <span data-i18n="a.cores">Cores @</span>
                                     <span data-replace="espFreq"></span> MHz
                                 </td>
                             </tr>
                             <tr>
-                                <td>ESP32 Flash Size:</td>
+                                <td data-i18n="a.flashSize">ESP32 Flash Size:</td>
                                 <td>
                                     <span data-replace="espFlashSize"></span> Mb,
                                     <span data-replace="espFlashType"></span>
                                 </td>
                             </tr>
                             <tr>
-                                <td>ESP32 Memory (Free/Total):</td>
+                                <td data-i18n="a.mem">ESP32 Memory (Free/Total):</td>
                                 <td>
                                     <span data-replace="espHeapFree"></span> /
                                     <span data-replace="espHeapSize"></span> KiB
                                 </td>
                             </tr>
                             <tr>
-                                <td>CC2652P Hardware Version:</td>
+                                <td data-i18n="a.zbHw">CC2652P Hardware Version:</td>
                                 <td data-replace="zigbeeHwRev"></td>
                             </tr>
                             <tr>
-                                <td>CC2652P Firmware Version:</td>
+                                <td data-i18n="a.zbFw">CC2652P Firmware Version:</td>
                                 <td data-replace="zigbeeFwRev"></td>
                             </tr>
                         </tbody>
@@ -269,13 +269,13 @@
             <div class="card">
                 <div class="card-header">
                     <img src="icon_firmware_update.svg" class="title_icon_style" />
-                    <span>ESP32 Firmware</span>
+                     <span data-i18n="a.espFw">ESP32 Firmware</span>
                 </div>
                 <div class="card-body">
-                    <div class="info-item"><span class="label">Installed:</span><span data-replace="firmwareVersion"></span></div>
+                    <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span data-replace="firmwareVersion"></span></div>
                     <div class="fw-status-row">
-                      <div id="espFwStatus" class="fw-status"><span class="text-muted">Checking for updates...</span></div>
-                      <button type="button" class="btn btn-outline-primary btn-sm" onclick="showEspFwDetails()">Details</button>
+                      <div id="espFwStatus" class="fw-status"><span class="text-muted" data-i18n="c.checking">Checking for updates...</span></div>
+                      <button type="button" class="btn btn-outline-primary btn-sm" onclick="showEspFwDetails()" data-i18n="c.details">Details</button>
                     </div>
                     <pre id="espFwChglog" style="display:none"></pre>
                     <button
@@ -284,6 +284,7 @@
                       class="btn btn-outline-warning col-sm-12 mb-2"
                       style="display:none"
                       onclick="localStorage.setItem('update_notify', 0); espFlashGitWait();"
+                      data-i18n="a.installGh"
                     >
                       Install update from GitHub
                     </button>
@@ -291,6 +292,7 @@
                       type="button"
                       class="btn btn-outline-primary col-sm-12 mb-3"
                       onclick="checkEspFirmware()"
+                      data-i18n="c.checkUpd"
                     >
                       Check for updates
                     </button>
@@ -309,12 +311,13 @@
                         style="display: none"
                         accept=".bin"
                       />
-                      <label id="file-input" class="file-pick" for="file">Select File...</label>
+                      <label id="file-input" class="file-pick" for="file" data-i18n="c.selFile">Select File...</label>
                       <input
                         id="updButton"
                         type="submit"
                         class="btn btn-warning mb-2"
                         value="ESP32 file update"
+                        data-i18n="a.espFwUpd[value]"
                         disabled
                       />
                       <div class="container" style="max-width: 300px; margin: 30px auto 0">
@@ -333,17 +336,18 @@
             <div class="card">
                 <div class="card-header">
                     <img src="icon_zigbee_info.svg" class="title_icon_style" />
-                    <span>Zigbee Firmware</span>
+                     <span data-i18n="a.zbFwCard">Zigbee Firmware</span>
                 </div>
                 <div class="card-body">
-                    <div class="info-item"><span class="label">Installed:</span><span>rev <span data-replace="zigbeeFwRev"></span></span></div>
-                    <div id="zbFwStatus" class="fw-status"><span class="text-muted">Checking for updates...</span></div>
+                    <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span><span data-i18n="a.rev">rev</span> <span data-replace="zigbeeFwRev"></span></span></div>
+                    <div id="zbFwStatus" class="fw-status"><span class="text-muted" data-i18n="c.checking">Checking for updates...</span></div>
                     <div id="zbFwList" class="mb-2"></div>
-                    <p class="text-muted" style="font-size:0.85rem">Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.</p>
+                    <p class="text-muted" style="font-size:0.85rem" data-i18n="a.coordNote">Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.</p>
                     <button
                       type="button"
                       class="btn btn-outline-primary col-sm-12 mb-3"
                       onclick="checkZbFirmware()"
+                      data-i18n="c.checkUpd"
                     >
                       Check for updates
                     </button>
@@ -362,12 +366,13 @@
                         style="display: none"
                         accept=".hex"
                       />
-                      <label id="file-input_zb" class="file-pick" for="file_zb">Select File...</label>
+                      <label id="file-input_zb" class="file-pick" for="file_zb" data-i18n="c.selFile">Select File...</label>
                       <input
                         id="updButton_zb"
                         type="submit"
                         class="btn btn-primary mb-2"
                         value="Zigbee File Update"
+                        data-i18n="a.zbFwUpd[value]"
                         disabled
                       />
                       <div class="container" style="max-width: 300px; margin: 30px auto 0">
@@ -408,13 +413,13 @@
         e.preventDefault();
         var data = new FormData(this);
         getEl("updButton").disabled = true;
-        getEl("prg").innerHTML = "Uploading firmware...";
+        getEl("prg").innerHTML = t("c.uploading");
         getEl("bar").style.width = "0%";
         var xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", function(evt) {
           if (evt.lengthComputable) {
             var per = evt.loaded / evt.total;
-            getEl("prg").innerHTML = "Uploading: " + Math.round(per * 100) + "%";
+            getEl("prg").innerHTML = t("d.uploadPct") + Math.round(per * 100) + "%";
             getEl("bar").style.width = Math.round(per * 100) + "%";
           }
         }, false);
@@ -422,19 +427,19 @@
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             console.log("ESP32 firmware upload and flash completed!");
-            getEl("prg").innerHTML = "Update completed!<br>Rebooting!";
+            getEl("prg").innerHTML = t("d.updDoneReboot");
             getEl("bar").style.width = "100%";
             rebootWait();
             getEl("updButton").disabled = true;
           } else {
             console.log("ESP32 update error: " + xhr.status + " - " + xhr.statusText);
-            getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
+            getEl("prg").innerHTML = '<span style="color:red">' + t("c.uplFail") + '</span><br>' + (xhr.statusText || t("c.checkNet"));
             getEl("bar").style.width = "0%";
             getEl("updButton").removeAttribute("disabled");
           }
         };
         xhr.onerror = function() {
-          getEl("prg").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
+          getEl("prg").innerHTML = '<span style="color:red">' + t("c.uplFail") + '</span><br>' + t("c.checkNet");
           getEl("bar").style.width = "0%";
           getEl("updButton").removeAttribute("disabled");
         };
@@ -444,13 +449,13 @@
         e.preventDefault();
         var data = new FormData(this);
         getEl("updButton_zb").disabled = true;
-        getEl("prg_zb").innerHTML = "Uploading firmware...";
+        getEl("prg_zb").innerHTML = t("c.uploading");
         getEl("bar_zb").style.width = "0%";
         var xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", function(evt) {
           if (evt.lengthComputable) {
             var per = evt.loaded / evt.total;
-            getEl("prg_zb").innerHTML = "upload: " + Math.round(per * 100) + "%";
+            getEl("prg_zb").innerHTML = t("d.uploadPct") + Math.round(per * 100) + "%";
             getEl("bar_zb").style.width = Math.round(per * 100) + "%";
           }
         }, false);
@@ -458,24 +463,24 @@
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             console.log("Success!");
-            getEl("prg_zb").innerHTML = "Upload complete! <br>Start verifing & flashing...";
+            getEl("prg_zb").innerHTML = t("d.uplComplete");
             getEl("bar_zb").style.width = "0%";
             ZBfwStartEvents();
             setTimeout(function() {
               if (typeof zbEventSource !== "undefined" && zbEventSource && zbEventSource.readyState !== EventSource.CLOSED) {
                 zbEventSource.close();
-                getEl("prg_zb").innerHTML = '<span style="color:orange">Operation timed out. Please check device status.</span>';
+                getEl("prg_zb").innerHTML = '<span style="color:orange">' + t("d.opTimeout") + '</span>';
                 getEl("updButton_zb").disabled = false;
               }
             }, 300000);
           } else {
             console.log("Zigbee update error: " + xhr.status + " - " + xhr.statusText);
-            getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>' + (xhr.statusText || "Please check network connection and retry");
+            getEl("prg_zb").innerHTML = '<span style="color:red">' + t("c.uplFail") + '</span><br>' + (xhr.statusText || t("c.checkNet"));
             getEl("bar_zb").style.width = "0%";
           }
         };
         xhr.onerror = function() {
-          getEl("prg_zb").innerHTML = '<span style="color:red">Firmware upload failed!</span><br>Please check network connection and retry';
+          getEl("prg_zb").innerHTML = '<span style="color:red">' + t("c.uplFail") + '</span><br>' + t("c.checkNet");
           getEl("bar_zb").style.width = "0%";
         };
         xhr.send(data);
