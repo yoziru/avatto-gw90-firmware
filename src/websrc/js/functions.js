@@ -370,48 +370,8 @@ function apiGetPage(page, doneCall) {
 			if (respValues === null) return;
 			console.log("[apiGetPage] starting parse values");
 			const values = JSON.parse(respValues);
-			let selectedTimeZone = null;
-			for (const property in values) {
-				if (property === "timeZoneName") {
-					selectedTimeZone = values[property];
-					console.debug(selectedTimeZone);
-					console.debug("timeZoneName");
-					continue;
-				}
-				getQA("[data-replace='" + property + "']").forEach(elem => {
-					const elemType = elem.nodeName.toLowerCase();
-					let valueToSet = values[property];
-					const isIpValue = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(valueToSet);
-					const isMaskInPropertyName = property.toLowerCase().includes("mask");
-					if (isIpValue && !isMaskInPropertyName) {
-						valueToSet = '<a href="http://' + valueToSet + '">' + valueToSet + '</a>';
-					}
-					switch (elemType) {
-						case "input":
-						case "select":
-						case "textarea":
-							const type = (elem.type || "").toLowerCase();
-							if (elemType == "input" && (type == "checkbox" || type == "radio")) {
-								elem.checked = values[property];
-							} else {
-								elem.value = values[property];
-							}
-							break;
-						case "option":
-							elem.selected = true;
-							break;
-						default:
-							if (isIpValue && !isMaskInPropertyName) {
-								elem.innerHTML = valueToSet;
-							} else {
-								const pill = statusPill(valueToSet);
-								if (pill) elem.innerHTML = pill;
-								else elem.textContent = (typeof tStatus == "function") ? tStatus(valueToSet) : valueToSet;
-							}
-							break;
-					}
-				});
-			}
+			let selectedTimeZone = values.timeZoneName || null;
+			fillReplaceValues(values);
 
 			if (respTimeZones !== null) {
 				const zones = JSON.parse(respTimeZones);
@@ -1264,32 +1224,61 @@ function WgInputDsbl(state) {
 }
 
 let statusRefreshTimer = null;
-const statusRefreshKeys = ["z2mConnected", "z2mClientIp", "connectedSocket", "zbStatus", "zbAutoResets", "connectedSocketStatus", "uptime"];
+
+// Single path for filling backend values into data-replace cells, shared by
+// page load, live status refresh and language switch - so pills/status text
+// always render in the active locale. Only touches elements present in the DOM.
+function fillReplaceValues(values) {
+	for (const property in values) {
+		if (property === "timeZoneName") continue; // dropdown handled by caller
+		getQA("[data-replace='" + property + "']").forEach(elem => {
+			const elemType = elem.nodeName.toLowerCase();
+			let valueToSet = values[property];
+			const isIpValue = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(valueToSet);
+			const isMaskInPropertyName = property.toLowerCase().includes("mask");
+			if (isIpValue && !isMaskInPropertyName) {
+				valueToSet = '<a href="http://' + valueToSet + '">' + valueToSet + '</a>';
+			}
+			switch (elemType) {
+				case "input":
+				case "select":
+				case "textarea":
+					const type = (elem.type || "").toLowerCase();
+					if (elemType == "input" && (type == "checkbox" || type == "radio")) {
+						elem.checked = values[property];
+					} else {
+						elem.value = values[property];
+					}
+					break;
+				case "option":
+					elem.selected = true;
+					break;
+				default:
+					if (isIpValue && !isMaskInPropertyName) {
+						elem.innerHTML = valueToSet;
+					} else {
+						const pill = statusPill(valueToSet);
+						if (pill) elem.innerHTML = pill;
+						else elem.textContent = (typeof tStatus == "function") ? tStatus(valueToSet) : valueToSet;
+					}
+					break;
+			}
+		});
+	}
+}
+
+// The status page is identified by its Zigbee-link cell (present only there).
+function isStatusPage() { return !!getQ("[data-replace='z2mConnected']"); }
 
 // Live-refresh of the status page: poll /status (JSON of getRootData) and update
 // the data-replace cells in place, without reloading the whole page.
 function refreshStatusData() {
-	if (!getQ("[data-replace='z2mLink']")) {
+	if (!isStatusPage()) {
 		if (statusRefreshTimer) { clearInterval(statusRefreshTimer); statusRefreshTimer = null; }
 		return;
 	}
 	fetch("/status", { cache: "no-store" }).then(r => r.json()).then(values => {
-		statusRefreshKeys.forEach(key => {
-			if (values[key] === undefined) return;
-			const valueToSet = String(values[key]);
-			const isIpValue = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(valueToSet);
-			getQA("[data-replace='" + key + "']").forEach(elem => {
-				const elemType = elem.nodeName.toLowerCase();
-				if (elemType === "input" || elemType === "select" || elemType === "textarea" || elemType === "option") return;
-				if (isIpValue) {
-					elem.innerHTML = '<a href="http://' + valueToSet + '">' + valueToSet + '</a>';
-				} else {
-					const pill = statusPill(valueToSet);
-					if (pill) elem.innerHTML = pill;
-					else elem.textContent = (typeof tStatus == "function") ? tStatus(valueToSet) : valueToSet;
-				}
-			});
-		});
+		fillReplaceValues(values);
 	}).catch(() => {});
 }
 
@@ -1547,7 +1536,7 @@ function checkLatestESPrelease() {
 	processResponses().then(combinedData => {
 		if (!combinedData || !combinedData.jsonData) return;
 		var downloadCount = (combinedData.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
-		var releaseInfo = microI18n.t("d.newFw", { tag: combinedData.jsonData.tag_name, count: downloadCount.toLocaleString() });
+		var releaseInfo = t("d.newFw", { tag: combinedData.jsonData.tag_name, count: downloadCount.toLocaleString() });
 		if (verIsNewer(combinedData.jsonData.tag_name, combinedData.textData)) {
 			setTimeout(() => {
 				if (!(localStorage.getItem("update_notify") == 1)) modalConstructor("espGitUpdate", releaseInfo);
@@ -1625,6 +1614,32 @@ function escHtml(s) {
 }
 
 let espFwInfo = null;
+let _espFwError = false;
+
+// Render the ESP32 card from cache (no network) - shared by the version check
+// and language switch, so the status text follows the active locale.
+function renderEspFwStatus() {
+	const st = getEl("espFwStatus");
+	if (!st) return;
+	const upd = getEl("updEspGit");
+	const log = getEl("espFwChglog");
+	if (_espFwError || !espFwInfo) {
+		if (!_espFwError) return; // check still running: leave the spinner text
+		st.innerHTML = "<span class='text-muted'>" + t("d.noGh") + "</span>";
+		if (upd) upd.style.display = "none";
+		if (log) log.style.display = "none";
+		return;
+	}
+	if (espFwInfo.hasUpdate) {
+		st.innerHTML = t("d.updAvail") + "<strong>" + escHtml(espFwInfo.tag) + "</strong> (" + t("d.dlCount", { count: Number(espFwInfo.count || 0).toLocaleString() }) + ")";
+		if (log) { log.style.display = ""; log.textContent = espFwInfo.body || ""; }
+		if (upd) upd.style.display = "";
+	} else {
+		st.innerHTML = t("d.upToDate") + " (<strong>" + escHtml(espFwInfo.local) + "</strong>)";
+		if (upd) upd.style.display = "none";
+		if (log) log.style.display = "none";
+	}
+}
 
 // Details modal for the ESP32 card: installed + latest + release notes,
 // available for any version (not just when an update is pending).
@@ -1645,29 +1660,18 @@ async function checkEspFirmware() {
 	try {
 		combined = await processResponses();
 	} catch (e) { console.warn("ESP32 version check failed:", e); }
-	const upd = getEl("updEspGit");
-	const log = getEl("espFwChglog");
 	espFwInfo = null;
+	_espFwError = false;
 	if (!combined || !combined.jsonData || !combined.jsonData.tag_name) {
-		st.innerHTML = "<span class='text-muted'>" + t("d.noGh") + "</span>";
-		if (upd) upd.style.display = "none";
-		if (log) log.style.display = "none";
+		_espFwError = true;
+		renderEspFwStatus();
 		return;
 	}
 	const tag = combined.jsonData.tag_name;
 	const local = String(combined.textData).trim();
-	const hasUpdate = verIsNewer(tag, combined.textData);
-	espFwInfo = { tag, local, body: combined.jsonData.body || "", hasUpdate };
-	if (hasUpdate) {
-		const count = (combined.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
-		st.innerHTML = t("d.updAvail") + "<strong>" + escHtml(tag) + "</strong> (" + microI18n.t("d.dlCount", { count: count.toLocaleString() }) + ")";
-		if (log) { log.style.display = ""; log.textContent = combined.jsonData.body || ""; }
-		if (upd) upd.style.display = "";
-	} else {
-		st.innerHTML = t("d.upToDate") + " (<strong>" + escHtml(local) + "</strong>)";
-		if (upd) upd.style.display = "none";
-		if (log) log.style.display = "none";
-	}
+	const count = (combined.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
+	espFwInfo = { tag, local, body: combined.jsonData.body || "", hasUpdate: verIsNewer(tag, combined.textData), count };
+	renderEspFwStatus();
 }
 
 // Zigbee firmware status on the About page, same deal: per-type rows that
@@ -1681,18 +1685,29 @@ async function checkZbFirmware() {
 		[fwData, rev] = await Promise.all([fetchData(zbFwInfoUrl, true), fetchData("/api?action=1&param=zbRev", false)]);
 	} catch (e) { console.warn("Zigbee version check failed:", e); }
 	const localRev = (rev || "").trim();
-	const box = getEl("zbFwList");
 	if (!Array.isArray(fwData) || !fwData.length) {
-		st.innerHTML = "<span class='text-muted'>" + t("d.noZbIdx") + "</span>";
+		_zbFwCache = { error: "index" };
+	} else {
+		const fws = fwData.filter(fw => (fw.firmwareType || "").toLowerCase() === "zigbee");
+		_zbFwCache = fws.length ? { fws, localRev } : { error: "empty" };
+	}
+	renderZbFwList();
+}
+
+let _zbFwCache = null; // {fws, localRev} | {error:'index'|'empty'}
+
+// Render the Zigbee firmware rows from cache (no network) - shared by the
+// version check and language switch, so rows follow the active locale.
+function renderZbFwList() {
+	const st = getEl("zbFwStatus");
+	const box = getEl("zbFwList");
+	if (!st || !_zbFwCache) return; // check still running: leave the spinner text
+	if (_zbFwCache.error) {
+		st.innerHTML = "<span class='text-muted'>" + t(_zbFwCache.error === "empty" ? "d.noZbFw" : "d.noZbIdx") + "</span>";
 		if (box) box.innerHTML = "";
 		return;
 	}
-	const fws = fwData.filter(fw => (fw.firmwareType || "").toLowerCase() === "zigbee");
-	if (!fws.length) {
-		st.innerHTML = "<span class='text-muted'>" + t("d.noZbFw") + "</span>";
-		if (box) box.innerHTML = "";
-		return;
-	}
+	const { fws, localRev } = _zbFwCache;
 	let newer = 0;
 	if (box) {
 		box.innerHTML = "";
@@ -1724,7 +1739,7 @@ async function checkZbFirmware() {
 			box.appendChild(row);
 		});
 	}
-	st.innerHTML = newer ? ("<span style='color:#f7a623'><strong>" + microI18n.t("d.updatesAvail", { n: newer }) + "</strong></span>")
+	st.innerHTML = newer ? ("<span style='color:#f7a623'><strong>" + t("d.updatesAvail", { n: newer }) + "</strong></span>")
 		: t("d.allUpToDate") + " (" + t("d.localRev") + " <strong>" + escHtml(localRev || tStatus("unknown")) + "</strong>)";
 }
 
@@ -1808,9 +1823,13 @@ class MicroI18n {
 let microI18n;
 
 // Shortcut with English fallback even before initLanguage ran.
-function t(key) {
-	if (typeof microI18n !== "undefined" && microI18n) return microI18n.t(key);
-	if (typeof I18N !== "undefined" && I18N.en && I18N.en[key]) return I18N.en[key];
+function t(key, vars) {
+	if (typeof microI18n !== "undefined" && microI18n) return microI18n.t(key, vars || {});
+	if (typeof I18N !== "undefined" && I18N.en && I18N.en[key]) {
+		let text = I18N.en[key];
+		Object.keys(vars || {}).forEach((v) => { text = text.replace(`\${${v}}`, vars[v]); });
+		return text;
+	}
 	return key;
 }
 
@@ -1845,6 +1864,11 @@ function tStatus(val) {
 		if (microI18n.locale === "de") return "Still seit " + m[1] + "s";
 		return "静默 " + m[1] + "s";
 	}
+	if ((m = s.match(/^(\d+) d (\d\d:\d\d:\d\d)$/))) { // uptime / connected-for
+		if (!microI18n || microI18n.locale === "en") return s;
+		if (microI18n.locale === "de") return m[1] + " T. " + m[2];
+		return m[1] + " 天 " + m[2];
+	}
 	if (s.indexOf("Connected to ") === 0) {
 		const rest = s.slice("Connected to ".length);
 		if (!microI18n || microI18n.locale === "en") return s;
@@ -1878,10 +1902,14 @@ function setLanguage(lng) {
 	updateLocalizedContent();
 	// Dynamically rendered rows are built with t() at creation time - rebuild
 	// them from cached data so the switch applies without a rescan/reload.
+	// A join in flight keeps its progress row (the poll re-renders on finish).
 	try {
-		if (getEl("wifiList") && typeof renderWifiList == "function") renderWifiList();
+		const joining = !!document.querySelector(".wifi-join-status.connecting");
+		if (getEl("wifiList") && !joining && typeof renderWifiList == "function") renderWifiList();
 		if (getEl("wifiYourRow") && typeof renderWifiYourNetwork == "function") renderWifiYourNetwork();
-		if (getQ("[data-replace='z2mLink']") && typeof refreshStatusData == "function") refreshStatusData();
+		if (typeof isStatusPage == "function" && isStatusPage() && typeof refreshStatusData == "function") refreshStatusData();
+		if (getEl("espFwStatus") && typeof renderEspFwStatus == "function") renderEspFwStatus();
+		if (getEl("zbFwList") && typeof renderZbFwList == "function") renderZbFwList();
 	} catch (e) {}
 }
 
