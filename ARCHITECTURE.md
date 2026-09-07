@@ -437,7 +437,7 @@ Observed on a live PoE gateway: loop min ~1.26 ms, typical ~2 ms, ~30 ms periodi
 | `GET /api?action=1&param=X` | Single param (`refreshLogs`, `coordMode`, `zbRev`, `espVer`) |
 | `GET /api?action=2` | Start WiFi scan |
 | `GET /api?action=3` | WiFi scan status/results |
-| `GET /api?action=5` | WiFi connect status |
+| `GET /api?action=5` | WiFi connect status (`status`; failed joins also return `reason` and `reasonName`) |
 | `GET /api?action=6&cmd=N` | Execute command (see below) |
 | `GET /api?action=7` | Log buffer (`&src=zb` for the ZB frame ring, default event ring) |
 | `GET /api?action=8&fwurl=X` | Download + flash CC2652P firmware from URL |

@@ -22,6 +22,7 @@ DNSServer dnsServer;
 WiFiServer server(TCP_LISTEN_PORT, MAX_SOCKET_CLIENTS);
 
 WireGuard wg;
+volatile uint16_t wifiLastDisconnectReason = 0;
 
 Ticker tmrNetworkOverseer(handleTmrNetworkOverseer, overseerInterval, 0, MILLIS);
 Ticker tmrZbHealth(zbHealthCheck, 30000, 0, MILLIS);
@@ -235,15 +236,15 @@ void handleTmrNetworkOverseer()
   }
 }
 
-void NetworkEvent(arduino_event_id_t event)
+void NetworkEvent(arduino_event_t *event)
 {
   // "WiFi down" is only logged on a real up->down transition; the repeated
   // disconnect events fired while an association is failing must not flood
   // the log ring.
   static bool wifiStaWasUp = false;
   Serial.print(F("[NET_EVENT] Event ID: "));
-  Serial.println(event);
-  switch (event)
+  Serial.println(event->event_id);
+  switch (event->event_id)
   {
   case ARDUINO_EVENT_ETH_START:
     Serial.println(F("[ETH_EVENT] ETH Started"));
@@ -303,6 +304,13 @@ void NetworkEvent(arduino_event_id_t event)
     wifiStaWasUp = true;
     break;
   case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: // SYSTEM_EVENT_STA_DISCONNECTED:
+  {
+    const uint8_t reason = event->event_info.wifi_sta_disconnected.reason;
+    if (reason != WIFI_REASON_AUTH_LEAVE && reason != WIFI_REASON_ASSOC_LEAVE &&
+        reason != WIFI_REASON_STA_LEAVING)
+    {
+      wifiLastDisconnectReason = reason;
+    }
     DEBUG_PRINTLN(F("WIFI STA DISCONNECTED"));
     if (wifiStaWasUp)
     {
@@ -314,6 +322,7 @@ void NetworkEvent(arduino_event_id_t event)
       tmrNetworkOverseer.start();
     }
     break;
+  }
   default:
     break;
   }
@@ -414,6 +423,7 @@ void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *i
   }
   delay(100);
 
+  wifiLastDisconnectReason = 0;
   WiFi.begin(ssid, pass);
   WiFi.setSleep(false);
   DEBUG_PRINTLN(F("[connectWifiSta] WiFi.begin"));

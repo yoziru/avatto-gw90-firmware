@@ -310,21 +310,9 @@
   .wifi-chev svg { transform: rotate(90deg); transition: transform 0.2s ease; }
   .wifi-item.open .wifi-chev svg { transform: rotate(-90deg); }
 
-  /* Shimmering "Connecting…" (text sweep, left to right). Linear keeps the
-     sweep visible for the whole cycle; slower duration reads as calmer. */
-  .wifi-join-status.connecting {
-    font-weight: 600;
-    background: linear-gradient(90deg, var(--text-muted) 25%, var(--accent) 50%, var(--text-muted) 75%);
-    background-size: 200% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: wifi-shimmer 6s linear infinite;
-  }
-  @keyframes wifi-shimmer {
-    from { background-position: 200% 0; }
-    to { background-position: -200% 0; }
-  }
+  /* "Connecting…" shimmer is global (.busy-shimmer in style.css, aliased to
+     .wifi-join-status.connecting); only the weight stays page-local. */
+  .wifi-join-status.connecting { font-weight: 600; }
 
   /* Expanded join row (slides in below the tapped network) */
   .wifi-connect {
