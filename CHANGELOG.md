@@ -15,6 +15,9 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Improvements
 
+- Reconnecting a network after forgetting it now clears the old "Network forgotten." status from its details panel.
+- Wi-Fi join failures now explain whether the network was not found, authentication/security failed, the signal was too weak, or the access point rejected the connection instead of always saying to check the password.
+- Busy states now share one shimmer sweep: "Connecting…", "Scanning…", "Checking for updates…", "Loading…", "Saving…" and "Forgetting…" shimmer while they wait (with a dark-mode variant and no animation for reduced-motion users), replacing the old Wi-Fi-only effect.
 - Wi-Fi joins that can't succeed now fail fast: a join to a wrong-password or out-of-range network gives up after ~45 s, stops the retry loop, and keeps the previously saved network. Repeated connect failures no longer flood the log with "WiFi down" lines.
 - Wi-Fi page polish: the Join Other Network form shows a clear message when the network name or password is missing, password fields no longer trigger the browser's strong-password/save prompts, expanded rows use the full width, and the join form only appears after a scan finishes (a stalled scan times out with tap-to-retry). The saved-network row opens its IP settings on click anywhere, and the password field and Connect button share one height with even padding.
 - Theme setting is now pinned explicitly instead of only setting dark: an OS-dark + in-app-light combination no longer desyncs into unreadable white-on-white text. Progress modals also sit slightly higher with a slimmer header.

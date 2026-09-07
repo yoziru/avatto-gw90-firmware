@@ -15,6 +15,7 @@
 #include "etc.h"
 #include "zb.h"
 #include "version.h"
+#include "net.h"
 
 #include "webh/PAGE_ROOT.html.gz.h"
 #include "webh/PAGE_GENERAL.html.gz.h"
@@ -346,7 +347,9 @@ void handleApi()
             String result;
             JsonDocument doc;
             const char *connected = "connected";
-            if (WiFi.status() == WL_CONNECTED)
+            const wl_status_t wifiStatus = WiFi.status();
+            doc["status"] = static_cast<uint8_t>(wifiStatus);
+            if (wifiStatus == WL_CONNECTED)
             {
                 doc[connected] = true;
                 doc["ip"] = WiFi.localIP().toString();
@@ -357,6 +360,12 @@ void handleApi()
             else
             {
                 doc[connected] = false;
+                if (wifiLastDisconnectReason != 0)
+                {
+                    doc["reason"] = wifiLastDisconnectReason;
+                    doc["reasonName"] = WiFi.disconnectReasonName(
+                        static_cast<wifi_err_reason_t>(wifiLastDisconnectReason));
+                }
             }
             serializeJson(doc, result);
             serverWeb.send(HTTP_CODE_OK, contTypeJson, result);

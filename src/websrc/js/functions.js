@@ -757,7 +757,7 @@ function getWifiList() {
 	const list = getEl("wifiList");
 	// While scanning there is nothing to interact with - the join row only
 	// appears once results are in, so a mid-scan join can't race the list.
-	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-spinner"></span><span class="wifi-name">' + t("w.scanning") + '</span></div>';
+	if (list) list.innerHTML = '<div class="wifi-item wifi-placeholder"><span class="wifi-spinner"></span><span class="wifi-name"><span class="busy-shimmer">' + t("w.scanning") + '</span></span></div>';
 	let polls = 0;
 	const giveUp = () => {
 		if (!list) return;
@@ -870,6 +870,20 @@ function wifiBusyBtn(btn, busy) {
 	if (btn) btn.disabled = busy;
 }
 
+function wifiJoinFailure(data) {
+	const reason = Number(data && data.reason);
+	// ESP-IDF disconnect reasons are numeric in the API; keep the UI independent
+	// of the firmware headers while grouping them into useful advice. WiFi.status
+	// is stale for the first seconds of a new begin(), so never classify from it.
+	if (reason === 201) return t("w.noSsid");
+	if (reason === 210 || reason === 211) return t("w.security");
+	if (reason === 200 || reason === 212) return t("w.weakSignal");
+	if ([2, 9, 14, 15, 18, 19, 20, 21, 22, 23, 24, 29, 202, 204].includes(reason)) return t("w.connFailPw");
+	if (reason === 203) return t("w.apReject");
+	if (reason === 205) return t("w.connFail");
+	return null;
+}
+
 // Sequence token: a fresh join invalidates the poll loop of a previous one,
 // so a stale poll can't overwrite the newer attempt's status.
 let _wifiJoinSeq = 0;
@@ -880,14 +894,16 @@ function wifiJoin(ssid, pass, statusEl, btn, secure) {
 	fd.set("WIFISSID", ssid);
 	fd.set("WIFIpassword", pass);
 	if (secure !== undefined) _wifiSavedSecure = !!secure;
-	if (statusEl) { statusEl.className = "wifi-join-status connecting"; statusEl.textContent = t("w.connecting"); }
+	if (statusEl) { statusEl.className = "wifi-join-status connecting"; statusEl.innerHTML = '<span class="busy-shimmer">' + t("w.connecting") + '</span>'; }
 	wifiBusyBtn(btn, true);
-	fetch("/saveParams", { method: "POST", body: fd }).catch(() => {
+	fetch("/saveParams", { method: "POST", body: fd }).then(r => {
+		if (!r.ok) throw new Error("save failed");
+		wifiPollConnect(seq, statusEl, ssid, pass, btn);
+	}).catch(() => {
 		if (seq !== _wifiJoinSeq) return;
 		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.saveFail"); }
 		wifiBusyBtn(btn, false);
 	});
-	wifiPollConnect(seq, statusEl, ssid, pass, btn);
 }
 
 // Poll the STA connect state until it resolves, then refresh the UI.
@@ -913,12 +929,16 @@ function wifiPollConnect(seq, statusEl, ssid, pass, btn) {
 					if (row) row.classList.remove("open");
 					["otherSsid", "otherPass"].forEach(id => { const e = getEl(id); if (e) e.value = ""; });
 				}
+				const ipStatus = getEl("wifiIpStatus");
+				if (ipStatus) { ipStatus.className = "wifi-ip-status"; ipStatus.textContent = ""; }
 				renderWifiYourNetwork();
 				renderWifiList();
-			} else if (tries >= 15) {
+			} else {
+				const failure = wifiJoinFailure(data);
+				if (!failure && tries < 15) return;
 				clearInterval(tmr);
 				wifiBusyBtn(btn, false);
-				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.connFailPw"); }
+				if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = failure || t("w.connFail"); }
 			}
 		}).catch(() => {
 			if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
@@ -1102,7 +1122,7 @@ function WifiDhcpDsbl(state) {
 function wifiSaveIp() {
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
-	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = t("d.saving"); }
+	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.innerHTML = '<span class="busy-shimmer">' + t("d.saving") + '</span>'; }
 	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
 		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = t("w.saved"); }
 	}).catch(() => {
@@ -1120,7 +1140,7 @@ function wifiForget() {
 	_wifiSavedSecure = null;
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
-	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.textContent = t("w.forgetting"); }
+	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.innerHTML = '<span class="busy-shimmer">' + t("w.forgetting") + '</span>'; }
 	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
 		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = t("w.forgotten"); }
 		toggleCollapseIp(false);
@@ -1552,7 +1572,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 	if (isZbVersionLoading) { console.log("Already loading, ignore..."); return; }
 	isZbVersionLoading = true;
 	try {
-		modalConstructor("zbVersionInfo", { text: t("d.loadingFw"), chglog: "<div class='spinner-border text-primary' role='status'></div> " + t("d.loading") });
+		modalConstructor("zbVersionInfo", { text: t("d.loadingFw"), chglog: "<div class='spinner-border text-primary' role='status'></div> <span class='busy-shimmer'>" + t("d.loading") + "</span>" });
 		let fwData = null;
 		let localVerData = null;
 		try {
@@ -1654,7 +1674,7 @@ function showEspFwDetails() {
 async function checkEspFirmware() {
 	const st = getEl("espFwStatus");
 	if (!st) return;
-	st.innerHTML = "<span class='text-muted'>" + t("c.checking") + "</span>";
+	st.innerHTML = "<span class='text-muted busy-shimmer'>" + t("c.checking") + "</span>";
 	let combined = null;
 	try {
 		combined = await processResponses();
@@ -1678,7 +1698,7 @@ async function checkEspFirmware() {
 async function checkZbFirmware() {
 	const st = getEl("zbFwStatus");
 	if (!st) return;
-	st.innerHTML = "<span class='text-muted'>" + t("c.checking") + "</span>";
+	st.innerHTML = "<span class='text-muted busy-shimmer'>" + t("c.checking") + "</span>";
 	let fwData = null, rev = "";
 	try {
 		[fwData, rev] = await Promise.all([fetchData(zbFwInfoUrl, true), fetchData("/api?action=1&param=zbRev", false)]);
@@ -1754,7 +1774,7 @@ en: {
 "s.opMode": "Operating mode", "s.zbConn": "Zigbee connection", "s.conn": "Connection:", "s.clientIp": "Client IP:", "s.connFor": "Connected for:", "s.coordStatus": "Coordinator status:", "s.coordResets": "Coordinator auto-resets:", "s.eth": "Ethernet", "s.ethStatus": "Connection status:", "s.dhcp": "DHCP:", "s.ip": "IP Address:", "s.mask": "Mask:", "s.gw": "Gateway:", "s.speed": "Connection Speed:", "s.mac": "MAC:", "s.devStatus": "Device Status", "s.opModeRow": "Operating mode:", "s.ethernet": "Ethernet:", "s.uplink": "Network uplink:", "s.uptime": "Uptime:", "s.temp": "Temperature:", "s.wifiEn": "WiFi Enabled:", "s.wifiStatus": "WiFi Status:", "s.wifiApEn": "WiFi Access Point Enabled:", "s.wifiApStatus": "WiFi Access Point Status:", "s.wifi": "WiFi", "s.mode": "Mode:", "s.ssid": "SSID:", "s.subnet": "Subnet Mask:", "s.signal": "Signal:", "s.vpn": "VPN", "s.init": "Initialized:", "s.remote": "Remote Address:",
 "g.workMode": "Work Mode", "g.netMode": "Network Mode", "g.recommended": "Recommended", "g.netDesc": "Ethernet with automatic Wi-Fi fallback", "g.serMode": "Serial Mode", "g.serDesc": "Directly connect to computer via USB (serial test)", "g.keepWeb": "Keep Network & Web", "g.keepHint": "Keeps one channel active (Wi-Fi, Ethernet or Wi-Fi AP, in that order) so the web interface stays reachable.", "g.rtControl": "Real-time Control", "g.ledHint": "Use toggle buttons to control LED status (current session, not saved after reboot)", "g.pwrLed": "Power Indicator LED", "g.wifiLed": "Wi-Fi/Serial Mode LED", "g.ledSaveHint": "Use the switches below to control LED behavior (saved after reboot)", "g.disPwr": "Disable Power LED", "g.disUsb": "Disable USB LED", "g.sysVar": "System Variables", "g.hostname": "Hostname (The device will be displayed on the network with this name)", "g.logRefresh": "Log refresh interval (milliseconds)", "g.timezone": "Time Zone",
 "e.conn": "Connection", "e.dhcp": "Enable DHCP (recommended)", "e.ipSet": "IP Settings", "e.ip": "IP", "e.mask": "Subnet Mask", "e.gw": "Default Gateway",
-"w.title": "Wi-Fi", "w.yourNet": "Your Network", "w.ipSet": "IP Settings", "w.dhcp": "DHCP", "w.asleep": "WiFi is asleep (Ethernet is the active uplink) - live IP appears here when WiFi is used.", "w.ip": "IP Address", "w.mask": "Subnet Mask", "w.router": "Router", "w.save": "Save", "w.forget": "Forget This Network", "w.noNet": "No network configured", "w.otherNet": "Other Networks", "w.joinOther": "Join Other Network…", "w.ssidPh": "Network name (SSID)", "w.passPh": "Password", "w.join": "Join", "w.connect": "Connect", "w.scanning": "Scanning…", "w.scanTimeout": "Scan timed out. Tap to retry.", "w.noFound": "No Wi-Fi networks found.", "w.connecting": "Connecting…", "w.connected": "Connected", "w.connFailPw": "Could not connect. Check the password.", "w.connNoStatus": "Connection status unavailable.", "w.saveFail": "Save failed. Check your network.", "w.saved": "Saved", "w.forgetting": "Forgetting…", "w.forgotten": "Network forgotten.", "w.forgetFail": "Failed to forget network.", "w.forgetConfirm": "Forget this Wi-Fi network?", "w.enterSsid": "Enter a network name.", "w.pw8": "Password must be at least 8 characters.", "w.wpa": "WPA2/WPA3", "w.open": "Open", "w.noNetsYet": "No networks yet.",
+"w.title": "Wi-Fi", "w.yourNet": "Your Network", "w.ipSet": "IP Settings", "w.dhcp": "DHCP", "w.asleep": "WiFi is asleep (Ethernet is the active uplink) - live IP appears here when WiFi is used.", "w.ip": "IP Address", "w.mask": "Subnet Mask", "w.router": "Router", "w.save": "Save", "w.forget": "Forget This Network", "w.noNet": "No network configured", "w.otherNet": "Other Networks", "w.joinOther": "Join Other Network…", "w.ssidPh": "Network name (SSID)", "w.passPh": "Password", "w.join": "Join", "w.connect": "Connect", "w.scanning": "Scanning…", "w.scanTimeout": "Scan timed out. Tap to retry.", "w.noFound": "No Wi-Fi networks found.", "w.connecting": "Connecting…", "w.connected": "Connected", "w.connFailPw": "Wi-Fi authentication failed. Check the password and security mode.", "w.noSsid": "Network not found. Check the SSID, range, and that the network is broadcasting.", "w.security": "This network's security mode is not supported. Check the router settings.", "w.weakSignal": "The Wi-Fi signal is too weak or unstable. Move closer to the router and try again.", "w.apReject": "The access point rejected the connection. Check its settings and try again.", "w.connFail": "Could not connect. Check the SSID, password, and router.", "w.connNoStatus": "Connection status unavailable.", "w.saveFail": "Save failed. Check your network.", "w.saved": "Saved", "w.forgetting": "Forgetting…", "w.forgotten": "Network forgotten.", "w.forgetFail": "Failed to forget network.", "w.forgetConfirm": "Forget this Wi-Fi network?", "w.enterSsid": "Enter a network name.", "w.pw8": "Password must be at least 8 characters.", "w.wpa": "WPA2/WPA3", "w.open": "Open", "w.noNetsYet": "No networks yet.",
 "z.serSet": "Serial Settings", "z.baud": "Baud Rate", "z.port": "Port", "z.cfgGen": "Config Generator", "z.apAlert": "It seems that AVATTO-GW90-Ti is operating in access point mode (IP address is 192.168.1.1). The IP address will change after connecting to Ethernet or Wi-Fi, and the configuration needs to be regenerated.", "z.cfgGenLabel": "Config Generator", "z.copy": "Copy to Clipboard",
 "sec.webSrv": "Web Server", "sec.disWeb": "Disable Web Server when interface is connected", "sec.enAuth": "Enable Web Server Authentication", "sec.user": "Username", "sec.pass": "Password", "sec.access": "Access Control", "sec.enWhite": "Enable Connection IP Whitelist", "sec.allowed": "Allowed IPs",
 "m.conn": "Connection", "m.server": "Server", "m.port": "Port", "m.user": "Username", "m.pass": "Password", "m.topicDisc": "Topic & Discovery", "m.topic": "Topic", "m.interval": "Interval (seconds)", "m.haDisc": "Enable Home Assistant Discovery",
@@ -1771,7 +1791,7 @@ de: {
 "s.opMode": "Betriebsmodus", "s.zbConn": "Zigbee-Verbindung", "s.conn": "Verbindung:", "s.clientIp": "Client-IP:", "s.connFor": "Verbunden seit:", "s.coordStatus": "Koordinatorstatus:", "s.coordResets": "Auto-Neustarts des Koordinators:", "s.eth": "Ethernet", "s.ethStatus": "Verbindungsstatus:", "s.dhcp": "DHCP:", "s.ip": "IP-Adresse:", "s.mask": "Netzmaske:", "s.gw": "Gateway:", "s.speed": "Verbindungsgeschwindigkeit:", "s.mac": "MAC:", "s.devStatus": "Gerätestatus", "s.opModeRow": "Betriebsmodus:", "s.ethernet": "Ethernet:", "s.uplink": "Netzwerk-Uplink:", "s.uptime": "Betriebszeit:", "s.temp": "Temperatur:", "s.wifiEn": "WLAN aktiviert:", "s.wifiStatus": "WLAN-Status:", "s.wifiApEn": "WLAN-Zugangspunkt aktiviert:", "s.wifiApStatus": "Status des WLAN-Zugangspunkts:", "s.wifi": "WLAN", "s.mode": "Modus:", "s.ssid": "SSID:", "s.subnet": "Netzmaske:", "s.signal": "Signal:", "s.vpn": "VPN", "s.init": "Initialisiert:", "s.remote": "Remote-Adresse:",
 "g.workMode": "Betriebsart", "g.netMode": "Netzwerkmodus", "g.recommended": "Empfohlen", "g.netDesc": "Ethernet mit automatischem WLAN-Fallback", "g.serMode": "Serieller Modus", "g.serDesc": "Direkt per USB mit dem Computer verbinden (serieller Test)", "g.keepWeb": "Netzwerk & Web behalten", "g.keepHint": "Hält einen Kanal aktiv (WLAN, Ethernet oder WLAN-AP, in dieser Reihenfolge), damit die Weboberfläche erreichbar bleibt.", "g.rtControl": "Echtzeitsteuerung", "g.ledHint": "LEDs per Tastendruck schalten (nur aktuelle Sitzung, geht nach Neustart verloren)", "g.pwrLed": "Power-LED", "g.wifiLed": "WLAN/Seriell-LED", "g.ledSaveHint": "Schalter unten steuern das LED-Verhalten dauerhaft (bleibt nach Neustart)", "g.disPwr": "Power-LED deaktivieren", "g.disUsb": "USB-LED deaktivieren", "g.sysVar": "Systemvariablen", "g.hostname": "Hostname (unter diesem Namen erscheint das Gerät im Netzwerk)", "g.logRefresh": "Log-Aktualisierung (Millisekunden)", "g.timezone": "Zeitzone",
 "e.conn": "Verbindung", "e.dhcp": "DHCP aktivieren (empfohlen)", "e.ipSet": "IP-Einstellungen", "e.ip": "IP", "e.mask": "Netzmaske", "e.gw": "Standard-Gateway",
-"w.title": "WLAN", "w.yourNet": "Eigenes Netzwerk", "w.ipSet": "IP-Einstellungen", "w.dhcp": "DHCP", "w.asleep": "WLAN ist im Standby (Ethernet ist der aktive Uplink) – Live-IP erscheint hier, sobald WLAN genutzt wird.", "w.ip": "IP-Adresse", "w.mask": "Netzmaske", "w.router": "Router", "w.save": "Speichern", "w.forget": "Dieses Netzwerk entfernen", "w.noNet": "Kein Netzwerk eingerichtet", "w.otherNet": "Weitere Netzwerke", "w.joinOther": "Anderes Netzwerk hinzufügen …", "w.ssidPh": "Netzwerkname (SSID)", "w.passPh": "Passwort", "w.join": "Beitreten", "w.connect": "Verbinden", "w.scanning": "Suche läuft …", "w.scanTimeout": "Suche abgelaufen. Zum Wiederholen tippen.", "w.noFound": "Keine WLAN-Netzwerke gefunden.", "w.connecting": "Verbinde …", "w.connected": "Verbunden", "w.connFailPw": "Verbindung fehlgeschlagen. Passwort prüfen.", "w.connNoStatus": "Verbindungsstatus nicht verfügbar.", "w.saveFail": "Speichern fehlgeschlagen. Netzwerk prüfen.", "w.saved": "Gespeichert", "w.forgetting": "Wird entfernt …", "w.forgotten": "Netzwerk entfernt.", "w.forgetFail": "Entfernen fehlgeschlagen.", "w.forgetConfirm": "Dieses WLAN-Netzwerk entfernen?", "w.enterSsid": "Netzwerknamen eingeben.", "w.pw8": "Das Passwort braucht mindestens 8 Zeichen.", "w.wpa": "WPA2/WPA3", "w.open": "Offen", "w.noNetsYet": "Noch keine Netzwerke.",
+"w.title": "WLAN", "w.yourNet": "Eigenes Netzwerk", "w.ipSet": "IP-Einstellungen", "w.dhcp": "DHCP", "w.asleep": "WLAN ist im Standby (Ethernet ist der aktive Uplink) – Live-IP erscheint hier, sobald WLAN genutzt wird.", "w.ip": "IP-Adresse", "w.mask": "Netzmaske", "w.router": "Router", "w.save": "Speichern", "w.forget": "Dieses Netzwerk entfernen", "w.noNet": "Kein Netzwerk eingerichtet", "w.otherNet": "Weitere Netzwerke", "w.joinOther": "Anderes Netzwerk hinzufügen …", "w.ssidPh": "Netzwerkname (SSID)", "w.passPh": "Passwort", "w.join": "Beitreten", "w.connect": "Verbinden", "w.scanning": "Suche läuft …", "w.scanTimeout": "Suche abgelaufen. Zum Wiederholen tippen.", "w.noFound": "Keine WLAN-Netzwerke gefunden.", "w.connecting": "Verbinde …", "w.connected": "Verbunden", "w.connFailPw": "WLAN-Authentifizierung fehlgeschlagen. Passwort und Sicherheitsmodus prüfen.", "w.noSsid": "Netzwerk nicht gefunden. SSID, Reichweite und sichtbare Ausstrahlung prüfen.", "w.security": "Der Sicherheitsmodus dieses Netzwerks wird nicht unterstützt. Router-Einstellungen prüfen.", "w.weakSignal": "WLAN-Signal zu schwach oder instabil. Näher an den Router gehen und erneut versuchen.", "w.apReject": "Der Access Point hat die Verbindung abgelehnt. Einstellungen prüfen und erneut versuchen.", "w.connFail": "Verbindung nicht möglich. SSID, Passwort und Router prüfen.", "w.connNoStatus": "Verbindungsstatus nicht verfügbar.", "w.saveFail": "Speichern fehlgeschlagen. Netzwerk prüfen.", "w.saved": "Gespeichert", "w.forgetting": "Wird entfernt …", "w.forgotten": "Netzwerk entfernt.", "w.forgetFail": "Entfernen fehlgeschlagen.", "w.forgetConfirm": "Dieses WLAN-Netzwerk entfernen?", "w.enterSsid": "Netzwerknamen eingeben.", "w.pw8": "Das Passwort braucht mindestens 8 Zeichen.", "w.wpa": "WPA2/WPA3", "w.open": "Offen", "w.noNetsYet": "Noch keine Netzwerke.",
 "z.serSet": "Serielle Einstellungen", "z.baud": "Baudrate", "z.port": "Port", "z.cfgGen": "Konfigurationsgenerator", "z.apAlert": "Das Gerät läuft wohl im Access-Point-Modus (IP 192.168.1.1). Nach Verbindung per Ethernet oder WLAN ändert sich die IP – bitte Konfiguration neu erzeugen.", "z.cfgGenLabel": "Konfigurationsgenerator", "z.copy": "In Zwischenablage kopieren",
 "sec.webSrv": "Webserver", "sec.disWeb": "Webserver bei aktiver Verbindung deaktivieren", "sec.enAuth": "Webserver-Authentifizierung aktivieren", "sec.user": "Benutzername", "sec.pass": "Passwort", "sec.access": "Zugriffskontrolle", "sec.enWhite": "IP-Whitelist für Verbindungen aktivieren", "sec.allowed": "Erlaubte IPs",
 "m.conn": "Verbindung", "m.server": "Server", "m.port": "Port", "m.user": "Benutzername", "m.pass": "Passwort", "m.topicDisc": "Topic & Discovery", "m.topic": "Topic", "m.interval": "Intervall (Sekunden)", "m.haDisc": "Home-Assistant-Discovery aktivieren",
@@ -1788,7 +1808,7 @@ zh: {
 "s.opMode": "运行模式", "s.zbConn": "Zigbee 连接", "s.conn": "连接状态：", "s.clientIp": "客户端 IP：", "s.connFor": "已连接时长：", "s.coordStatus": "协调器状态：", "s.coordResets": "协调器自动重启：", "s.eth": "以太网", "s.ethStatus": "连接状态：", "s.dhcp": "DHCP：", "s.ip": "IP 地址：", "s.mask": "子网掩码：", "s.gw": "网关：", "s.speed": "连接速率：", "s.mac": "MAC 地址：", "s.devStatus": "设备状态", "s.opModeRow": "运行模式：", "s.ethernet": "以太网：", "s.uplink": "网络上行：", "s.uptime": "运行时间：", "s.temp": "温度：", "s.wifiEn": "Wi-Fi 已启用：", "s.wifiStatus": "Wi-Fi 状态：", "s.wifiApEn": "Wi-Fi 热点已启用：", "s.wifiApStatus": "Wi-Fi 热点状态：", "s.wifi": "Wi-Fi", "s.mode": "模式：", "s.ssid": "无线名称：", "s.subnet": "子网掩码：", "s.signal": "信号：", "s.vpn": "VPN", "s.init": "已初始化：", "s.remote": "远端地址：",
 "g.workMode": "工作模式", "g.netMode": "网络模式", "g.recommended": "推荐", "g.netDesc": "以太网连接，Wi-Fi 自动备用", "g.serMode": "串口模式", "g.serDesc": "通过 USB 直连电脑（串口测试）", "g.keepWeb": "保持网络和 Web 访问", "g.keepHint": "按顺序保持一个通道可用（Wi-Fi、以太网或 Wi-Fi 热点），确保 Web 界面始终可以打开。", "g.rtControl": "实时控制", "g.ledHint": "点击按钮切换 LED 状态（仅本次有效，重启后恢复）", "g.pwrLed": "电源指示灯", "g.wifiLed": "Wi-Fi/串口模式灯", "g.ledSaveHint": "以下开关控制 LED 行为（保存后重启依然有效）", "g.disPwr": "关闭电源灯", "g.disUsb": "关闭 USB 灯", "g.sysVar": "系统参数", "g.hostname": "主机名（设备在网络中显示的名称）", "g.logRefresh": "日志刷新间隔（毫秒）", "g.timezone": "时区",
 "e.conn": "连接", "e.dhcp": "启用 DHCP（推荐）", "e.ipSet": "IP 设置", "e.ip": "IP 地址", "e.mask": "子网掩码", "e.gw": "默认网关",
-"w.title": "Wi-Fi", "w.yourNet": "我的网络", "w.ipSet": "IP 设置", "w.dhcp": "DHCP", "w.asleep": "Wi-Fi 待机中（当前走以太网）— 使用 Wi-Fi 时在此显示实时 IP。", "w.ip": "IP 地址", "w.mask": "子网掩码", "w.router": "路由器", "w.save": "保存", "w.forget": "忽略此网络", "w.noNet": "尚未配置网络", "w.otherNet": "其他网络", "w.joinOther": "加入其他网络…", "w.ssidPh": "网络名称（SSID）", "w.passPh": "密码", "w.join": "加入", "w.connect": "连接", "w.scanning": "正在扫描…", "w.scanTimeout": "扫描超时，点击重试。", "w.noFound": "未发现 Wi-Fi 网络。", "w.connecting": "正在连接…", "w.connected": "已连接", "w.connFailPw": "连接失败，请检查密码。", "w.connNoStatus": "无法获取连接状态。", "w.saveFail": "保存失败，请检查网络。", "w.saved": "已保存", "w.forgetting": "正在忽略…", "w.forgotten": "已忽略该网络。", "w.forgetFail": "忽略网络失败。", "w.forgetConfirm": "确定忽略此 Wi-Fi 网络吗？", "w.enterSsid": "请输入网络名称。", "w.pw8": "密码至少需要 8 位。", "w.wpa": "WPA2/WPA3", "w.open": "开放网络", "w.noNetsYet": "暂无网络。",
+"w.title": "Wi-Fi", "w.yourNet": "我的网络", "w.ipSet": "IP 设置", "w.dhcp": "DHCP", "w.asleep": "Wi-Fi 待机中（当前走以太网）— 使用 Wi-Fi 时在此显示实时 IP。", "w.ip": "IP 地址", "w.mask": "子网掩码", "w.router": "路由器", "w.save": "保存", "w.forget": "忽略此网络", "w.noNet": "尚未配置网络", "w.otherNet": "其他网络", "w.joinOther": "加入其他网络…", "w.ssidPh": "网络名称（SSID）", "w.passPh": "密码", "w.join": "加入", "w.connect": "连接", "w.scanning": "正在扫描…", "w.scanTimeout": "扫描超时，点击重试。", "w.noFound": "未发现 Wi-Fi 网络。", "w.connecting": "正在连接…", "w.connected": "已连接", "w.connFailPw": "Wi-Fi 身份验证失败，请检查密码和安全模式。", "w.noSsid": "未找到网络，请检查 SSID、距离以及网络是否正在广播。", "w.security": "不支持此网络的安全模式，请检查路由器设置。", "w.weakSignal": "Wi-Fi 信号太弱或不稳定，请靠近路由器后重试。", "w.apReject": "接入点拒绝了连接，请检查其设置后重试。", "w.connFail": "无法连接，请检查 SSID、密码和路由器。", "w.connNoStatus": "无法获取连接状态。", "w.saveFail": "保存失败，请检查网络。", "w.saved": "已保存", "w.forgetting": "正在忽略…", "w.forgotten": "已忽略该网络。", "w.forgetFail": "忽略网络失败。", "w.forgetConfirm": "确定忽略此 Wi-Fi 网络吗？", "w.enterSsid": "请输入网络名称。", "w.pw8": "密码至少需要 8 位。", "w.wpa": "WPA2/WPA3", "w.open": "开放网络", "w.noNetsYet": "暂无网络。",
 "z.serSet": "串口设置", "z.baud": "波特率", "z.port": "端口", "z.cfgGen": "配置生成器", "z.apAlert": "设备当前处于热点模式（IP 为 192.168.1.1）。连接以太网或 Wi-Fi 后 IP 会变化，需要重新生成配置。", "z.cfgGenLabel": "配置生成器", "z.copy": "复制到剪贴板",
 "sec.webSrv": "Web 服务", "sec.disWeb": "连接建立后关闭 Web 服务", "sec.enAuth": "启用 Web 登录验证", "sec.user": "用户名", "sec.pass": "密码", "sec.access": "访问控制", "sec.enWhite": "启用连接 IP 白名单", "sec.allowed": "允许的 IP",
 "m.conn": "连接", "m.server": "服务器", "m.port": "端口", "m.user": "用户名", "m.pass": "密码", "m.topicDisc": "主题与发现", "m.topic": "主题", "m.interval": "上报间隔（秒）", "m.haDisc": "启用 Home Assistant 自动发现",

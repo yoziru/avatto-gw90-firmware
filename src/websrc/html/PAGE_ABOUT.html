@@ -274,7 +274,7 @@
                 <div class="card-body">
                     <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span data-replace="firmwareVersion"></span></div>
                     <div class="fw-status-row">
-                      <div id="espFwStatus" class="fw-status"><span class="text-muted" data-i18n="c.checking">Checking for updates...</span></div>
+                      <div id="espFwStatus" class="fw-status"><span class="text-muted busy-shimmer" data-i18n="c.checking">Checking for updates...</span></div>
                       <button type="button" class="btn btn-outline-primary btn-sm" onclick="showEspFwDetails()" data-i18n="c.details">Details</button>
                     </div>
                     <pre id="espFwChglog" style="display:none"></pre>
@@ -340,7 +340,7 @@
                 </div>
                 <div class="card-body">
                     <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span><span data-i18n="a.rev">rev</span> <span data-replace="zigbeeFwRev"></span></span></div>
-                    <div id="zbFwStatus" class="fw-status"><span class="text-muted" data-i18n="c.checking">Checking for updates...</span></div>
+                    <div id="zbFwStatus" class="fw-status"><span class="text-muted busy-shimmer" data-i18n="c.checking">Checking for updates...</span></div>
                     <div id="zbFwList" class="mb-2"></div>
                     <p class="text-muted" style="font-size:0.85rem" data-i18n="a.coordNote">Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.</p>
                     <button

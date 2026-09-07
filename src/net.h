@@ -13,13 +13,14 @@ extern IPAddress apIP;
 extern DNSServer dnsServer;
 extern WiFiServer server;
 extern WireGuard wg;
+extern volatile uint16_t wifiLastDisconnectReason;
 
 void initLan();
 void startSocketServer();
 void wgBegin();
 void startServers(bool usb = false);
 void handleTmrNetworkOverseer();
-void NetworkEvent(arduino_event_id_t event);
+void NetworkEvent(arduino_event_t *event);
 void startAP(const bool start);
 void connectWifi();
 void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw);
