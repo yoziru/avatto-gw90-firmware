@@ -30,17 +30,18 @@ const GITHUB_REPO_OWNER = "AVATTO-smart";
 const GITHUB_REPO_NAME = "avatto-gw90-firmware";
 
 const pages = {
-	API_PAGE_ROOT: { num: 0, str: "/", title: "Status", titleKey: "l.st" },
-	API_PAGE_GENERAL: { num: 1, str: "/general", title: "General", titleKey: "l.ge" },
-	API_PAGE_ETHERNET: { num: 2, str: "/ethernet", title: "Ethernet", titleKey: "l.ne" },
-	API_PAGE_WIFI: { num: 3, str: "/wifi", title: "WiFi", titleKey: "l.wf" },
-	API_PAGE_SERIAL: { num: 4, str: "/zha-z2m", title: "ZHA/Z2M", titleKey: "l.zi" },
-	API_PAGE_SECURITY: { num: 5, str: "/security", title: "Security", titleKey: "l.se" },
-	API_PAGE_SYSTOOLS: { num: 6, str: "/sys-tools", title: "Tools", titleKey: "l.to" },
-	API_PAGE_ABOUT: { num: 7, str: "/about", title: "About", titleKey: "l.ab" },
-	API_PAGE_MQTT: { num: 8, str: "/mqtt", title: "MQTT Configuration", titleKey: "l.mq" },
-	API_PAGE_WG: { num: 9, str: "/wg", title: "WireGuard", titleKey: "l.vp" }
+	API_PAGE_ROOT: { num: 0, str: "/", titleKey: "l.st" },
+	API_PAGE_GENERAL: { num: 1, str: "/general", titleKey: "l.ge" },
+	API_PAGE_ETHERNET: { num: 2, str: "/ethernet", titleKey: "l.ne" },
+	API_PAGE_WIFI: { num: 3, str: "/wifi", titleKey: "l.wf" },
+	API_PAGE_SERIAL: { num: 4, str: "/zha-z2m", titleKey: "l.zi" },
+	API_PAGE_SECURITY: { num: 5, str: "/security", titleKey: "l.se" },
+	API_PAGE_SYSTOOLS: { num: 6, str: "/sys-tools", titleKey: "l.to" },
+	API_PAGE_ABOUT: { num: 7, str: "/about", titleKey: "l.ab" },
+	API_PAGE_MQTT: { num: 8, str: "/mqtt", titleKey: "l.mq" },
+	API_PAGE_WG: { num: 9, str: "/wg", titleKey: "l.vp" }
 };
+const TITLE_SUFFIX = " - AVATTO-GW90-Ti Zigbee Ethernet POE USB Adapter";
 
 const api = {
 	actions: {
@@ -363,9 +364,9 @@ function apiGetPage(page, doneCall) {
 				});
 			});
 
-		getQA("[data-replace='pageName']").forEach(e => e.textContent = (microI18n && page.titleKey) ? microI18n.t(page.titleKey) : page.title);
+		getQA("[data-replace='pageName']").forEach(e => e.textContent = microI18n.t(page.titleKey));
 		const titleEl = document.querySelector("title[data-replace='pageName']");
-		if (titleEl) titleEl.textContent = ((microI18n && page.titleKey) ? microI18n.t(page.titleKey) : page.title) + " - AVATTO-GW90-Ti Zigbee Ethernet POE USB Adapter";
+		if (titleEl) titleEl.textContent = microI18n.t(page.titleKey) + TITLE_SUFFIX;
 
 			if (respValues === null) return;
 			console.log("[apiGetPage] starting parse values");
@@ -410,9 +411,7 @@ function apiGetPage(page, doneCall) {
 				else diagram.classList.remove("wifi-ready");
 			}
 
-			// Freshly injected page HTML carries data-i18n markers - localize it
-		// now (initLanguage only covered the static shell).
-		if (typeof updateLocalizedContent == "function") updateLocalizedContent();
+			updateLocalizedContent();
 
 		if (typeof locCall == "function") locCall();
 		}).catch(err => {
@@ -1256,11 +1255,11 @@ function fillReplaceValues(values) {
 				default:
 					if (isIpValue && !isMaskInPropertyName) {
 						elem.innerHTML = valueToSet;
-					} else {
-						const pill = statusPill(valueToSet);
-						if (pill) elem.innerHTML = pill;
-						else elem.textContent = (typeof tStatus == "function") ? tStatus(valueToSet) : valueToSet;
-					}
+							} else {
+								const pill = statusPill(valueToSet);
+								if (pill) elem.innerHTML = pill;
+								else elem.textContent = tStatus(valueToSet);
+							}
 					break;
 			}
 		});
@@ -1631,7 +1630,7 @@ function renderEspFwStatus() {
 		return;
 	}
 	if (espFwInfo.hasUpdate) {
-		st.innerHTML = t("d.updAvail") + "<strong>" + escHtml(espFwInfo.tag) + "</strong> (" + t("d.dlCount", { count: Number(espFwInfo.count || 0).toLocaleString() }) + ")";
+		st.innerHTML = t("d.updAvail") + "<strong>" + escHtml(espFwInfo.tag) + "</strong> (" + t("d.dlCount", { count: (espFwInfo.count || 0).toLocaleString() }) + ")";
 		if (log) { log.style.display = ""; log.textContent = espFwInfo.body || ""; }
 		if (upd) upd.style.display = "";
 	} else {
@@ -1825,12 +1824,7 @@ let microI18n;
 // Shortcut with English fallback even before initLanguage ran.
 function t(key, vars) {
 	if (typeof microI18n !== "undefined" && microI18n) return microI18n.t(key, vars || {});
-	if (typeof I18N !== "undefined" && I18N.en && I18N.en[key]) {
-		let text = I18N.en[key];
-		Object.keys(vars || {}).forEach((v) => { text = text.replace(`\${${v}}`, vars[v]); });
-		return text;
-	}
-	return key;
+	return (typeof I18N !== "undefined" && I18N.en && I18N.en[key]) || key;
 }
 
 // Backend status tokens arrive in English (getRootData); map them to the
@@ -1895,7 +1889,6 @@ function initLanguage() {
 function setLanguage(lng) {
 	if (!languages.some((l) => l.value === lng)) return;
 	localStorage.setItem("selected-lang", lng);
-	if (!microI18n) microI18n = new MicroI18n(lng);
 	microI18n.setLanguage(lng);
 	document.documentElement.setAttribute("lang", lng);
 	updateLangFlags(lng);
@@ -1905,11 +1898,11 @@ function setLanguage(lng) {
 	// A join in flight keeps its progress row (the poll re-renders on finish).
 	try {
 		const joining = !!document.querySelector(".wifi-join-status.connecting");
-		if (getEl("wifiList") && !joining && typeof renderWifiList == "function") renderWifiList();
-		if (getEl("wifiYourRow") && typeof renderWifiYourNetwork == "function") renderWifiYourNetwork();
-		if (typeof isStatusPage == "function" && isStatusPage() && typeof refreshStatusData == "function") refreshStatusData();
-		if (getEl("espFwStatus") && typeof renderEspFwStatus == "function") renderEspFwStatus();
-		if (getEl("zbFwList") && typeof renderZbFwList == "function") renderZbFwList();
+		if (getEl("wifiList") && !joining) renderWifiList();
+		if (getEl("wifiYourRow")) renderWifiYourNetwork();
+		if (isStatusPage()) refreshStatusData();
+		if (getEl("espFwStatus")) renderEspFwStatus();
+		if (getEl("zbFwList")) renderZbFwList();
 	} catch (e) {}
 }
 
@@ -1991,9 +1984,8 @@ function localizeTitle(pathname) {
 	if (!microI18n) return;
 	for (let key in pages) {
 		if (pages[key].str === pathname) {
-			const titleKey = pages[key].titleKey;
-			const label = titleKey ? microI18n.t(titleKey) : pages[key].title;
-			document.title = label + " - AVATTO-GW90-Ti Zigbee Ethernet POE USB Adapter";
+			const label = microI18n.t(pages[key].titleKey);
+			document.title = label + TITLE_SUFFIX;
 			const pn = document.getElementById("pagenamePC");
 			if (pn) pn.textContent = label;
 			break;
