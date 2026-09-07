@@ -7,6 +7,8 @@
 #include <WiFi.h>
 
 #include <esp_task_wdt.h>
+#include <esp_heap_caps.h>
+#include <miniz.h>
 
 #include "config.h"
 #include "encoding.h"
@@ -29,6 +31,175 @@
 #include "webh/PAGE_WG.html.gz.h"
 
 extern zbVerStruct zbVer;
+
+namespace
+{
+constexpr uint32_t ZIP_LOCAL_FILE_HEADER = 0x04034B50;
+constexpr uint16_t ZIP_DEFLATED = 8;
+constexpr uint16_t ZIP_DATA_DESCRIPTOR = 0x0008;
+constexpr uint16_t ZIP_ENCRYPTED = 0x0001;
+const char *const downloadedFirmwareFile = "/config/fw.download";
+const char *const extractedFirmwareFile = "/config/fw.hex.new";
+
+uint16_t readLittleEndian16(const uint8_t *data)
+{
+    return static_cast<uint16_t>(data[0]) |
+           (static_cast<uint16_t>(data[1]) << 8);
+}
+
+uint32_t readLittleEndian32(const uint8_t *data)
+{
+    return static_cast<uint32_t>(data[0]) |
+           (static_cast<uint32_t>(data[1]) << 8) |
+           (static_cast<uint32_t>(data[2]) << 16) |
+           (static_cast<uint32_t>(data[3]) << 24);
+}
+
+struct ZipOutput
+{
+    File *file;
+    uint32_t expectedSize;
+    uint32_t expectedCrc;
+    uint32_t size = 0;
+    uint32_t crc = MZ_CRC32_INIT;
+};
+
+bool writeZipOutput(ZipOutput &output, const uint8_t *data, size_t length)
+{
+    if (length == 0 || length > output.expectedSize - output.size)
+        return length == 0;
+
+    if (output.file->write(data, length) != length)
+        return false;
+
+    output.crc = static_cast<uint32_t>(mz_crc32(output.crc, data, length));
+    output.size += length;
+    return true;
+}
+
+int writeZipOutputCallback(const void *data, int length, void *user)
+{
+    if (length < 0)
+        return 0;
+    return writeZipOutput(*static_cast<ZipOutput *>(user),
+                          static_cast<const uint8_t *>(data),
+                          static_cast<size_t>(length)) ? 1 : 0;
+}
+
+bool extractHexFromZip(const char *zipPath)
+{
+    File zip = LittleFS.open(zipPath, FILE_READ);
+    if (!zip)
+        return false;
+
+    uint8_t header[30];
+    if (zip.read(header, sizeof(header)) != sizeof(header) ||
+        readLittleEndian32(header) != ZIP_LOCAL_FILE_HEADER)
+    {
+        return false;
+    }
+
+    const uint16_t flags = readLittleEndian16(header + 6);
+    const uint16_t method = readLittleEndian16(header + 8);
+    const uint32_t compressedSize = readLittleEndian32(header + 18);
+    const uint32_t uncompressedSize = readLittleEndian32(header + 22);
+    const uint16_t filenameLength = readLittleEndian16(header + 26);
+    const uint16_t extraLength = readLittleEndian16(header + 28);
+
+    if ((flags & (ZIP_ENCRYPTED | ZIP_DATA_DESCRIPTOR)) != 0 ||
+        (method != 0 && method != ZIP_DEFLATED) ||
+        compressedSize == 0 || uncompressedSize == 0 ||
+        filenameLength < 4 || filenameLength >= 128)
+    {
+        return false;
+    }
+
+    char filename[128];
+    if (zip.read(reinterpret_cast<uint8_t *>(filename), filenameLength) != filenameLength)
+        return false;
+    filename[filenameLength] = '\0';
+    if (String(filename).endsWith(".hex") == false)
+        return false;
+
+    const uint32_t dataOffset = 30U + filenameLength + extraLength;
+    if (!zip.seek(dataOffset) ||
+        static_cast<uint64_t>(dataOffset) + compressedSize > zip.size())
+    {
+        return false;
+    }
+
+    LittleFS.remove(extractedFirmwareFile);
+    File hex = LittleFS.open(extractedFirmwareFile, FILE_WRITE);
+    if (!hex)
+        return false;
+
+    ZipOutput output{&hex, uncompressedSize, readLittleEndian32(header + 14)};
+    bool ok = true;
+
+    if (method == 0)
+    {
+        uint8_t buffer[1024];
+        uint32_t remaining = compressedSize;
+        while (remaining > 0 && ok)
+        {
+            const size_t wanted = remaining > sizeof(buffer) ? sizeof(buffer) : remaining;
+            const size_t received = zip.read(buffer, wanted);
+            if (received == 0)
+            {
+                ok = false;
+                break;
+            }
+            ok = writeZipOutput(output, buffer, received);
+            remaining -= received;
+        }
+    }
+    else
+    {
+        uint8_t *compressed = static_cast<uint8_t *>(heap_caps_malloc(compressedSize, MALLOC_CAP_8BIT));
+        if (!compressed || zip.read(compressed, compressedSize) != compressedSize)
+        {
+            if (compressed)
+                heap_caps_free(compressed);
+            hex.close();
+            LittleFS.remove(extractedFirmwareFile);
+            return false;
+        }
+
+        size_t inputSize = compressedSize;
+        ok = tinfl_decompress_mem_to_callback(compressed, &inputSize,
+                                               writeZipOutputCallback, &output, 0) == 1;
+        heap_caps_free(compressed);
+    }
+
+    hex.close();
+    if (!ok || output.size != uncompressedSize || output.crc != output.expectedCrc)
+    {
+        LittleFS.remove(extractedFirmwareFile);
+        return false;
+    }
+
+    LittleFS.remove(tempFile);
+    return LittleFS.rename(extractedFirmwareFile, tempFile);
+}
+
+bool prepareZigbeeFirmware(const char *downloadPath)
+{
+    File downloaded = LittleFS.open(downloadPath, FILE_READ);
+    if (!downloaded)
+        return false;
+
+    uint8_t signature[4];
+    const bool isZip = downloaded.read(signature, sizeof(signature)) == sizeof(signature) &&
+                       readLittleEndian32(signature) == ZIP_LOCAL_FILE_HEADER;
+    downloaded.close();
+
+    if (isZip)
+        return extractHexFromZip(downloadPath);
+
+    LittleFS.remove(tempFile);
+    return LittleFS.rename(downloadPath, tempFile);
+}
+}
 
 void handleZigbeeBSL()
 {
@@ -165,9 +336,9 @@ void handleApi()
 
                 Serial.println("Connection successful!");
 
-                LittleFS.remove(tempFile);
+                LittleFS.remove(downloadedFirmwareFile);
 
-                File fwFile = LittleFS.open(tempFile, "w");
+                File fwFile = LittleFS.open(downloadedFirmwareFile, "w");
                 if (!fwFile)
                 {
                     sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Failed to open file for writing");
@@ -251,9 +422,24 @@ void handleApi()
 
                     sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Download complete!");
                     sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), String("Total size: ") + String(downloaded) + " bytes");
-                    sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Validating and flashing...");
+                    sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Preparing firmware...");
 
-                    xTaskCreatePinnedToCore(checkFwHexTask, "CheckFWHex", 8192, (void *)tempFile, 3, NULL, 0);
+                    if (prepareZigbeeFirmware(downloadedFirmwareFile))
+                    {
+                        LittleFS.remove(downloadedFirmwareFile);
+                        sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Validating and flashing...");
+                        xTaskCreatePinnedToCore(checkFwHexTask, "CheckFWHex", 8192, (void *)tempFile, 3, NULL, 0);
+                    }
+                    else
+                    {
+                        LittleFS.remove(downloadedFirmwareFile);
+                        sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Invalid firmware archive");
+                    }
+                }
+                else
+                {
+                    LittleFS.remove(downloadedFirmwareFile);
+                    sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Incomplete firmware download");
                 }
             }
             else

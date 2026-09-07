@@ -24,7 +24,8 @@ function createSpinner() {
 	return s;
 }
 
-const zbFwInfoUrl = "https://raw.githubusercontent.com/AVATTO-smart/AVATTO_GW_firmware/main/avatto_fws.json";
+const zbFwReleasesUrl = "https://api.github.com/repos/Koenkk/Z-Stack-firmware/releases?per_page=100";
+const zbFwIncludeBetaKey = "zb_include_beta";
 
 const GITHUB_REPO_OWNER = "AVATTO-smart";
 const GITHUB_REPO_NAME = "avatto-gw90-firmware";
@@ -263,7 +264,7 @@ function loadPage(url) {
 			});
 			break;
 		case api.pages.API_PAGE_ABOUT.str:
-			apiGetPage(api.pages.API_PAGE_ABOUT, () => { checkEspFirmware(); checkZbFirmware(); });
+			apiGetPage(api.pages.API_PAGE_ABOUT, () => { initZbFirmwareSource(); checkEspFirmware(); checkZbFirmware(); });
 			break;
 		default:
 			apiGetPage(api.pages.API_PAGE_ROOT);
@@ -664,7 +665,7 @@ function modalConstructor(type, params) {
 			break;
 		case "espFwDetails":
 			if (hText) hText.textContent = t("md.espFw");
-			if (mBody) { mBody.textContent = params.text; mBody.insertAdjacentHTML("beforeend", params.chglog); }
+			if (mBody) mBody.innerHTML = params.body || firmwareModalMarkup(params);
 			if (mBtns) {
 				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("c.close"), click: closeModal }));
 				if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("md.updateNow"), click: () => { closeModal(); localStorage.setItem("update_notify", 0); espFlashGitWait(); } }));
@@ -699,7 +700,7 @@ function modalConstructor(type, params) {
 			break;
 		case "zbVersionInfo":
 			if (hText) hText.textContent = t("md.latestZb");
-			if (mBody) { mBody.innerHTML = params.chglog; const alertDiv = el("div", { "class": "alert alert-info", html: params.text }); mBody.insertBefore(alertDiv, mBody.firstChild); }
+			if (mBody) mBody.innerHTML = params.body || firmwareModalMarkup(params);
 		if (mBtns) {
 			mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("c.close"), click: closeModal }));
 			if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("md.updateNow"), click: () => { closeModal(); zbFlashGitWait(); } }));
@@ -1572,11 +1573,11 @@ async function showZigbeeVersionInfo(firmwareType) {
 	if (isZbVersionLoading) { console.log("Already loading, ignore..."); return; }
 	isZbVersionLoading = true;
 	try {
-		modalConstructor("zbVersionInfo", { text: t("d.loadingFw"), chglog: "<div class='spinner-border text-primary' role='status'></div> <span class='busy-shimmer'>" + t("d.loading") + "</span>" });
+		modalConstructor("zbVersionInfo", { body: "<div class='alert alert-info'>" + t("d.loadingFw") + "</div><div class='text-muted'><div class='spinner-border text-primary' role='status'></div> <span class='busy-shimmer'>" + t("d.loading") + "</span></div>" });
 		let fwData = null;
 		let localVerData = null;
 		try {
-			[fwData, localVerData] = await Promise.all([fetchData(zbFwInfoUrl, true), fetchData("/api?action=1&param=zbRev", false)]);
+			[fwData, localVerData] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false)]);
 		} catch (err) {
 			console.warn("Failed to load:", err.message || err);
 		}
@@ -1586,13 +1587,7 @@ async function showZigbeeVersionInfo(firmwareType) {
 			isZbVersionLoading = false;
 			return;
 		}
-		let selectedFw = Array.isArray(fwData) ? fwData.find(fw => {
-			const name = fw.name ? fw.name.toLowerCase() : "";
-			const fwType = fw.firmwareType ? fw.firmwareType.toLowerCase() : "";
-			if (firmwareType === "coordinator") return name.includes("coordinator") && fwType === "zigbee";
-			if (firmwareType === "router") return name.includes("router") && fwType === "zigbee";
-			return false;
-		}) : null;
+		let selectedFw = Array.isArray(fwData) ? fwData.find(fw => fw.role === firmwareType) : null;
 		if (!selectedFw) {
 			const mBody = getQ(".modal-body");
 			if (mBody) mBody.innerHTML = "<div class='alert alert-warning'><strong>" + t("d.noFwFor") + t(firmwareType === "router" ? "md.router" : "md.coord") + "'</strong><br>" + t("d.availTypes") + "<br><ul>" + (Array.isArray(fwData) ? fwData.map(fw => "<li>" + escHtml(fw.name || "N/A") + " - " + escHtml(fw.firmwareType || "N/A") + "</li>").join("") : "<li>" + t("d.unknown") + "</li>") + "</ul></div>";
@@ -1605,13 +1600,24 @@ async function showZigbeeVersionInfo(firmwareType) {
 		// only the display strings below are localized.
 		const unknownRaw = localVer === "unknown", unknownRemote = remoteVer === "unknown";
 		const hasUpdate = unknownRaw || verIsNewer(remoteVer, localVer);
-		const text = t("d.localVer") + tStatus(localVer) + "<br>" + t("d.ghVer") + tStatus(remoteVer) + "<br>" + t("d.file") + escHtml(latestZbFirmware.name) + "<br>" + t("d.desc") + " " + escHtml(latestZbFirmware.firmwareDesc || "N/A");
-		let chglog = `<p><strong>${t("d.fwDetails")}</strong></p><ul><li><strong>${t("d.name")}</strong> ${escHtml(latestZbFirmware.name)}</li><li><strong>${t("d.version")}</strong> ${escHtml(latestZbFirmware.version)}</li><li><strong>${t("d.type")}</strong> ${escHtml(latestZbFirmware.firmwareType || "N/A")}</li><li><strong>${t("d.desc")}</strong> ${escHtml(latestZbFirmware.firmwareDesc || "N/A")}</li><li><strong>${t("d.baud")}</strong> ${escHtml(latestZbFirmware.baudRate || "N/A")}</li><li><strong>${t("d.dongle")}</strong> ${escHtml(latestZbFirmware.dongleType || "N/A")}</li></ul>`;
-		if (!unknownRaw && !unknownRemote)
-			chglog += hasUpdate
-				? "<div class='alert alert-success mt-2'><strong>" + t("d.updateAvailEx") + "</strong><br>" + t("d.currentLatest") + localVer + " -> " + t("d.latestIs") + remoteVer + "</div>"
-				: "<div class='alert alert-secondary mt-2'><strong>" + t("d.upToDateEx") + "</strong><br>" + t("d.currentVer") + localVer + "</div>";
-		modalConstructor("zbVersionInfo", { text, chglog, hasUpdate });
+		const status = !unknownRaw && !unknownRemote
+			? (hasUpdate
+				? "<div class='alert alert-success mt-2'><strong>" + t("d.updateAvailEx") + "</strong><br>" + t("d.currentLatest") + escHtml(localVer) + " -> " + t("d.latestIs") + escHtml(remoteVer) + "</div>"
+				: "<div class='alert alert-secondary mt-2'><strong>" + t("d.upToDateEx") + "</strong><br>" + t("d.currentVer") + escHtml(localVer) + "</div>")
+			: "";
+		modalConstructor("zbVersionInfo", {
+			summary: firmwareVersionSummary(localVer, remoteVer),
+			details: [
+				[t("d.name"), latestZbFirmware.name],
+				[t("d.version"), latestZbFirmware.version],
+				[t("d.type"), latestZbFirmware.firmwareType],
+				[t("d.file"), latestZbFirmware.asset],
+				[t("d.desc"), latestZbFirmware.firmwareDesc]
+			],
+			changelog: latestZbFirmware.changelog || latestZbFirmware.releaseNotes || "",
+			status,
+			hasUpdate
+		});
 	} catch (error) {
 		console.error("Error while getting Zigbee version info:", error);
 		const mBody = getQ(".modal-body");
@@ -1630,6 +1636,28 @@ function verIsNewer(remote, local) {
 
 function escHtml(s) {
 	return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function firmwareVersionLabel(version) {
+	const value = String(version == null ? "" : version).trim();
+	if (!value || value.toLowerCase() === "unknown") return t("d.unknown");
+	return /^v/i.test(value) ? escHtml(value) : "v" + escHtml(value);
+}
+
+function firmwareVersionSummary(local, remote) {
+	return t("c.installed") + " " + firmwareVersionLabel(local) + "<br>" + t("d.latestIs") + " " + firmwareVersionLabel(remote);
+}
+
+function firmwareModalMarkup(params) {
+	const details = (params.details || []).map(item => {
+		const value = item[1] === undefined || item[1] === null || item[1] === "" ? t("d.unknown") : item[1];
+		return "<li><strong>" + escHtml(item[0]) + "</strong> " + escHtml(value) + "</li>";
+	}).join("");
+	return "<div class='alert alert-info'>" + params.summary + "</div>" +
+		"<p><strong>" + t("d.fwDetails") + "</strong></p><ul>" + details + "</ul>" +
+		"<p><strong>" + t("d.releaseNotes") + "</strong></p>" +
+		"<pre class='fw-modal-changelog'>" + escHtml(params.changelog || t("d.noNotes")) + "</pre>" +
+		(params.status || "");
 }
 
 let espFwInfo = null;
@@ -1664,9 +1692,23 @@ function renderEspFwStatus() {
 // available for any version (not just when an update is pending).
 function showEspFwDetails() {
 	if (!espFwInfo) { checkEspFirmware(); return; }
-	const text = t("c.installed") + " v" + espFwInfo.local + ". " + t("d.latestIs") + espFwInfo.tag + ".";
-	const chglog = "<pre>" + escHtml(espFwInfo.body || t("d.noNotes")) + "</pre>";
-	modalConstructor("espFwDetails", { text, chglog, hasUpdate: espFwInfo.hasUpdate });
+	const local = espFwInfo.local || "unknown";
+	const remote = espFwInfo.tag || "unknown";
+	const status = espFwInfo.hasUpdate
+		? "<div class='alert alert-success mt-2'><strong>" + t("d.updateAvailEx") + "</strong><br>" + t("d.currentLatest") + escHtml(local) + " -> " + t("d.latestIs") + escHtml(remote) + "</div>"
+		: "<div class='alert alert-secondary mt-2'><strong>" + t("d.upToDateEx") + "</strong><br>" + t("d.currentVer") + escHtml(local) + "</div>";
+	modalConstructor("espFwDetails", {
+		summary: firmwareVersionSummary(local, remote),
+		details: [
+			[t("d.name"), espFwInfo.name || remote],
+			[t("d.version"), remote],
+			[t("d.type"), "ESP32"],
+			[t("d.file"), espFwInfo.asset || "AVATTO-GW90-Ti.bin"]
+		],
+		changelog: espFwInfo.body,
+		status,
+		hasUpdate: espFwInfo.hasUpdate
+	});
 }
 
 // ESP32 firmware status on the About page: only offers an update (and shows
@@ -1689,26 +1731,74 @@ async function checkEspFirmware() {
 	const tag = combined.jsonData.tag_name;
 	const local = String(combined.textData).trim();
 	const count = (combined.jsonData.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
-	espFwInfo = { tag, local, body: combined.jsonData.body || "", hasUpdate: verIsNewer(tag, combined.textData), count };
+	const asset = (combined.jsonData.assets || []).find(a => a.name && a.name.endsWith(".bin"));
+	espFwInfo = { tag, local, name: combined.jsonData.name || tag, asset: asset && asset.name, body: combined.jsonData.body || "", hasUpdate: verIsNewer(tag, combined.textData), count };
 	renderEspFwStatus();
 }
 
-// Zigbee firmware status on the About page, same deal: per-type rows that
-// only offer a flash when the indexed release is newer than the local rev.
+function zbFirmwareFromReleases(releases) {
+	const includeBeta = localStorage.getItem(zbFwIncludeBetaKey) === "1";
+	return ["coordinator", "router"].map(role => {
+		const candidates = (Array.isArray(releases) ? releases : []).filter(release => {
+			const tag = String(release && release.tag_name || "").toLowerCase();
+			return release && !release.draft && (includeBeta || !release.prerelease) && tag.includes("_" + role + "_");
+		}).sort((a, b) => String(b.published_at || b.created_at).localeCompare(String(a.published_at || a.created_at)));
+		const release = candidates.find(candidate => {
+			return (candidate.assets || []).some(asset => {
+				const name = String(asset.name || "").toLowerCase();
+				return name.startsWith("cc1352p2_cc2652p_launchpad_" + role + "_") && name.endsWith(".zip");
+			});
+		});
+		if (!release) return null;
+		const asset = (release.assets || []).find(candidate => {
+			const name = String(candidate.name || "").toLowerCase();
+			return name.startsWith("cc1352p2_cc2652p_launchpad_" + role + "_") && name.endsWith(".zip");
+		});
+		const versionMatch = String(release.tag_name || "").match(/\d{8}/);
+		return {
+			name: release.name || release.tag_name,
+			version: versionMatch ? versionMatch[0] : release.tag_name,
+			firmwareType: "zigbee",
+			firmwareDesc: "Koenkk Z-Stack firmware for CC2652P",
+			role,
+			asset: asset.name,
+			link: asset.browser_download_url,
+			changelog: release.body || "",
+			prerelease: !!release.prerelease,
+		};
+	}).filter(Boolean);
+}
+
+async function fetchZigbeeFirmware() {
+	return zbFirmwareFromReleases(await fetchData(zbFwReleasesUrl, true));
+}
+
+function initZbFirmwareSource() {
+	const beta = getEl("zbIncludeBeta");
+	if (!beta) return;
+	beta.checked = localStorage.getItem(zbFwIncludeBetaKey) === "1";
+	beta.addEventListener("change", () => {
+		localStorage.setItem(zbFwIncludeBetaKey, beta.checked ? "1" : "0");
+		_zbFwCache = null;
+		checkZbFirmware();
+	});
+}
+
+// Zigbee firmware status on the About page: per-type rows that
+// only offer a flash when the selected Koenkk release is newer.
 async function checkZbFirmware() {
 	const st = getEl("zbFwStatus");
 	if (!st) return;
 	st.innerHTML = "<span class='text-muted busy-shimmer'>" + t("c.checking") + "</span>";
 	let fwData = null, rev = "";
 	try {
-		[fwData, rev] = await Promise.all([fetchData(zbFwInfoUrl, true), fetchData("/api?action=1&param=zbRev", false)]);
+		[fwData, rev] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false)]);
 	} catch (e) { console.warn("Zigbee version check failed:", e); }
 	const localRev = (rev || "").trim();
 	if (!Array.isArray(fwData) || !fwData.length) {
 		_zbFwCache = { error: "index" };
 	} else {
-		const fws = fwData.filter(fw => (fw.firmwareType || "").toLowerCase() === "zigbee");
-		_zbFwCache = fws.length ? { fws, localRev } : { error: "empty" };
+		_zbFwCache = fwData.length ? { fws: fwData, localRev } : { error: "empty" };
 	}
 	renderZbFwList();
 }
@@ -1731,7 +1821,7 @@ function renderZbFwList() {
 	if (box) {
 		box.innerHTML = "";
 		fws.forEach(fw => {
-			const isRouter = (fw.name || "").toLowerCase().includes("router");
+			const isRouter = fw.role === "router";
 			const remote = fw.version || "unknown";
 			const hasUpdate = verIsNewer(remote, localRev);
 			if (hasUpdate) newer++;
@@ -1739,6 +1829,7 @@ function renderZbFwList() {
 			const info = el("div", { "class": "zb-fw-info" });
 			info.innerHTML = "<strong>" + (isRouter ? t("d.router") : t("d.coord")) + "</strong>" +
 				(isRouter ? "" : " <span class='default-badge'>" + t("d.default") + "</span>") +
+				(fw.prerelease ? " <span class='default-badge'>" + t("d.beta") + "</span>" : "") +
 				"<div class='text-muted zb-fw-sub'>" + t("d.latestIs") + escHtml(remote) + " - " +
 				(hasUpdate ? "<span style='color:#f7a623'>" + t("d.updAvailShort") + "</span>" : t("d.upToDate")) + "</div>";
 			row.appendChild(info);
@@ -1820,6 +1911,21 @@ zh: {
 "sv.yes": "是", "sv.no": "否", "sv.on": "开", "sv.off": "关", "sv.connected": "已连接", "sv.notConn": "未连接", "sv.active": "正常", "sv.asleep": "待机中", "sv.notCfg": "未配置", "sv.client": "客户端", "sv.ap": "热点", "sv.accessPoint": "接入点", "sv.ethernet": "以太网", "sv.wifi": "Wi-Fi", "sv.wifiFb": "Wi-Fi（备用）", "sv.none": "无", "sv.apStarted": "热点已启动", "sv.notStarted": "未启动", "sv.serialPass": "串口直通", "sv.usbPass": "USB 直通", "sv.zbNet": "Zigbee 转网络", "sv.zbSer": "Zigbee 转串口", "sv.unknown": "未知", "sv.embedded": "内置", "sv.external": "外置"
 }
 };
+I18N.en["d.releaseNotes"] = "Release notes:";
+I18N.de["d.releaseNotes"] = "Versionshinweise:";
+I18N.zh["d.releaseNotes"] = "更新说明：";
+I18N.en["d.noZbIdx"] = "Could not reach firmware releases. Use file upload below.";
+I18N.de["d.noZbIdx"] = "Firmware-Releases nicht erreichbar. Datei-Upload unten nutzen.";
+I18N.zh["d.noZbIdx"] = "无法获取固件发布信息，请使用下方文件上传。";
+I18N.en["d.noZbFw"] = "No Zigbee firmware release found.";
+I18N.de["d.noZbFw"] = "Keine Zigbee-Firmware gefunden.";
+I18N.zh["d.noZbFw"] = "未找到 Zigbee 固件发布版本。";
+I18N.en["a.zbIncludeBeta"] = "Include beta releases";
+I18N.de["a.zbIncludeBeta"] = "Beta-Releases einschließen";
+I18N.zh["a.zbIncludeBeta"] = "包括 Beta 版本";
+I18N.en["d.beta"] = "beta";
+I18N.de["d.beta"] = "Beta";
+I18N.zh["d.beta"] = "Beta";
 const languages = [
 	{ value: "en", text: "English", flag: "🇬🇧" },
 	{ value: "zh", text: "中文", flag: "🇨🇳" },
