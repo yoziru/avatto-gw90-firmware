@@ -8,7 +8,7 @@
               src="icon_ethernet_config.svg"
               class="title_icon_style"
             />
-            <span>Connection</span>
+            <span data-i18n="e.conn">Connection</span>
           </div>
 
           <div class="card-body">
@@ -22,7 +22,7 @@
                 name="dhcp"
                 onclick="EthInputDsbl(this.checked)"
               />
-              <label class="form-check-label" for="EthDhcpTog">Enable DHCP (recommended)</label>
+              <label class="form-check-label" for="EthDhcpTog" data-i18n="e.dhcp">Enable DHCP (recommended)</label>
             </div>
           </div>
         </div>
@@ -33,12 +33,12 @@
               src="icon_ethernet_config.svg"
               class="title_icon_style"
             />
-            <span>IP Settings</span>
+            <span data-i18n="e.ipSet">IP Settings</span>
           </div>
 
           <div class="card-body">
             <div class="mb-2">
-              <label for="EthIp">IP</label>
+              <label for="EthIp" data-i18n="e.ip">IP</label>
               <input
                 data-replace="ipEther"
                 class="form-control"
@@ -49,7 +49,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="EthMask">Subnet Mask</label>
+              <label for="EthMask" data-i18n="e.mask">Subnet Mask</label>
               <input
                 data-replace="maskEther"
                 class="form-control"
@@ -60,7 +60,7 @@
               />
             </div>
             <div class="mb-2">
-              <label for="EthGateway">Default Gateway</label>
+              <label for="EthGateway" data-i18n="e.gw">Default Gateway</label>
               <input
                 data-replace="GWEther"
                 type="text"
@@ -78,6 +78,7 @@
             type="submit"
             class="btn btn-outline-primary"
             name="save"
+            data-i18n="c.save"
           >
             Save
           </button>

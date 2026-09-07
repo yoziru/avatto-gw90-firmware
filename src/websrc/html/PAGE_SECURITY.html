@@ -3,7 +3,7 @@
     <div class="card mb-4">
       <div class="card-header">
         <img src="icon_web_info.svg" class="title_icon_style" />
-        <span>Web Server</span>
+        <span data-i18n="sec.webSrv">Web Server</span>
       </div>
       <div class="card-body">
         <div class="col-sm-12">
@@ -14,7 +14,7 @@
               class="form-check-input"
               data-replace="disableWeb"
               name="disableWeb"
-            /><label class="form-label form-check-label" for="disableWeb"
+            /><label class="form-label form-check-label" for="disableWeb" data-i18n="sec.disWeb"
               >Disable Web Server when interface is connected</label
             >
           </div>
@@ -26,12 +26,12 @@
               data-replace="webAuth"
               name="webAuth"
               onclick="SeqInputDsbl(!this.checked)"
-            /><label class="form-label form-check-label" for="webAuth"
+            /><label class="form-label form-check-label" for="webAuth" data-i18n="sec.enAuth"
               >Enable Web Server Authentication</label
             >
           </div>
           <div id="div_show1" style="display: none">
-            <label class="form-label mt-3" for="webUser">Username</label>
+            <label class="form-label mt-3" for="webUser" data-i18n="sec.user">Username</label>
             <input
               class="form-control"
               type="text"
@@ -40,7 +40,7 @@
               disabled=""
               name="webUser"
             />
-            <label class="form-label mt-3" for="webPass">Password</label>
+            <label class="form-label mt-3" for="webPass" data-i18n="sec.pass">Password</label>
             <div class="d-flex gap-2">
               <input
                 class="form-control"
@@ -56,6 +56,7 @@
                 style="flex-shrink: 0; padding: 0.25rem 0.5rem"
                 onclick="toggleInputVisibility('webPass')"
                 title="Show / hide password"
+                data-i18n="d.showHidePw[title]"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8a13 13 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
@@ -71,7 +72,7 @@
     <div class="card mb-4">
       <div class="card-header">
         <img src="icon_web_info.svg" class="title_icon_style" />
-        <span>Access Control</span>
+        <span data-i18n="sec.access">Access Control</span>
       </div>
       <div class="card-body">
         <div class="col-sm-12">
@@ -83,12 +84,12 @@
               data-replace="fwEnabled"
               name="fwEnabled"
               onclick="SeqInputDsblFw(!this.checked)"
-            /><label class="form-label form-check-label" for="fwEnabled"
+            /><label class="form-label form-check-label" for="fwEnabled" data-i18n="sec.enWhite"
               >Enable Connection IP Whitelist</label
             >
           </div>
           <div id="div_show2" style="display: none">
-            <label class="form-label mt-3" for="fwIp">Allowed IPs</label>
+            <label class="form-label mt-3" for="fwIp" data-i18n="sec.allowed">Allowed IPs</label>
             <input
               class="form-control"
               type="text"
@@ -108,6 +109,7 @@
         type="submit"
         class="btn btn-outline-primary"
         name="save"
+        data-i18n="c.save"
       >
         Save
       </button>

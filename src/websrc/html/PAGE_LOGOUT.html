@@ -1,11 +1,18 @@
 <html lang="en">
     <head>
         <script lang="javascript">
-            if (window.confirm("Session closed, do you want to close current tab?")) {
-                window.close()
-            } else {
-                window.location = "/"
-            }
+            (function () {
+                var lang = "en";
+                try { lang = localStorage.getItem("selected-lang") || (navigator.language || "").substring(0, 2); } catch (e) {}
+                var msg = "Session closed, do you want to close current tab?";
+                if (lang === "de") msg = "Sitzung beendet. Aktuellen Tab schließen?";
+                else if (lang === "zh") msg = "会话已结束，是否关闭当前标签页？";
+                if (window.confirm(msg)) {
+                    window.close()
+                } else {
+                    window.location = "/"
+                }
+            })();
         </script>
     </head>
     <body>

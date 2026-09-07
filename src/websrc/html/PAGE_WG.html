@@ -5,7 +5,7 @@
         <div class="card">
           <div class="card-header">
             <img src="icon_vpn_configuration.svg" class="title_icon_style" />
-            <span>Tunnel</span>
+            <span data-i18n="wg.tunnel">Tunnel</span>
           </div>
           <div class="card-body">
             <div class="form-check form-switch mb-3">
@@ -18,10 +18,10 @@
                 name="WgEnable"
                 onclick="WgInputDsbl(!this.checked)"
               />
-              <label class="form-check-label" for="WgEnable">Enable</label>
+              <label class="form-check-label" for="WgEnable" data-i18n="c.enable">Enable</label>
             </div>
             <div class="mb-2">
-              <label for="WgLocalAddr">Local Address</label>
+              <label for="WgLocalAddr" data-i18n="wg.localAddr">Local Address</label>
               <input
                 data-replace="localAddrWg"
                 class="form-control"
@@ -30,10 +30,10 @@
                 name="WgLocalAddr"
                 placeholder="X.X.X.X/prefix"
               />
-              <small class="form-text">e.g. 10.0.0.2/24</small>
+              <small class="form-text" data-i18n="wg.localAddrEx">e.g. 10.0.0.2/24</small>
             </div>
             <div class="mb-2">
-              <label for="WgLocalPrivKey">Local Private Key</label>
+              <label for="WgLocalPrivKey" data-i18n="wg.privKey">Local Private Key</label>
               <div class="d-flex gap-2">
                 <input
                   data-replace="localPrivKeyWg"
@@ -42,6 +42,7 @@
                   type="password"
                   name="WgLocalPrivKey"
                   placeholder="Enter WireGuard private key"
+                  data-i18n="wg.privKeyPh[placeholder]"
                   autocomplete="off"
                   style="flex: 1 1 auto; min-width: 0;"
                 />
@@ -51,6 +52,7 @@
                   style="flex-shrink: 0; padding: 0.25rem 0.5rem;"
                   onclick="toggleWgKeyVisibility()"
                   title="Show / hide private key"
+                  data-i18n="d.showHideKey[title]"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8a13 13 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
@@ -58,7 +60,7 @@
                   </svg>
                 </button>
               </div>
-              <small class="form-text">44-character base64 private key</small>
+              <small class="form-text" data-i18n="wg.privNote">44-character base64 private key</small>
             </div>
           </div>
         </div>
@@ -66,11 +68,11 @@
         <div class="card">
           <div class="card-header">
             <img src="icon_vpn_configuration.svg" class="title_icon_style" />
-            <span>Endpoint</span>
+            <span data-i18n="wg.endpoint">Endpoint</span>
           </div>
           <div class="card-body">
             <div class="mb-2">
-              <label for="WgEndAddr">Remote Endpoint Address</label>
+              <label for="WgEndAddr" data-i18n="wg.remoteAddr">Remote Endpoint Address</label>
               <input
                 data-replace="endAddrWg"
                 class="form-control"
@@ -79,10 +81,10 @@
                 name="WgEndAddr"
                 placeholder="Domain or IP"
               />
-              <small class="form-text">IP address or domain of the remote endpoint</small>
+              <small class="form-text" data-i18n="wg.remoteNote">IP address or domain of the remote endpoint</small>
             </div>
             <div class="mb-2">
-              <label for="WgEndPubKey">Remote Public Key</label>
+              <label for="WgEndPubKey" data-i18n="wg.remotePub">Remote Public Key</label>
               <input
                 data-replace="endPubKeyWg"
                 class="form-control"
@@ -91,10 +93,10 @@
                 name="WgEndPubKey"
                 placeholder=""
               />
-              <small class="form-text">44-character base64 public key</small>
+              <small class="form-text" data-i18n="wg.remotePubNote">44-character base64 public key</small>
             </div>
             <div class="mb-2">
-              <label for="WgEndPort">Port</label>
+              <label for="WgEndPort" data-i18n="wg.port">Port</label>
               <input
                 data-replace="endPortWg"
                 class="form-control"
@@ -105,7 +107,7 @@
                 min="1"
                 max="65535"
               />
-              <small class="form-text">UDP port, 1-65535</small>
+              <small class="form-text" data-i18n="wg.portNote">UDP port, 1-65535</small>
             </div>
           </div>
         </div>
@@ -115,6 +117,7 @@
             type="submit"
             class="btn btn-outline-primary"
             name="save"
+            data-i18n="c.save"
           >
             Save
           </button>

@@ -3,10 +3,10 @@
       <div class="card mb-4">
         <div class="card-header">
           <img src="icon_wifi_config.svg" class="title_icon_style" />
-          <span>Wi-Fi</span>
+          <span data-i18n="w.title">Wi-Fi</span>
         </div>
         <div class="card-body">
-          <div class="wifi-section-title">Your Network</div>
+          <div class="wifi-section-title" data-i18n="w.yourNet">Your Network</div>
           <div class="wifi-list">
             <div class="wifi-item wifi-current" id="wifiYourRow" style="display:none">
               <div
@@ -14,6 +14,7 @@
                 role="button"
                 tabindex="0"
                 title="IP settings"
+                data-i18n="d.ipSettings[title]"
                 onclick="wifiToggleInfo()"
                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wifiToggleInfo();}"
               >
@@ -25,7 +26,7 @@
                 ><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M6 3.5 10.5 8 6 12.5"/></svg></span>
               </div>
               <div class="wifi-ip-panel" id="wifiIpPanel" style="display:none">
-                <div class="wifi-ip-title">IP Settings</div>
+                <div class="wifi-ip-title" data-i18n="w.ipSet">IP Settings</div>
                 <div class="wifi-ip-row">
                   <div class="form-check form-switch">
                     <input
@@ -37,26 +38,26 @@
                       name="dhcpWiFi"
                       onclick="WifiDhcpDsbl(this.checked)"
                     />
-                    <label class="form-check-label" for="dhcpWiFi">DHCP</label>
+                    <label class="form-check-label" for="dhcpWiFi" data-i18n="w.dhcp">DHCP</label>
                   </div>
                 </div>
 
                 <!-- Live values shown when DHCP is on and connected -->
                 <div class="wifi-ip-current" id="wifiIpCurrent" style="display:none">
-                  <div class="wifi-ip-note" id="wifiIpAsleep" style="display:none">
+                  <div class="wifi-ip-note" id="wifiIpAsleep" style="display:none" data-i18n="w.asleep">
                     WiFi is asleep (Ethernet is the active uplink) - live IP
                     appears here when WiFi is used.
                   </div>
                   <div id="wifiIpCurrentValues">
-                    <div class="wifi-ip-detail"><span>IP Address</span><strong id="wifiCurIp">-</strong></div>
-                    <div class="wifi-ip-detail"><span>Subnet Mask</span><strong id="wifiCurMask">-</strong></div>
-                    <div class="wifi-ip-detail"><span>Router</span><strong id="wifiCurGw">-</strong></div>
+                    <div class="wifi-ip-detail"><span data-i18n="w.ip">IP Address</span><strong id="wifiCurIp">-</strong></div>
+                    <div class="wifi-ip-detail"><span data-i18n="w.mask">Subnet Mask</span><strong id="wifiCurMask">-</strong></div>
+                    <div class="wifi-ip-detail"><span data-i18n="w.router">Router</span><strong id="wifiCurGw">-</strong></div>
                   </div>
                 </div>
 
                 <div class="wifi-ip-static" id="wifiIpStatic">
                   <div class="wifi-ip-row">
-                    <label for="WifiIp">IP Address</label>
+                    <label for="WifiIp" data-i18n="w.ip">IP Address</label>
                     <input
                       data-replace="ip"
                       class="form-control form-control-sm"
@@ -67,7 +68,7 @@
                     />
                   </div>
                   <div class="wifi-ip-row">
-                    <label for="WifiMask">Subnet Mask</label>
+                    <label for="WifiMask" data-i18n="w.mask">Subnet Mask</label>
                     <input
                       data-replace="mask"
                       class="form-control form-control-sm"
@@ -78,7 +79,7 @@
                     />
                   </div>
                   <div class="wifi-ip-row">
-                    <label for="WifiGateway">Default Gateway</label>
+                    <label for="WifiGateway" data-i18n="e.gw">Default Gateway</label>
                     <input
                       data-replace="gw"
                       type="text"
@@ -90,21 +91,21 @@
                   </div>
                 </div>
                 <div class="wifi-ip-actions">
-                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiSaveIp()">Save</button>
-                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="wifiForget()">Forget This Network</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiSaveIp()" data-i18n="w.save">Save</button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="wifiForget()" data-i18n="w.forget">Forget This Network</button>
                 </div>
                 <div class="wifi-ip-status" id="wifiIpStatus"></div>
               </div>
             </div>
             <div class="wifi-item wifi-placeholder" id="wifiYourEmpty">
-              <span class="wifi-name">No network configured</span>
+              <span class="wifi-name" data-i18n="w.noNet">No network configured</span>
             </div>
           </div>
 
-          <div class="wifi-section-title wifi-other-title">Other Networks</div>
+          <div class="wifi-section-title wifi-other-title" data-i18n="w.otherNet">Other Networks</div>
           <div class="wifi-list" id="wifiList">
             <div class="wifi-item wifi-placeholder">
-              <span class="wifi-name">No networks yet.</span>
+              <span class="wifi-name" data-i18n="w.noNetsYet">No networks yet.</span>
             </div>
           </div>
 
@@ -115,6 +116,7 @@
                 class="form-control form-control-sm"
                 id="otherSsid"
                 placeholder="Network name (SSID)"
+                data-i18n="w.ssidPh[placeholder]"
                 autocomplete="off"
                 oninput="this.classList.remove('is-invalid')"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();wifiJoinOther();}"
@@ -124,14 +126,15 @@
                 id="otherSec"
                 onchange="getEl('otherPass').disabled = this.value === 'open';"
               >
-                <option value="wpa" selected>WPA2/WPA3</option>
-                <option value="open">Open</option>
+                <option value="wpa" selected data-i18n="w.wpa">WPA2/WPA3</option>
+                <option value="open" data-i18n="w.open">Open</option>
               </select>
               <input
                 type="text"
                 class="form-control form-control-sm wifi-pw"
                 id="otherPass"
                 placeholder="Password"
+                data-i18n="w.passPh[placeholder]"
                 autocomplete="off"
                 readonly
                 onpointerdown="this.readOnly=false"
@@ -139,7 +142,7 @@
                 oninput="this.classList.remove('is-invalid')"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();wifiJoinOther();}"
               />
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiJoinOther()">
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="wifiJoinOther()" data-i18n="w.join">
                 Join
               </button>
               <span class="wifi-join-status" id="wifiOtherStatus"></span>

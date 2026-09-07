@@ -68,15 +68,15 @@
       <div class="card">
         <div class="card-header">
           <svg class="title_icon_style svg-icon" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><use href="icons.svg#clipboard2" /></svg>
-          <span>Logs</span>
+          <span data-i18n="t.logs">Logs</span>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col">
               <div class="log-seg-row">
-                <div class="log-filter-seg" id="logFilterSeg" role="group" aria-label="Log filter">
-                  <button type="button" data-logfilter="esp" class="seg-active">ESP32</button>
-                  <button type="button" data-logfilter="zb">Zigbee ZNP Frames</button>
+                <div class="log-filter-seg" id="logFilterSeg" role="group" data-i18n="d.logFilter[aria-label]" aria-label="Log filter">
+                  <button type="button" data-logfilter="esp" class="seg-active" data-i18n="t.esp">ESP32</button>
+                  <button type="button" data-logfilter="zb" data-i18n="t.zbFrames">Zigbee ZNP Frames</button>
                 </div>
               </div>
               <div class="log-tools-switches mb-3" id="humanizeWrap">
@@ -88,7 +88,7 @@
                     id="humanizeSw"
                     checked
                   />
-                  <label class="form-check-label" for="humanizeSw">
+                  <label class="form-check-label" for="humanizeSw" data-i18n="t.human">
                     Human-readable frames
                   </label>
                 </div>
@@ -105,6 +105,7 @@
                   data-cmd="8"
                   onclick="document.getElementById('console').value = ''"
                   class="btn btn-outline-primary"
+                  data-i18n="t.clear"
                 >
                   Clear Console
                 </button>
@@ -112,6 +113,7 @@
                   type="button"
                   data-cmd="11"
                   class="btn btn-outline-primary"
+                  data-i18n="t.checkConn"
                 >
                   Check Zigbee Connection
                 </button>
@@ -119,6 +121,7 @@
                   type="button"
                   data-cmd="10"
                   class="btn btn-outline-primary"
+                  data-i18n="t.checkVer"
                 >
                   Check Zigbee Version
                 </button>
@@ -133,7 +136,7 @@
       <div class="card">
         <div class="card-header">
           <img src="icon_system_control.svg" class="title_icon_style" />
-          <span>Module Control</span>
+          <span data-i18n="t.modCtrl">Module Control</span>
         </div>
         <div class="card-body">
           <div class="mc-grid">
@@ -141,6 +144,7 @@
               type="button"
               data-cmd="1"
               class="btn btn-outline-primary"
+              data-i18n="t.rstZb"
             >
               Restart Zigbee
             </button>
@@ -148,6 +152,7 @@
               type="button"
               data-cmd="2"
               class="btn btn-outline-primary"
+              data-i18n="t.zbRefresh"
             >
               Zigbee Refresh Mode
             </button>
@@ -155,6 +160,7 @@
               type="button"
               data-cmd="0"
               class="btn btn-outline-primary"
+              data-i18n="t.routerRe"
             >
               Router Reconnect
             </button>
@@ -162,6 +168,7 @@
               type="button"
               data-cmd="3"
               class="btn btn-outline-primary"
+              data-i18n="t.rstEsp"
             >
               Restart ESP32
             </button>
