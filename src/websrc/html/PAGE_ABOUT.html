@@ -151,7 +151,17 @@
             color: var(--text-main);
         }
         [data-theme="dark"] .file-pick:hover { background-color: #3a3a5a; }
-        #updButton, #updButton_zb { display: block; margin-left: auto; margin-right: auto; }
+        #updButton, #updButton_zb { display: block; margin-left: auto; margin-right: auto; opacity: 1; }
+        #updButton:disabled, #updButton_zb:disabled {
+            background-color: var(--bg-muted); border-color: var(--border-color);
+            color: var(--text-muted); opacity: 1; cursor: not-allowed;
+        }
+        #updButton:not(:disabled), #updButton_zb:not(:disabled) {
+            background-color: var(--accent); border-color: var(--accent); color: #1a1a2e;
+        }
+        #updButton:not(:disabled):hover, #updButton_zb:not(:disabled):hover {
+            background-color: var(--accent-hover); border-color: var(--accent-hover);
+        }
 
         @media (max-width: 767px) {
             .brand-content { flex-direction: column; align-items: center; }
@@ -340,6 +350,10 @@
                 </div>
                 <div class="card-body">
                     <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span><span data-i18n="a.rev">rev</span> <span data-replace="zigbeeFwRev"></span></span></div>
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" id="zbIncludeBeta" />
+                      <label class="form-check-label" for="zbIncludeBeta" data-i18n="a.zbIncludeBeta">Include beta releases</label>
+                    </div>
                     <div id="zbFwStatus" class="fw-status"><span class="text-muted busy-shimmer" data-i18n="c.checking">Checking for updates...</span></div>
                     <div id="zbFwList" class="mb-2"></div>
                     <p class="text-muted" style="font-size:0.85rem" data-i18n="a.coordNote">Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.</p>

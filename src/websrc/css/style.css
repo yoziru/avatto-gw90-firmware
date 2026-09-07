@@ -25,6 +25,9 @@
   --info: #17a2b8;
   --primary: #f5a623;
   --secondary: #6c757d;
+  --file-input-bg: #f8f9fa;
+  --file-input-hover-bg: var(--accent-light);
+  --file-input-color: var(--text-main);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -385,6 +388,18 @@ nav.navbar { display: flex; z-index: 99; }
 .modal-title { margin-bottom: 0; line-height: 1.5; font-size: 1.25rem; }
 .modal-body { position: relative; flex: 1 1 auto; padding: 1rem; }
 .modal-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; padding: 0.75rem; border-top: 1px solid var(--border-color); gap: 0.5rem; }
+.fw-modal-changelog {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--text-main);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
 
 /* ===== Progress ===== */
 .progress { display: flex; height: 1rem; overflow: hidden; font-size: 0.75rem; background-color: #e9ecef; border-radius: var(--radius); }
@@ -560,11 +575,13 @@ nav.navbar { display: flex; z-index: 99; }
 
 /* ===== File Inputs ===== */
 #file-input, #file-input_zb {
-  padding: 0; border: 1px solid #ddd; line-height: 44px;
+  padding: 0; border: 1px solid var(--border-color); line-height: 44px;
   text-align: center; display: block; cursor: pointer;
   width: 100%; height: 44px; border-radius: 4px;
   margin: 10px auto; font-size: 15px;
+  background-color: var(--file-input-bg); color: var(--file-input-color);
 }
+#file-input:hover, #file-input_zb:hover { background-color: var(--file-input-hover-bg); border-color: var(--accent); }
 #bar, #prgbar, #bar_zb, #prgbar_zb { background-color: #f1f1f1; border-radius: 10px; }
 #bar, #bar_zb { background-color: var(--info); width: 0%; height: 10px; }
 form#upload_form, form#upload_form_zb { background-color: var(--bg-card); max-width: 408px; border-radius: 5px; text-align: center; }
@@ -946,7 +963,9 @@ a:focus-visible, button:focus-visible, .btn:focus-visible {
   --badge-color: #000;
   --prgbar-bg: #3a3a5a;
   --btn-outline-border: rgba(245, 166, 35, 0.7);
-  --file-input-color: var(--text-muted);
+  --file-input-bg: #303052;
+  --file-input-hover-bg: #38385e;
+  --file-input-color: #f0f0f5;
   --nav-item-border: rgba(255,255,255,0.1);
   --p3-bg-light: var(--bg-muted);
   --select-option-bg: var(--bg-card);
@@ -961,7 +980,7 @@ a:focus-visible, button:focus-visible, .btn:focus-visible {
 [data-theme="dark"] .table-hover tbody tr:hover { background-color: var(--table-hover-bg); }
 /* Dark stops for the shimmer (background-image only — size/clip carry over). */
 [data-theme="dark"] .busy-shimmer {
-  background-image: linear-gradient(100deg, #525252 35%, #e5e5e5 50%, #525252 65%);
+  background-image: linear-gradient(100deg, #9292ad 35%, #f4f4fa 50%, #9292ad 65%);
 }
 [data-theme="dark"] .table tbody tr:nth-child(even) { background-color: rgba(255,255,255,0.03); }
 [data-theme="dark"] .form-control::placeholder { color: #9a9ab8; opacity: 0.8; }
@@ -971,7 +990,8 @@ a:focus-visible, button:focus-visible, .btn:focus-visible {
 [data-theme="dark"] .alert-warning { color: #fff3cd; background-color: #3a3a0a; border-color: #4a4a0a; }
 [data-theme="dark"] .alert-danger { color: #f8d7da; background-color: #3a0a0a; border-color: #4a0a0a; }
 [data-theme="dark"] .alert-secondary { color: #e2e3e5; background-color: #2a2a3a; border-color: #3a3a4a; }
-[data-theme="dark"] #file-input, [data-theme="dark"] #file-input_zb { border-color: var(--border-color); background-color: var(--bg-input); color: var(--file-input-color); }
+[data-theme="dark"] #file-input, [data-theme="dark"] #file-input_zb { border-color: #5a5a80; background-color: var(--file-input-bg); color: var(--file-input-color); }
+[data-theme="dark"] #file-input:hover, [data-theme="dark"] #file-input_zb:hover { border-color: var(--accent); background-color: var(--file-input-hover-bg); }
 [data-theme="dark"] .mode-option:has(input[type="radio"]:checked) { background-color: rgba(245,166,35,0.08); }
 [data-theme="dark"] .nav-item a { border-bottom-color: var(--nav-item-border); }
 [data-theme="dark"] .mode-option:hover { background-color: var(--mode-hover-bg); }
