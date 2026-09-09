@@ -627,6 +627,8 @@ void handleApi()
                 }
                 else if (serverWeb.arg(param) == "zbRole")
                 {
+                    if (zbRoleFromDeviceState(zbVer.deviceState) == ZbRole::UNKNOWN)
+                        getZbVer();
                     resp = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
                 }
                 else if (serverWeb.arg(param) == "espVer")
