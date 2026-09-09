@@ -84,12 +84,13 @@ static void getZbRole()
         }
 
         byte response[responseLen];
+        byte expectedChecksum = responseLen ^ 0x65 ^ 0x50;
         for (uint8_t j = 0; j < responseLen; j++)
         {
             response[j] = Serial2.read();
+            expectedChecksum ^= response[j];
         }
         const byte responseChecksum = Serial2.read();
-        const byte expectedChecksum = zbGenChksum(responseLen + 0x65 + 0x50, response, responseLen);
         if (response[0] != 0 || responseChecksum != expectedChecksum)
         {
             clearS2Buffer();
