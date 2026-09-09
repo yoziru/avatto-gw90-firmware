@@ -1896,13 +1896,13 @@ function renderZbFirmwareRow(fw, localRole, localRev, allowRoleSwitch) {
 function renderZbFwList() {
 	const st = getEl("zbFwStatus");
 	const box = getEl("zbFwList");
-	const alternate = getEl("zbFwAlternate");
+	const roleSwitch = getEl("zbFwRoleSwitch");
 	const alternateBox = getEl("zbFwAlternateList");
 	if (!st || !_zbFwCache) return; // check still running: leave the spinner text
 	if (_zbFwCache.error) {
 		st.innerHTML = "<span class='text-muted'>" + t(_zbFwCache.error === "empty" ? "d.noZbFw" : "d.noZbIdx") + "</span>";
 		if (box) box.innerHTML = "";
-		if (alternate) alternate.style.display = "none";
+		if (roleSwitch) roleSwitch.style.display = "none";
 		return;
 	}
 	const { fws, localRev, localRole } = _zbFwCache;
@@ -1910,7 +1910,7 @@ function renderZbFwList() {
 	if (alternateBox) alternateBox.innerHTML = "";
 	if (localRole === "unknown") {
 		st.innerHTML = "<span style='color:#f7a623'><strong>" + t("d.roleUnknown") + "</strong></span>";
-		if (alternate) alternate.style.display = "none";
+		if (roleSwitch) roleSwitch.style.display = "none";
 		return;
 	}
 
@@ -1922,7 +1922,7 @@ function renderZbFwList() {
 	if (other && alternateBox) {
 		alternateBox.appendChild(renderZbFirmwareRow(other, localRole, localRev, true));
 	}
-	if (alternate) alternate.style.display = other ? "" : "none";
+	if (roleSwitch) roleSwitch.style.display = other ? "" : "none";
 
 	if (!current) {
 		st.innerHTML = "<span style='color:#f7a623'><strong>" + t("d.noCurrentRoleFw") + "</strong></span>";
@@ -2004,12 +2004,15 @@ I18N.zh["d.noZbFw"] = "未找到 Zigbee 固件发布版本。";
 I18N.en["a.zbRole"] = "CC2652P Firmware Role:";
 I18N.de["a.zbRole"] = "CC2652P-Firmwarerolle:";
 I18N.zh["a.zbRole"] = "CC2652P 固件角色：";
-I18N.en["a.advancedFw"] = "Advanced firmware options";
-I18N.de["a.advancedFw"] = "Erweiterte Firmware-Optionen";
-I18N.zh["a.advancedFw"] = "高级固件选项";
+I18N.en["a.switchRole"] = "Switch Zigbee role";
+I18N.de["a.switchRole"] = "Zigbee-Rolle wechseln";
+I18N.zh["a.switchRole"] = "切换 Zigbee 角色";
 I18N.en["a.otherRole"] = "Other firmware role";
 I18N.de["a.otherRole"] = "Andere Firmwarerolle";
 I18N.zh["a.otherRole"] = "其他固件角色";
+I18N.en["a.roleSwitchNote"] = "Switching roles replaces the current firmware role and can stop the current Zigbee network. Continue only if intentional.";
+I18N.de["a.roleSwitchNote"] = "Ein Rollenwechsel ersetzt die aktuelle Firmware-Rolle und kann das aktuelle Zigbee-Netz stoppen. Nur fortfahren, wenn dies beabsichtigt ist.";
+I18N.zh["a.roleSwitchNote"] = "切换角色会替换当前固件角色，可能导致当前 Zigbee 网络停止。仅在确认这是有意操作时继续。";
 I18N.en["a.coordNote"] = "Coordinator is recommended for ZHA and Zigbee2MQTT. Use Router only to join another Zigbee network.";
 I18N.de["a.coordNote"] = "Koordinator wird für ZHA und Zigbee2MQTT empfohlen. Router nur verwenden, um einem anderen Zigbee-Netz beizutreten.";
 I18N.zh["a.coordNote"] = "ZHA 和 Zigbee2MQTT 推荐使用协调器固件。只有加入其他 Zigbee 网络时才使用路由器固件。";
