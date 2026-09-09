@@ -353,14 +353,21 @@
                      <span data-i18n="a.zbFwCard">Zigbee Firmware</span>
                 </div>
                 <div class="card-body">
-                    <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span><span data-i18n="a.rev">rev</span> <span data-replace="zigbeeFwRev"></span></span></div>
-                    <div class="form-check form-switch mb-2">
-                      <input class="form-check-input" type="checkbox" id="zbIncludePrerelease" />
-                      <label class="form-check-label" for="zbIncludePrerelease" data-i18n="a.zbIncludePrerelease">Include pre-releases</label>
-                    </div>
+                    <div class="info-item"><span class="label" data-i18n="c.installed">Installed:</span><span><span data-replace="zigbeeFwRole"></span> · <span data-i18n="a.rev">rev</span> <span data-replace="zigbeeFwRev"></span></span></div>
                     <div id="zbFwStatus" class="fw-status"><span class="text-muted busy-shimmer" data-i18n="c.checking">Checking for updates...</span></div>
                     <div id="zbFwList" class="mb-2"></div>
-                    <p class="text-muted" style="font-size:0.85rem" data-i18n="a.coordNote">Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.</p>
+                    <details id="zbFwAdvanced" class="mb-3">
+                      <summary data-i18n="a.advancedFw">Advanced firmware options</summary>
+                      <div class="form-check form-switch mb-2 mt-2">
+                        <input class="form-check-input" type="checkbox" id="zbIncludePrerelease" />
+                        <label class="form-check-label" for="zbIncludePrerelease" data-i18n="a.zbIncludePrerelease">Include pre-releases</label>
+                      </div>
+                      <div id="zbFwAlternate" style="display:none">
+                        <div class="text-muted mb-1" data-i18n="a.otherRole">Other firmware role</div>
+                        <div id="zbFwAlternateList"></div>
+                      </div>
+                    </details>
+                    <p class="text-muted" style="font-size:0.85rem" data-i18n="a.coordNote">Coordinator is recommended for ZHA and Zigbee2MQTT. Use Router only to join another Zigbee network.</p>
                     <button
                       type="button"
                       class="btn btn-outline-primary col-sm-12 mb-3"
