@@ -95,6 +95,21 @@ a:hover { color: var(--accent-hover); }
 .card-body { padding: 1rem; }
 .card-body .row { margin-left: 0; margin-right: 0; }
 
+/* Secondary Zigbee role action: visible context, no disclosure control. */
+.zb-fw-role-switch {
+  background-color: var(--background-alt);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.zb-fw-role-switch-header {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: var(--background);
+  font-weight: 600;
+}
+.zb-fw-role-switch-body { padding: 10px 16px 16px; }
+.zb-fw-role-switch-note { margin: 0 0 0.75rem; font-size: 0.85rem; }
+
 /* Shared "save / action" button row used on every form page */
 .save-row { display: flex; justify-content: center; margin-top: 1rem; }
 .save-row .btn { width: 100%; }

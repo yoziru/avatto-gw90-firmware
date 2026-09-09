@@ -360,14 +360,15 @@
                       <input class="form-check-input" type="checkbox" id="zbIncludePrerelease" />
                       <label class="form-check-label" for="zbIncludePrerelease" data-i18n="a.zbIncludePrerelease">Include pre-releases</label>
                     </div>
-                    <details id="zbFwRoleSwitch" class="mb-3" style="display:none">
-                      <summary data-i18n="a.switchRole">Switch Zigbee role</summary>
-                      <p class="text-muted mt-2 mb-2" style="font-size:0.85rem" data-i18n="a.roleSwitchNote">Switching roles replaces the current firmware role and can stop the current Zigbee network. Continue only if intentional.</p>
-                      <div id="zbFwAlternate">
-                        <div class="text-muted mb-1" data-i18n="a.otherRole">Other firmware role</div>
-                        <div id="zbFwAlternateList"></div>
+                    <section id="zbFwRoleSwitch" class="zb-fw-role-switch mb-3" style="display:none">
+                      <div class="zb-fw-role-switch-header" data-i18n="a.switchRole">Switch Zigbee role</div>
+                      <div class="zb-fw-role-switch-body">
+                        <p class="text-muted zb-fw-role-switch-note" data-i18n="a.roleSwitchNote">Switching roles replaces the current firmware role and can stop the current Zigbee network. Continue only if intentional.</p>
+                        <div id="zbFwAlternate">
+                          <div id="zbFwAlternateList"></div>
+                        </div>
                       </div>
-                    </details>
+                    </section>
                     <p class="text-muted" style="font-size:0.85rem" data-i18n="a.coordNote">Coordinator is recommended for ZHA and Zigbee2MQTT. Use Router only to join another Zigbee network.</p>
                     <button
                       type="button"
