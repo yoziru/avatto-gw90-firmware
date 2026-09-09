@@ -12,6 +12,7 @@
 #include "web.h"
 #include "etc.h"
 #include "zb.h"
+#include "zb_ver.h"
 #include "zones.h"
 #include "profiling.h"
 #include "version.h"
@@ -163,6 +164,7 @@ JsonDocument &getRootData()
     {
         doc["zigbeeFwRev"] = "unknown";
     }
+    doc["zigbeeFwRole"] = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
     if (zbVer.chipID)
     {
         doc["zigbeeHwRev"] = String(zbVer.chipID);

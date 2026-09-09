@@ -14,6 +14,38 @@ struct ZbVerInfo
   uint32_t zbRev;
 };
 
+enum class ZbRole : uint8_t
+{
+  UNKNOWN,
+  ROUTER,
+  COORDINATOR
+};
+
+constexpr uint8_t ZB_DEVICE_STATE_ROUTER = 7;
+constexpr uint8_t ZB_DEVICE_STATE_COORDINATOR = 9;
+
+inline ZbRole zbRoleFromDeviceState(uint8_t deviceState) noexcept
+{
+  if (deviceState == ZB_DEVICE_STATE_ROUTER)
+    return ZbRole::ROUTER;
+  if (deviceState == ZB_DEVICE_STATE_COORDINATOR)
+    return ZbRole::COORDINATOR;
+  return ZbRole::UNKNOWN;
+}
+
+inline const char *zbRoleName(ZbRole role) noexcept
+{
+  switch (role)
+  {
+  case ZbRole::ROUTER:
+    return "Router";
+  case ZbRole::COORDINATOR:
+    return "Coordinator";
+  default:
+    return "unknown";
+  }
+}
+
 // Decode the 11-byte ZNP version payload (as read in getZbVer()).
 inline ZbVerInfo decodeZbVer(const uint8_t buf[11]) noexcept
 {

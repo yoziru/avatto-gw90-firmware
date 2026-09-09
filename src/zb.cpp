@@ -65,14 +65,57 @@ void clearS2Buffer()
 
 // Protocol version | Product ID | Version | 20250321
 //   02        01      02 07 01     D1 FE 34 01   00     74(checksum)
+static void getZbRole()
+{
+    const byte cmdZdoExtNwkInfo[] = {0xFE, 0x00, 0x25, 0x50, 0x75};
+    const uint8_t responseLen = 24;
+
+    for (uint8_t i = 0; i < 3; i++)
+    {
+        clearS2Buffer();
+        Serial2.write(cmdZdoExtNwkInfo, sizeof(cmdZdoExtNwkInfo));
+        Serial2.flush();
+        const unsigned long deadline = millis() + 500;
+        while (Serial2.available() < responseLen + 5 && millis() < deadline)
+        {
+            delay(1);
+        }
+
+        if (Serial2.available() < responseLen + 5 || Serial2.read() != 0xFE || Serial2.read() != responseLen || Serial2.read() != 0x65 || Serial2.read() != 0x50)
+        {
+            clearS2Buffer();
+            continue;
+        }
+
+        byte response[responseLen];
+        byte expectedChecksum = responseLen ^ 0x65 ^ 0x50;
+        for (uint8_t j = 0; j < responseLen; j++)
+        {
+            response[j] = Serial2.read();
+            expectedChecksum ^= response[j];
+        }
+        const byte responseChecksum = Serial2.read();
+        if (response[0] != 0 || responseChecksum != expectedChecksum)
+        {
+            clearS2Buffer();
+            continue;
+        }
+        zbVer.deviceState = response[2];
+        printLogMsg(String("[ZBROLE] ") + zbRoleName(zbRoleFromDeviceState(zbVer.deviceState)) + " (state " + zbVer.deviceState + ")");
+        return;
+    }
+}
+
 void getZbVer()
 {
     zbVer.zbRev = 0;
+    zbVer.deviceState = 0xFF;
     const byte cmdFrameStart = 0xFE;
     const byte zero = 0x00;
     const byte cmd1 = 0x21;
     const byte cmd2 = 0x02;
     const byte cmdSysVersion[] = {cmdFrameStart, zero, cmd1, cmd2, 0x23};
+    bool versionRead = false;
 
 
     for (uint8_t i = 0; i < 6; i++)
@@ -102,8 +145,14 @@ void getZbVer()
 
             printLogMsg(String("[ZBVER]") + " Rev: " + zbVer.zbRev + " Maintrel: " + zbVer.maintrel + " Minorrel: " + zbVer.minorrel + " Majorrel: " + zbVer.majorrel + " Transportrev: " + zbVer.transportrev + " Product: " + zbVer.product);
             clearS2Buffer();
+            versionRead = true;
             break;
         }
+    }
+
+    if (versionRead)
+    {
+        getZbRole();
     }
 }
 
@@ -163,6 +212,7 @@ void zbCheck()
         printLogMsg("[ZBCHK] Wrong answer");
         printLogMsg("[ZBVER] Unknown");
         zbVer.zbRev = 0;
+        zbVer.deviceState = 0xFF;
     }
     else
     {
@@ -809,5 +859,3 @@ bool zbEraseFlash(uint32_t start,uint32_t size)
     }
     return false;
 }
-
-
