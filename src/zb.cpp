@@ -75,9 +75,13 @@ static void getZbRole()
         clearS2Buffer();
         Serial2.write(cmdZdoExtNwkInfo, sizeof(cmdZdoExtNwkInfo));
         Serial2.flush();
-        delay(100);
+        const unsigned long deadline = millis() + 500;
+        while (Serial2.available() < responseLen + 5 && millis() < deadline)
+        {
+            delay(1);
+        }
 
-        if (Serial2.read() != 0xFE || Serial2.read() != responseLen || Serial2.read() != 0x65 || Serial2.read() != 0x50)
+        if (Serial2.available() < responseLen + 5 || Serial2.read() != 0xFE || Serial2.read() != responseLen || Serial2.read() != 0x65 || Serial2.read() != 0x50)
         {
             clearS2Buffer();
             continue;
