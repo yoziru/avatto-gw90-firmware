@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+## v1.1.2 — 2026-09-09
+
 ### Features
 
 - **Full Web UI translation (English / Deutsch / 中文).** Every page, dialog, button, placeholder and status value is now translated — not just the sidebar. German uses WLAN terminology and neutral short labels; Chinese uses Simplified with familiar terms (e.g. 忽略此网络, 热点). The language switcher (top bar and sidebar) applies instantly to the open page, remembers the choice, follows the browser language on first visit, and also covers dynamically rendered content (Wi-Fi list, firmware rows, dialogs, upload progress). Device status values stay English on the API wire — translation happens in the browser.
