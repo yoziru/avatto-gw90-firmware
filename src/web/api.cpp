@@ -16,6 +16,7 @@
 #include "log.h"
 #include "etc.h"
 #include "zb.h"
+#include "zb_ver.h"
 #include "version.h"
 #include "net.h"
 
@@ -269,6 +270,8 @@ void handleApi()
             Serial.println("\n\n========== api_update zigbee =========");
             ConfigSettings.zbFlashing = 1;
             const char *fwurlArg = "fwurl";
+            const char *fwRoleArg = "role";
+            const char *confirmRoleSwitchArg = "confirmRoleSwitch";
             const char *tagZB_FW_info = "ZB_FW_info";
             const char *tagZB_FW_err = "ZB_FW_err";
             const char *tagZB_FW_download = "ZB_FW_downloading";
@@ -278,6 +281,54 @@ void handleApi()
             {
                 String fwUrl = serverWeb.arg(fwurlArg);
                 fwUrl = String(urlDecode(fwUrl.c_str()).c_str());
+
+                String requestedRole = serverWeb.hasArg(fwRoleArg) ? serverWeb.arg(fwRoleArg) : "";
+                requestedRole.toLowerCase();
+                String fwUrlLower = fwUrl;
+                fwUrlLower.toLowerCase();
+                String urlRole;
+                if (fwUrlLower.indexOf("_router_") >= 0)
+                    urlRole = "router";
+                else if (fwUrlLower.indexOf("_coordinator_") >= 0)
+                    urlRole = "coordinator";
+
+                if (requestedRole.length() && requestedRole != "router" && requestedRole != "coordinator")
+                {
+                    serverWeb.send(HTTP_CODE_BAD_REQUEST, contTypeText, "invalid firmware role");
+                    ConfigSettings.zbFlashing = 0;
+                    break;
+                }
+                if (urlRole.length() && requestedRole.length() && urlRole != requestedRole)
+                {
+                    serverWeb.send(HTTP_CODE_BAD_REQUEST, contTypeText, "firmware URL role mismatch");
+                    ConfigSettings.zbFlashing = 0;
+                    break;
+                }
+
+                const String targetRole = requestedRole.length() ? requestedRole : urlRole;
+                const ZbRole installedZbRole = zbRoleFromDeviceState(zbVer.deviceState);
+                String installedRole = zbRoleName(installedZbRole);
+                installedRole.toLowerCase();
+                if (!targetRole.length())
+                {
+                    serverWeb.send(HTTP_CODE_BAD_REQUEST, contTypeText, "firmware role is required");
+                    ConfigSettings.zbFlashing = 0;
+                    break;
+                }
+                if (installedZbRole == ZbRole::UNKNOWN)
+                {
+                    serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "installed firmware role could not be detected");
+                    sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Installed firmware role could not be detected");
+                    ConfigSettings.zbFlashing = 0;
+                    break;
+                }
+                if (targetRole != installedRole && serverWeb.arg(confirmRoleSwitchArg) != "1")
+                {
+                    serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "firmware role switch requires confirmation");
+                    sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Firmware role switch requires confirmation");
+                    ConfigSettings.zbFlashing = 0;
+                    break;
+                }
 
                 Serial.print("Firmware URL: ");
                 Serial.println(fwUrl);
@@ -573,6 +624,10 @@ void handleApi()
                 else if (serverWeb.arg(param) == "zbRev")
                 {
                     resp = zbVer.zbRev > 0 ? (String)zbVer.zbRev : "Unknown";
+                }
+                else if (serverWeb.arg(param) == "zbRole")
+                {
+                    resp = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
                 }
                 else if (serverWeb.arg(param) == "espVer")
                 {

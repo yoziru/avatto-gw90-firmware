@@ -33,9 +33,16 @@ static void test_decodeZbVer_rev_ignores_trailing_bytes(void) {
     TEST_ASSERT_EQUAL_UINT32(1, v.zbRev);
 }
 
+static void test_zb_role_from_device_state(void) {
+    TEST_ASSERT_EQUAL(static_cast<int>(ZbRole::COORDINATOR), static_cast<int>(zbRoleFromDeviceState(ZB_DEVICE_STATE_COORDINATOR)));
+    TEST_ASSERT_EQUAL(static_cast<int>(ZbRole::ROUTER), static_cast<int>(zbRoleFromDeviceState(ZB_DEVICE_STATE_ROUTER)));
+    TEST_ASSERT_EQUAL(static_cast<int>(ZbRole::UNKNOWN), static_cast<int>(zbRoleFromDeviceState(8)));
+}
+
 void run_zb_ver_tests(void) {
     RUN_TEST(test_decodeZbVer_fields);
     RUN_TEST(test_decodeZbVer_rev_little_endian);
     RUN_TEST(test_decodeZbVer_rev_zero);
     RUN_TEST(test_decodeZbVer_rev_ignores_trailing_bytes);
+    RUN_TEST(test_zb_role_from_device_state);
 }

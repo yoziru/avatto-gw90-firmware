@@ -140,6 +140,7 @@ struct WgSettingsStruct
 struct zbVerStruct
 {
   uint32_t zbRev;
+  uint8_t deviceState = 0xFF;
   uint8_t maintrel;
   uint8_t minorrel;
   uint8_t majorrel;

@@ -25,7 +25,8 @@ function createSpinner() {
 }
 
 const zbFwReleasesUrl = "https://api.github.com/repos/Koenkk/Z-Stack-firmware/releases?per_page=100";
-const zbFwIncludeBetaKey = "zb_include_beta";
+// Keep the storage key so existing users retain their preference.
+const zbFwIncludePrereleaseKey = "zb_include_beta";
 
 const GITHUB_REPO_OWNER = "AVATTO-smart";
 const GITHUB_REPO_NAME = "avatto-gw90-firmware";
@@ -470,6 +471,34 @@ function zbFlashGitWait() {
 	startZbFlashFromGit();
 }
 
+function normalizeZbRole(role) {
+	const value = String(role || "").trim().toLowerCase();
+	return value === "coordinator" || value === "router" ? value : "unknown";
+}
+
+function zbRoleLabel(role) {
+	if (role === "unknown") return t("d.unknown");
+	return role === "router" ? t("d.router") : t("d.coord");
+}
+
+function requestZigbeeFlash(firmware, localRole, localVersion) {
+	if (!firmware || !firmware.link || localRole === "unknown") return;
+
+	const begin = () => {
+		latestZbFirmware = { ...firmware, localRole, localVersion: localVersion || "unknown" };
+		startZbFlashFromGit();
+	};
+	if (firmware.role !== localRole) {
+		modalConstructor("zbRoleSwitchConfirm", {
+			currentRole: zbRoleLabel(localRole),
+			targetRole: zbRoleLabel(firmware.role),
+			onConfirm: begin
+		});
+		return;
+	}
+	begin();
+}
+
 let zbEventSource = null;
 let zbEventConnectTimeout = null;
 let originalRefreshInterval = null;
@@ -500,7 +529,7 @@ function startZbFlashFromGit() {
 				if (updBtnZb) updBtnZb.disabled = false;
 				return;
 			}
-			startFlashProcess(firmwareUrl);
+			startFlashProcess(firmwareUrl, latestZbFirmware.role, latestZbFirmware.localRole !== latestZbFirmware.role);
 		}, 2000);
 	}, 300);
 }
@@ -519,13 +548,17 @@ function switchTab(tabEl) {
 	}
 }
 
-function startFlashProcess(fwUrl) {
+function startFlashProcess(fwUrl, role, roleSwitch) {
 	console.log("Starting flash process with URL:", fwUrl);
 	const prgZb = getEl("prg_zb");
 	const barZb = getEl("bar_zb");
 	if (prgZb) prgZb.innerHTML = t("d.dlFw");
 	if (barZb) barZb.style.width = "5%";
-	fetch(apiLink + api.actions.API_FLASH_ZB + "&fwurl=" + encodeURIComponent(fwUrl)).then(r => r.text()).then(data => {
+	let apiUrl = apiLink + api.actions.API_FLASH_ZB + "&fwurl=" + encodeURIComponent(fwUrl) + "&role=" + encodeURIComponent(role || "");
+	if (roleSwitch) apiUrl += "&confirmRoleSwitch=1";
+	fetch(apiUrl).then(async r => {
+		const data = await r.text();
+		if (!r.ok) throw new Error(data || r.statusText);
 		console.log("API Response:", data);
 	}).catch(err => {
 		console.error("Download failed:", err);
@@ -701,11 +734,19 @@ function modalConstructor(type, params) {
 		case "zbVersionInfo":
 			if (hText) hText.textContent = t("md.latestZb");
 			if (mBody) mBody.innerHTML = params.body || firmwareModalMarkup(params);
-		if (mBtns) {
-			mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("c.close"), click: closeModal }));
-			if (params.hasUpdate) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: t("md.updateNow"), click: () => { closeModal(); zbFlashGitWait(); } }));
-		}
-		break;
+			if (mBtns) {
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-primary", text: t("c.close"), click: closeModal }));
+				if (params.canFlash) mBtns.appendChild(el("button", { type: "button", "class": "btn btn-warning", text: params.roleSwitch ? t("md.switchRole") : t("md.updateNow"), click: () => { closeModal(); requestZigbeeFlash(params.firmware, params.localRole, params.localVersion); } }));
+			}
+			break;
+		case "zbRoleSwitchConfirm":
+			if (hText) { hText.textContent = t("md.zbRoleSwitch"); hText.style.color = "#f7a623"; }
+			if (mBody) mBody.textContent = t("md.zbRoleSwitchBody", { current: params.currentRole, target: params.targetRole });
+			if (mBtns) {
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-outline-secondary", text: t("c.cancel"), click: closeModal }));
+				mBtns.appendChild(el("button", { type: "button", "class": "btn btn-danger", text: t("md.switchRole"), click: () => { closeModal(); params.onConfirm(); } }));
+			}
+			break;
 		case "rebootWait":
 			if (hText) hText.textContent = t("md.devRestart");
 			if (mBody) mBody.textContent = t("md.waitDev");
@@ -1576,8 +1617,9 @@ async function showZigbeeVersionInfo(firmwareType) {
 		modalConstructor("zbVersionInfo", { body: "<div class='alert alert-info'>" + t("d.loadingFw") + "</div><div class='text-muted'><div class='spinner-border text-primary' role='status'></div> <span class='busy-shimmer'>" + t("d.loading") + "</span></div>" });
 		let fwData = null;
 		let localVerData = null;
+		let localRoleData = null;
 		try {
-			[fwData, localVerData] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false)]);
+			[fwData, localVerData, localRoleData] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false), fetchData("/api?action=1&param=zbRole", false)]);
 		} catch (err) {
 			console.warn("Failed to load:", err.message || err);
 		}
@@ -1594,29 +1636,42 @@ async function showZigbeeVersionInfo(firmwareType) {
 			isZbVersionLoading = false;
 			return;
 		}
-		latestZbFirmware = { ...selectedFw, localVersion: localVerData ? localVerData.trim() : "unknown" };
-		const localVer = latestZbFirmware.localVersion, remoteVer = latestZbFirmware.version || "unknown";
+		const localRole = normalizeZbRole(localRoleData);
+		const localVer = localVerData && localVerData.trim().toLowerCase() !== "unknown" ? localVerData.trim() : "unknown";
+		const remoteVer = selectedFw.version || "unknown";
+		latestZbFirmware = { ...selectedFw, localRole, localVersion: localVer };
 		// Compare raw backend tokens ("unknown" is always English on the wire);
 		// only the display strings below are localized.
 		const unknownRaw = localVer === "unknown", unknownRemote = remoteVer === "unknown";
-		const hasUpdate = unknownRaw || verIsNewer(remoteVer, localVer);
-		const status = !unknownRaw && !unknownRemote
-			? (hasUpdate
-				? "<div class='alert alert-success mt-2'><strong>" + t("d.updateAvailEx") + "</strong><br>" + t("d.currentLatest") + escHtml(localVer) + " -> " + t("d.latestIs") + escHtml(remoteVer) + "</div>"
-				: "<div class='alert alert-secondary mt-2'><strong>" + t("d.upToDateEx") + "</strong><br>" + t("d.currentVer") + escHtml(localVer) + "</div>")
-			: "";
+		const roleSwitch = localRole !== "unknown" && localRole !== selectedFw.role;
+		const hasUpdate = localRole === selectedFw.role && (unknownRaw || verIsNewer(remoteVer, localVer));
+		const status = localRole === "unknown"
+			? "<div class='alert alert-warning mt-2'><strong>" + t("d.roleUnknown") + "</strong></div>"
+			: roleSwitch
+				? "<div class='alert alert-warning mt-2'><strong>" + t("d.roleSwitch") + "</strong><br>" + t("d.installedRole") + " " + zbRoleLabel(localRole) + " -> " + zbRoleLabel(selectedFw.role) + "</div>"
+				: !unknownRaw && !unknownRemote
+					? (hasUpdate
+						? "<div class='alert alert-success mt-2'><strong>" + t("d.updateAvailEx") + "</strong><br>" + t("d.currentLatest") + escHtml(localVer) + " -> " + t("d.latestIs") + escHtml(remoteVer) + "</div>"
+						: "<div class='alert alert-secondary mt-2'><strong>" + t("d.upToDateEx") + "</strong><br>" + t("d.currentVer") + escHtml(localVer) + "</div>")
+					: "";
 		modalConstructor("zbVersionInfo", {
 			summary: firmwareVersionSummary(localVer, remoteVer),
 			details: [
 				[t("d.name"), latestZbFirmware.name],
 				[t("d.version"), latestZbFirmware.version],
+				[t("d.installedRole"), zbRoleLabel(localRole)],
 				[t("d.type"), latestZbFirmware.firmwareType],
 				[t("d.file"), latestZbFirmware.asset],
 				[t("d.desc"), latestZbFirmware.firmwareDesc]
 			],
 			changelog: latestZbFirmware.changelog || latestZbFirmware.releaseNotes || "",
 			status,
-			hasUpdate
+			hasUpdate,
+			canFlash: hasUpdate || roleSwitch,
+			roleSwitch,
+			firmware: selectedFw,
+			localRole,
+			localVersion: localVer
 		});
 	} catch (error) {
 		console.error("Error while getting Zigbee version info:", error);
@@ -1737,11 +1792,11 @@ async function checkEspFirmware() {
 }
 
 function zbFirmwareFromReleases(releases) {
-	const includeBeta = localStorage.getItem(zbFwIncludeBetaKey) === "1";
+	const includePrerelease = localStorage.getItem(zbFwIncludePrereleaseKey) === "1";
 	return ["coordinator", "router"].map(role => {
 		const candidates = (Array.isArray(releases) ? releases : []).filter(release => {
 			const tag = String(release && release.tag_name || "").toLowerCase();
-			return release && !release.draft && (includeBeta || !release.prerelease) && tag.includes("_" + role + "_");
+			return release && !release.draft && (includePrerelease || !release.prerelease) && tag.includes("_" + role + "_");
 		}).sort((a, b) => String(b.published_at || b.created_at).localeCompare(String(a.published_at || a.created_at)));
 		const release = candidates.find(candidate => {
 			return (candidate.assets || []).some(asset => {
@@ -1774,11 +1829,11 @@ async function fetchZigbeeFirmware() {
 }
 
 function initZbFirmwareSource() {
-	const beta = getEl("zbIncludeBeta");
-	if (!beta) return;
-	beta.checked = localStorage.getItem(zbFwIncludeBetaKey) === "1";
-	beta.addEventListener("change", () => {
-		localStorage.setItem(zbFwIncludeBetaKey, beta.checked ? "1" : "0");
+	const prerelease = getEl("zbIncludePrerelease");
+	if (!prerelease) return;
+	prerelease.checked = localStorage.getItem(zbFwIncludePrereleaseKey) === "1";
+	prerelease.addEventListener("change", () => {
+		localStorage.setItem(zbFwIncludePrereleaseKey, prerelease.checked ? "1" : "0");
 		_zbFwCache = null;
 		checkZbFirmware();
 	});
@@ -1790,15 +1845,16 @@ async function checkZbFirmware() {
 	const st = getEl("zbFwStatus");
 	if (!st) return;
 	st.innerHTML = "<span class='text-muted busy-shimmer'>" + t("c.checking") + "</span>";
-	let fwData = null, rev = "";
+	let fwData = null, rev = "", role = "";
 	try {
-		[fwData, rev] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false)]);
+		[fwData, rev, role] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false), fetchData("/api?action=1&param=zbRole", false)]);
 	} catch (e) { console.warn("Zigbee version check failed:", e); }
 	const localRev = (rev || "").trim();
+	const localRole = normalizeZbRole(role);
 	if (!Array.isArray(fwData) || !fwData.length) {
 		_zbFwCache = { error: "index" };
 	} else {
-		_zbFwCache = fwData.length ? { fws: fwData, localRev } : { error: "empty" };
+		_zbFwCache = fwData.length ? { fws: fwData, localRev, localRole } : { error: "empty" };
 	}
 	renderZbFwList();
 }
@@ -1816,41 +1872,43 @@ function renderZbFwList() {
 		if (box) box.innerHTML = "";
 		return;
 	}
-	const { fws, localRev } = _zbFwCache;
+	const { fws, localRev, localRole } = _zbFwCache;
 	let newer = 0;
+	let roleSwitches = 0;
 	if (box) {
 		box.innerHTML = "";
 		fws.forEach(fw => {
 			const isRouter = fw.role === "router";
 			const remote = fw.version || "unknown";
-			const hasUpdate = verIsNewer(remote, localRev);
+			const roleMatches = localRole !== "unknown" && fw.role === localRole;
+			const roleSwitch = localRole !== "unknown" && !roleMatches;
+			const hasUpdate = roleMatches && verIsNewer(remote, localRev);
 			if (hasUpdate) newer++;
+			if (roleSwitch) roleSwitches++;
 			const row = el("div", { "class": "zb-fw-row" });
 			const info = el("div", { "class": "zb-fw-info" });
 			info.innerHTML = "<strong>" + (isRouter ? t("d.router") : t("d.coord")) + "</strong>" +
 				(isRouter ? "" : " <span class='default-badge'>" + t("d.default") + "</span>") +
-				(fw.prerelease ? " <span class='default-badge'>" + t("d.beta") + "</span>" : "") +
+				(fw.prerelease ? " <span class='default-badge'>" + t("d.prerelease") + "</span>" : "") +
 				"<div class='text-muted zb-fw-sub'>" + t("d.latestIs") + escHtml(remote) + " - " +
-				(hasUpdate ? "<span style='color:#f7a623'>" + t("d.updAvailShort") + "</span>" : t("d.upToDate")) + "</div>";
+				(localRole === "unknown" ? "<span style='color:#f7a623'>" + t("d.roleUnknownShort") + "</span>" : hasUpdate ? "<span style='color:#f7a623'>" + t("d.updAvailShort") + "</span>" : roleSwitch ? "<span style='color:#f7a623'>" + t("d.roleSwitch") + "</span>" : t("d.upToDate")) + "</div>";
 			row.appendChild(info);
 			const wrap = el("span", { "class": "zb-fw-btns" });
 			wrap.appendChild(el("button", { type: "button", "class": "btn btn-outline-primary btn-sm", text: t("c.details"), click: () => showZigbeeVersionInfo(isRouter ? "router" : "coordinator") }));
-			if (hasUpdate) {
+			if (hasUpdate || roleSwitch) {
 				wrap.appendChild(document.createTextNode(" "));
 				wrap.appendChild(el("button", {
-					type: "button", "class": "btn btn-warning btn-sm", text: t("d.flash") + remote, click: () => {
-						if (!fw.link) return;
-						latestZbFirmware = { ...fw, localVersion: localRev || "unknown" };
-						startZbFlashFromGit();
-					}
+					type: "button", "class": "btn btn-warning btn-sm", text: hasUpdate ? t("d.flash") + remote : t("d.switchTo") + zbRoleLabel(fw.role), click: () => requestZigbeeFlash(fw, localRole, localRev || "unknown")
 				}));
 			}
 			row.appendChild(wrap);
 			box.appendChild(row);
 		});
 	}
-	st.innerHTML = newer ? ("<span style='color:#f7a623'><strong>" + t("d.updatesAvail", { n: newer }) + "</strong></span>")
-		: t("d.allUpToDate") + " (" + t("d.localRev") + " <strong>" + escHtml(localRev || tStatus("unknown")) + "</strong>)";
+	st.innerHTML = localRole === "unknown"
+		? "<span style='color:#f7a623'><strong>" + t("d.roleUnknown") + "</strong></span>"
+		: newer ? ("<span style='color:#f7a623'><strong>" + t("d.updatesAvail", { n: newer }) + "</strong></span>")
+			: t("d.currentRoleUpToDate") + " (" + zbRoleLabel(localRole) + ", " + t("d.localRev") + " <strong>" + escHtml(localRev || tStatus("unknown")) + "</strong>" + (roleSwitches ? "; " + roleSwitches + " " + t("d.roleSwitchesAvailable") : "") + ")";
 }
 
 
@@ -1926,6 +1984,48 @@ I18N.zh["a.zbIncludeBeta"] = "包括 Beta 版本";
 I18N.en["d.beta"] = "beta";
 I18N.de["d.beta"] = "Beta";
 I18N.zh["d.beta"] = "Beta";
+I18N.en["a.zbRole"] = "CC2652P Firmware Role:";
+I18N.de["a.zbRole"] = "CC2652P-Firmwarerolle:";
+I18N.zh["a.zbRole"] = "CC2652P 固件角色：";
+I18N.en["a.zbIncludePrerelease"] = "Include pre-releases";
+I18N.de["a.zbIncludePrerelease"] = "Pre-Releases einschließen";
+I18N.zh["a.zbIncludePrerelease"] = "包括预发布版本";
+I18N.en["d.prerelease"] = "pre-release";
+I18N.de["d.prerelease"] = "Pre-Release";
+I18N.zh["d.prerelease"] = "预发布";
+I18N.en["d.roleUnknown"] = "Installed Zigbee role could not be detected. Automatic flashing is disabled.";
+I18N.de["d.roleUnknown"] = "Die installierte Zigbee-Rolle konnte nicht erkannt werden. Automatisches Flashen ist deaktiviert.";
+I18N.zh["d.roleUnknown"] = "无法检测已安装的 Zigbee 角色，已禁用自动刷写。";
+I18N.en["d.roleUnknownShort"] = "role unknown";
+I18N.de["d.roleUnknownShort"] = "Rolle unbekannt";
+I18N.zh["d.roleUnknownShort"] = "角色未知";
+I18N.en["d.roleSwitch"] = "role switch required";
+I18N.de["d.roleSwitch"] = "Rollenwechsel erforderlich";
+I18N.zh["d.roleSwitch"] = "需要切换角色";
+I18N.en["d.installedRole"] = "Installed role:";
+I18N.de["d.installedRole"] = "Installierte Rolle:";
+I18N.zh["d.installedRole"] = "已安装角色：";
+I18N.en["d.switchTo"] = "Switch to ";
+I18N.de["d.switchTo"] = "Wechseln zu ";
+I18N.zh["d.switchTo"] = "切换到 ";
+I18N.en["d.currentRoleUpToDate"] = "Current role is up to date";
+I18N.de["d.currentRoleUpToDate"] = "Aktuelle Rolle ist aktuell";
+I18N.zh["d.currentRoleUpToDate"] = "当前角色已是最新";
+I18N.en["d.roleSwitchesAvailable"] = "role switch available";
+I18N.de["d.roleSwitchesAvailable"] = "Rollenwechsel verfügbar";
+I18N.zh["d.roleSwitchesAvailable"] = "可切换角色";
+I18N.en["md.zbRoleSwitch"] = "SWITCH ZIGBEE ROLE?";
+I18N.de["md.zbRoleSwitch"] = "ZIGBEE-ROLLE WECHSELN?";
+I18N.zh["md.zbRoleSwitch"] = "切换 Zigbee 角色？";
+I18N.en["md.zbRoleSwitchBody"] = "This will replace the installed ${current} firmware with ${target} firmware. The new role cannot perform the old role's function. Continue only if this is intentional.";
+I18N.de["md.zbRoleSwitchBody"] = "Die installierte ${current}-Firmware wird durch eine ${target}-Firmware ersetzt. Die neue Rolle kann die alte Funktion nicht ausführen. Nur fortfahren, wenn dies beabsichtigt ist.";
+I18N.zh["md.zbRoleSwitchBody"] = "这会将已安装的 ${current} 固件替换为 ${target} 固件。新角色无法执行旧角色的功能。仅在确认这是有意操作时继续。";
+I18N.en["md.switchRole"] = "Switch role and flash";
+I18N.de["md.switchRole"] = "Rolle wechseln und flashen";
+I18N.zh["md.switchRole"] = "切换角色并刷写";
+I18N.en["md.zbManualConfirm"] = "Confirm Zigbee firmware flash. The selected file may change the device between coordinator and router roles, which can stop the current Zigbee network from working. Continue?";
+I18N.de["md.zbManualConfirm"] = "Zigbee-Firmware-Flashen bestätigen. Die ausgewählte Datei kann die Rolle zwischen Koordinator und Router ändern und dadurch das aktuelle Zigbee-Netz außer Betrieb setzen. Fortfahren?";
+I18N.zh["md.zbManualConfirm"] = "确认刷写 Zigbee 固件。所选文件可能会在协调器和路由器角色之间切换，从而导致当前 Zigbee 网络停止工作。继续吗？";
 const languages = [
 	{ value: "en", text: "English", flag: "🇬🇧" },
 	{ value: "zh", text: "中文", flag: "🇨🇳" },
@@ -1968,6 +2068,7 @@ function tStatus(val) {
 		"None": "sv.none", "AP started": "sv.apStarted", "Not started": "sv.notStarted",
 		"Serial passthrough": "sv.serialPass", "USB passthrough": "sv.usbPass",
 		"Zigbee-to-Network": "sv.zbNet", "Zigbee-to-Serial": "sv.zbSer",
+		"Coordinator": "d.coord", "Router": "d.router",
 		"unknown": "sv.unknown", "Unknown": "sv.unknown",
 		"embedded": "sv.embedded", "external": "sv.external",
 		"On (Access point)": "sv.on", "N/A": "sv.unknown", "n/a": "sv.unknown", "-": "sv.unknown"
