@@ -159,18 +159,9 @@ JsonDocument &getRootData()
 #endif
     // "checking" while a detection is pending, the value once known, "unknown"
     // only after an attempt finished without a result.
-    const bool zbKnown = zbDetectKnown(zbInfoDetectState);
-    if (zbKnown && zbVer.zbRev > 0)
-    {
-        doc["zigbeeFwRev"] = String(zbVer.zbRev);
-    }
-    else
-    {
-        doc["zigbeeFwRev"] = zbDetectSentinel(zbInfoDetectState);
-    }
-    doc["zigbeeFwRole"] = zbKnown
-                              ? String(zbRoleName(zbRoleFromDeviceState(zbVer.deviceState)))
-                              : String(zbDetectSentinel(zbInfoDetectState));
+    char revBuf[16];
+    doc["zigbeeFwRev"] = zbRevDisplay(zbInfoDetectState, zbVer.zbRev, revBuf, sizeof(revBuf));
+    doc["zigbeeFwRole"] = zbRoleDisplay(zbInfoDetectState, zbVer.deviceState);
     if (zbVer.chipID)
     {
         doc["zigbeeHwRev"] = String(zbVer.chipID);

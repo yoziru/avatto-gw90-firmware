@@ -17,9 +17,10 @@ namespace
 {
 const char *const zbInfoFile = "/config/zbInfo.json";
 
-// What is already persisted. Used to skip unchanged writes (LittleFS wear).
+// What is already persisted. Used to skip unchanged writes (LittleFS wear):
+// saveZbInfo() never persists no-data, so an empty snapshot means "nothing
+// written yet".
 ZbInfo zbInfoSaved;
-bool zbInfoSavedValid = false;
 
 ZbInfo zbInfoFromVer()
 {
@@ -77,7 +78,6 @@ bool loadZbInfo()
     }
     zbInfoApply(info);
     zbInfoSaved = info;
-    zbInfoSavedValid = true;
     zbInfoDetectState = ZbDetectState::KNOWN;
     return true;
 }
@@ -89,7 +89,7 @@ void saveZbInfo()
     {
         return; // never persist "unknown"
     }
-    if (zbInfoSavedValid && zbInfoEquals(info, zbInfoSaved))
+    if (zbInfoHasData(zbInfoSaved) && zbInfoEquals(info, zbInfoSaved))
     {
         return; // unchanged - spare the flash
     }
@@ -105,5 +105,4 @@ void saveZbInfo()
     serializeJson(doc, file);
     file.close();
     zbInfoSaved = info;
-    zbInfoSavedValid = true;
 }

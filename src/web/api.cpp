@@ -632,10 +632,8 @@ void handleApi()
                 }
                 else if (serverWeb.arg(param) == "zbRev")
                 {
-                    if (zbDetectKnown(zbInfoDetectState) && zbVer.zbRev > 0)
-                        resp = (String)zbVer.zbRev;
-                    else
-                        resp = zbDetectSentinel(zbInfoDetectState);
+                    char revBuf[16];
+                    resp = zbRevDisplay(zbInfoDetectState, zbVer.zbRev, revBuf, sizeof(revBuf));
                 }
                 else if (serverWeb.arg(param) == "zbRole")
                 {
@@ -644,15 +642,13 @@ void handleApi()
                     // already pending/scheduled, report "checking" instead of
                     // issuing a duplicate query. Flashing requires its own
                     // live detection this boot (API_FLASH_ZB).
-                    if (zbInfoDetectState != ZbDetectState::DETECTING &&
-                        !(zbDetectKnown(zbInfoDetectState) && zbRoleFromDeviceState(zbVer.deviceState) != ZbRole::UNKNOWN))
+                    const bool roleKnown = zbInfoDetectState == ZbDetectState::KNOWN &&
+                                           zbRoleFromDeviceState(zbVer.deviceState) != ZbRole::UNKNOWN;
+                    if (zbInfoDetectState != ZbDetectState::DETECTING && !roleKnown)
                     {
                         getZbVer();
                     }
-                    if (zbDetectKnown(zbInfoDetectState) && zbRoleFromDeviceState(zbVer.deviceState) != ZbRole::UNKNOWN)
-                        resp = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
-                    else
-                        resp = zbDetectSentinel(zbInfoDetectState);
+                    resp = zbRoleDisplay(zbInfoDetectState, zbVer.deviceState);
                 }
                 else if (serverWeb.arg(param) == "espVer")
                 {

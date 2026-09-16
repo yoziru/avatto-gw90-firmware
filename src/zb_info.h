@@ -7,6 +7,8 @@
 
 #include <ArduinoJson.h>
 
+#include "zb_ver.h"
+
 // Last-known CC2652P hardware/firmware info. Persisted in /config/zbInfo.json
 // (see zb_info.cpp) so the web UI can show it immediately after boot instead
 // of "unknown" until the coordinator answers. Cached values are display-only:
@@ -84,16 +86,35 @@ enum class ZbDetectState : uint8_t
 constexpr const char *ZB_INFO_CHECKING = "checking";
 constexpr const char *ZB_INFO_UNKNOWN = "unknown";
 
-inline bool zbDetectKnown(ZbDetectState state) noexcept
-{
-    return state == ZbDetectState::KNOWN;
-}
-
 // Sentinel to emit instead of a value when there is nothing to show yet:
 // "checking" while detection is pending, otherwise "unknown".
 inline const char *zbDetectSentinel(ZbDetectState state) noexcept
 {
     return state == ZbDetectState::DETECTING ? ZB_INFO_CHECKING : ZB_INFO_UNKNOWN;
+}
+
+// Wire text for the coordinator revision: "checking" while detection is
+// pending, "unknown" when nothing is known, else the decimal revision.
+// `buf` backs the formatted number and must outlive the returned pointer.
+inline const char *zbRevDisplay(ZbDetectState state, uint32_t rev, char *buf, size_t bufLen) noexcept
+{
+    if (state == ZbDetectState::KNOWN && rev > 0 && bufLen > 0)
+    {
+        snprintf(buf, bufLen, "%lu", static_cast<unsigned long>(rev));
+        return buf;
+    }
+    return zbDetectSentinel(state);
+}
+
+// Wire text for the coordinator role: "checking" while detection is pending,
+// the role name once known, "unknown" when no role was detected.
+inline const char *zbRoleDisplay(ZbDetectState state, uint8_t deviceState) noexcept
+{
+    if (state != ZbDetectState::KNOWN)
+    {
+        return zbDetectSentinel(state);
+    }
+    return zbRoleName(zbRoleFromDeviceState(deviceState));
 }
 
 // State after an attempt finishes: success -> KNOWN; failure keeps KNOWN when

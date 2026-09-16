@@ -110,6 +110,17 @@ static void test_zb_info_chip_id_truncates(void) {
     TEST_ASSERT_EQUAL_STRING("CC2652P7-EXTREM", info.chipID);
 }
 
+static void test_zb_info_from_malformed_json_is_unknown(void) {
+    JsonDocument doc;
+    deserializeJson(doc, "{\"zbRev\":\"abc\",\"chipID\":42}");
+    const ZbInfo info = zbInfoFromJson(doc);
+
+    TEST_ASSERT_EQUAL_UINT32(0, info.zbRev);
+    TEST_ASSERT_EQUAL_UINT8(0xFF, info.deviceState);
+    TEST_ASSERT_EQUAL_STRING("", info.chipID);
+    TEST_ASSERT_FALSE(zbInfoHasData(info));
+}
+
 static void test_zb_detect_after_attempt(void) {
     using S = ZbDetectState;
     TEST_ASSERT_EQUAL(static_cast<int>(S::KNOWN), static_cast<int>(zbDetectAfterAttempt(S::DETECTING, true)));
@@ -125,19 +136,13 @@ static void test_zb_detect_sentinel(void) {
     TEST_ASSERT_EQUAL_STRING("unknown", zbDetectSentinel(ZbDetectState::KNOWN));
 }
 
-static void test_zb_detect_known(void) {
-    TEST_ASSERT_TRUE(zbDetectKnown(ZbDetectState::KNOWN));
-    TEST_ASSERT_FALSE(zbDetectKnown(ZbDetectState::DETECTING));
-    TEST_ASSERT_FALSE(zbDetectKnown(ZbDetectState::UNKNOWN));
-}
-
 void run_zb_info_tests(void) {
     RUN_TEST(test_zb_info_json_roundtrip);
     RUN_TEST(test_zb_info_from_empty_json_is_unknown);
+    RUN_TEST(test_zb_info_from_malformed_json_is_unknown);
     RUN_TEST(test_zb_info_equals_detects_every_change);
     RUN_TEST(test_zb_info_has_data);
     RUN_TEST(test_zb_info_chip_id_truncates);
     RUN_TEST(test_zb_detect_after_attempt);
     RUN_TEST(test_zb_detect_sentinel);
-    RUN_TEST(test_zb_detect_known);
 }

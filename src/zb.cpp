@@ -284,7 +284,9 @@ void zbCheck()
             delay(1000);
         }
         printLogMsg("[ZBCHK] Wrong answer");
-        if (!zbInfoKnown())
+        // Keep last-known values unless a version or role was actually
+        // detected - a chip ID alone must not suppress the unknown report.
+        if (zbVer.zbRev == 0 && zbRoleFromDeviceState(zbVer.deviceState) == ZbRole::UNKNOWN)
         {
             printLogMsg("[ZBVER] Unknown");
             zbVer.zbRev = 0;
