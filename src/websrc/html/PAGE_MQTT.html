@@ -56,6 +56,12 @@
               <label class="form-check-label" for="MqttTls" data-i18n="m.tls">TLS encryption</label>
             </div>
             <div class="mb-2">
+              <small class="form-text" data-i18n="m.tlsNote"
+                >TLS brokers usually use port 8883. Takes effect after reboot. Only publicly trusted
+                certificates are supported.</small
+              >
+            </div>
+            <div class="mb-2">
               <label for="MqttUser" data-i18n="m.user">Username</label>
               <input
                 data-replace="userMqtt"

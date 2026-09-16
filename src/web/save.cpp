@@ -241,14 +241,7 @@ void handleSaveParams()
             }
 
             const char *tls = "tls";
-            if (serverWeb.arg("MqttTls") == "on")
-            {
-                doc[tls] = one;
-            }
-            else
-            {
-                doc[tls] = zero;
-            }
+            doc[tls] = serverWeb.arg("MqttTls") == "on" ? one : zero;
 
             configFile = LittleFS.open(configFileMqtt, FILE_WRITE);
             serializeJson(doc, configFile);

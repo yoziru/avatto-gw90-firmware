@@ -30,6 +30,7 @@ void mqttConnectSetup()
 {
     if (MqttSettings.tls)
     {
+        clientMqttSecure.setHandshakeTimeout(10);
         clientMqttSecure.setCACertBundle(x509_crt_bundle_start, x509_crt_bundle_end - x509_crt_bundle_start);
         clientPubSub.setClient(clientMqttSecure);
     }
