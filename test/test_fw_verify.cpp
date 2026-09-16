@@ -1,5 +1,4 @@
 #include <unity.h>
-#include <string.h>
 
 #include "fw_verify.h"
 
@@ -21,14 +20,8 @@ static void test_sig_url_handles_bad_input(void) {
     TEST_ASSERT_FALSE(fwSigUrl("http://host/fw.bin", out, 0));
 }
 
-static void test_force_controls_verification(void) {
-    TEST_ASSERT_TRUE(fwNeedsSignature(false));
-    TEST_ASSERT_FALSE(fwNeedsSignature(true));
-}
-
 void run_fw_verify_tests(void) {
     RUN_TEST(test_sig_url_appends_suffix);
     RUN_TEST(test_sig_url_rejects_small_buffer);
     RUN_TEST(test_sig_url_handles_bad_input);
-    RUN_TEST(test_force_controls_verification);
 }

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
+#include <stdio.h>
 
 inline bool fwSigUrl(const char *firmwareUrl, char *out, size_t outSize) noexcept
 {
@@ -11,19 +11,8 @@ inline bool fwSigUrl(const char *firmwareUrl, char *out, size_t outSize) noexcep
     {
         return false;
     }
-    const size_t urlLen = strlen(firmwareUrl);
-    if (urlLen + 5 > outSize)
-    {
-        return false;
-    }
-    memcpy(out, firmwareUrl, urlLen);
-    memcpy(out + urlLen, ".sig", 5);
-    return true;
-}
-
-inline bool fwNeedsSignature(bool force) noexcept
-{
-    return !force;
+    const int length = snprintf(out, outSize, "%s.sig", firmwareUrl);
+    return length >= 0 && static_cast<size_t>(length) < outSize;
 }
 
 #endif

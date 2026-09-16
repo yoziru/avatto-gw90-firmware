@@ -50,9 +50,9 @@ Alternatively, once the device is on your network at `http://<ip>`:
 
 Only the non-full `.bin` (offset 0x10000) works for OTA.
 
-### Signed firmware
+### Signed ESP32 firmware
 
-Release binaries are signed (ECDSA P-256 + SHA-256, detached `.sig`) and verified on the device before the boot partition is switched. Unsigned images are refused unless the caller explicitly passes `force=1` (the Web UI asks for confirmation and adds it; `scripts/ota_flash.sh` always passes it because it flashes local builds). If verification or the `.sig` download fails, the device keeps running the current firmware.
+Release ESP32 OTA binaries (`AVATTO-GW90-Ti.bin`) are signed (ECDSA P-256 + SHA-256, detached `.sig`) and verified on the device before the boot partition is switched. Unsigned images are refused unless the caller explicitly passes `force=1` (the Web UI asks for confirmation and adds it; `scripts/ota_flash.sh` always passes it because it flashes local builds). If verification or the `.sig` download fails, the device keeps running the current firmware. Zigbee coordinator firmware updates are not signed or verified.
 
 Key setup (one-time, repository maintainer):
 

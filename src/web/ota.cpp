@@ -17,10 +17,12 @@
 #include "fw_verify.h"
 #include "tls_client.h"
 
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
+extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
+
 namespace
 {
 constexpr size_t FW_SHA256_LEN = 32;
-constexpr size_t FW_SIG_MAX = 128;
 constexpr size_t FW_SIG_URL_MAX = 256;
 const char *const fwUnsignedError = "unsigned firmware; add force=1 to install anyway";
 const char *const fwBadSignatureError = "invalid firmware signature; add force=1 to install anyway";
@@ -28,37 +30,8 @@ const char *const fwIncompleteError = "firmware download incomplete";
 
 mbedtls_sha256_context fwSha256;
 bool fwHashActive = false;
-bool fwForce = false;
 const char *fwRejectError = nullptr;
 char fwSigUrlBuf[FW_SIG_URL_MAX];
-
-size_t readSmallBody(HTTPClient &client, uint8_t *out, size_t outSize)
-{
-    WiFiClient *stream = client.getStreamPtr();
-    int len = client.getSize();
-    size_t total = 0;
-    const uint32_t deadline = millis() + 10000;
-    while (client.connected() && len != 0 && total < outSize)
-    {
-        const size_t size = stream->available();
-        if (size == 0)
-        {
-            if (millis() > deadline)
-            {
-                break;
-            }
-            delay(1);
-            continue;
-        }
-        const size_t read = stream->readBytes(out + total, min(size, outSize - total));
-        total += read;
-        if (len > 0)
-        {
-            len -= static_cast<int>(read);
-        }
-    }
-    return total;
-}
 
 bool verifyFirmwareSignature()
 {
@@ -69,7 +42,8 @@ bool verifyFirmwareSignature()
 
     HTTPClient clientSig;
     NetworkClientSecure client;
-    client.setInsecure();
+    client.setCACertBundle(x509_crt_bundle_start, reinterpret_cast<uintptr_t>(x509_crt_bundle_end) - reinterpret_cast<uintptr_t>(x509_crt_bundle_start));
+    client.setTimeout(10000);
     clientSig.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     clientSig.begin(client, fwSigUrlBuf);
     if (clientSig.GET() != HTTP_CODE_OK)
@@ -80,10 +54,9 @@ bool verifyFirmwareSignature()
         return false;
     }
 
-    uint8_t signature[FW_SIG_MAX] = {0};
-    const size_t sigLen = readSmallBody(clientSig, signature, sizeof(signature));
+    const String signature = clientSig.getString();
     clientSig.end();
-    if (sigLen == 0)
+    if (signature.isEmpty())
     {
         DEBUG_PRINTLN("Firmware signature is empty");
         fwRejectError = fwUnsignedError;
@@ -95,7 +68,7 @@ bool verifyFirmwareSignature()
     int ret = mbedtls_pk_parse_public_key(&pk, reinterpret_cast<const unsigned char *>(FW_SIGNING_PUBKEY_PEM), sizeof(FW_SIGNING_PUBKEY_PEM));
     if (ret == 0)
     {
-        ret = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, digest, sizeof(digest), signature, sigLen);
+        ret = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, digest, sizeof(digest), reinterpret_cast<const unsigned char *>(signature.c_str()), signature.length());
     }
     mbedtls_pk_free(&pk);
     if (ret != 0)
@@ -161,10 +134,9 @@ String getEspUpdate(String esp_fw_url, bool force)
     DEBUG_PRINTLN("getEspUpdate: " + esp_fw_url);
     printLogMsg("ESP OTA download start");
 
-    fwForce = force;
     fwRejectError = nullptr;
     fwHashActive = false;
-    if (fwNeedsSignature(force))
+    if (!force)
     {
         if (!fwSigUrl(esp_fw_url.c_str(), fwSigUrlBuf, sizeof(fwSigUrlBuf)))
         {
@@ -236,7 +208,7 @@ String getEspUpdate(String esp_fw_url, bool force)
         printLogMsg("ESP OTA download incomplete");
         return fwIncompleteError;
     }
-    if (fwNeedsSignature(fwForce) && !verifyFirmwareSignature())
+    if (!force && !verifyFirmwareSignature())
     {
         Update.abort();
         printLogMsg("ESP OTA rejected: " + String(fwRejectError));

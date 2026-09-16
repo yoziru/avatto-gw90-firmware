@@ -395,12 +395,13 @@ Design (all in `etc.cpp`):
 
 ## 16. OTA & Releases
 
-- **Web**: `POST /update` (multipart `AVATTO-GW90-Ti.bin`) or URL fetch (`/api?cmd=10`).
-- **ZB**: `POST /updateZB` or `/api?action=8&fwurl=...`.
+- **Web (ESP32)**: `POST /update` (multipart `AVATTO-GW90-Ti.bin`); requires `?force=1` — a browser upload cannot be verified, so uploads without it are refused with HTTP 400.
+- **URL fetch (ESP32)**: `/api?action=6&cmd=9` fetches the firmware (default: latest GitHub release). Unless `force=1`, the device downloads the detached `<url>.sig` and verifies it (ECDSA P-256/SHA-256) against the embedded public key before `Update.end(true)`; a missing or invalid signature keeps the running firmware. (`cmd=10` is the ZB revision check, not this command.)
+- **ZB**: `POST /updateZB` or `/api?action=8&fwurl=...` (Zigbee firmware is not signed or verified).
 - **Release flow** (`scripts/release.sh` + the GitHub `Release` workflow):
   1. Bump `tools/version` + `manifest.json`, commit + tag `vX.Y.Z` (workflow_dispatch with `patch`/`minor`/`major`/`X.Y.Z`)
-  2. Build `prod` with the pinned version
-  3. Attach `bin/*.bin` to the GitHub release
+  2. Build `prod` with the pinned version and sign `bin/AVATTO-GW90-Ti.bin` → `bin/AVATTO-GW90-Ti.bin.sig` (fails without the `FW_SIGNING_KEY` secret)
+  3. Attach `bin/AVATTO-GW90-Ti.bin`, `bin/AVATTO-GW90-Ti.bin.sig` and `bin/AVATTO-GW90-Ti_v{ver}.full.bin` to the GitHub release
 
 ---
 
