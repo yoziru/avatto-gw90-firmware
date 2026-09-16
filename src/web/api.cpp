@@ -33,6 +33,9 @@
 
 extern zbVerStruct zbVer;
 
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
+extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
+
 namespace
 {
 constexpr uint32_t ZIP_LOCAL_FILE_HEADER = 0x04034B50;
@@ -360,7 +363,7 @@ void handleApi()
 
                 HTTPClient http;
                 NetworkClientSecure client;
-                client.setInsecure();
+                client.setCACertBundle(x509_crt_bundle_start, reinterpret_cast<uintptr_t>(x509_crt_bundle_end) - reinterpret_cast<uintptr_t>(x509_crt_bundle_start));
                 client.setTimeout(10000);
 
                 http.begin(client, fwUrl);

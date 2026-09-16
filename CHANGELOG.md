@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- Firmware downloads (ESP32 and Zigbee) now verify the update server's TLS certificate against the built-in CA bundle instead of accepting any certificate.
 - **Web UI is readable in both themes.** Amber links, outline buttons, status pills, warning buttons and helper text failed WCAG AA contrast on light backgrounds; they now use a darker amber/emphasis tone while keeping the amber look in dark mode. Alert links inherit the alert's own text colour.
 - **Dialogs behave for keyboard and screen-reader users.** Focus moves into the dialog and returns to the button that opened it, the page behind is disabled while it is open, the invisible tabbable close button is gone, and the dialog is labelled by its title.
 - **Saving a page no longer breaks its form state.** The disabled/greyed-out fields (static IP, MQTT/WireGuard details, auth fields) are restored after the save instead of being left editable, and the save only touches its own form.

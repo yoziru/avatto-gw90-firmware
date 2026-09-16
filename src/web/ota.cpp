@@ -11,6 +11,9 @@
 #include "web.h"
 #include "zb.h"
 
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
+extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
+
 void checkFwHexTask(void *param)
 {
     const char *hexFilePath = static_cast<const char *>(param);
@@ -66,7 +69,7 @@ void getEspUpdate(String esp_fw_url)
     printLogMsg("ESP OTA download start");
     HTTPClient clientWeb;
     NetworkClientSecure client;
-    client.setInsecure();
+    client.setCACertBundle(x509_crt_bundle_start, reinterpret_cast<uintptr_t>(x509_crt_bundle_end) - reinterpret_cast<uintptr_t>(x509_crt_bundle_start));
     clientWeb.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     clientWeb.begin(client, esp_fw_url);
     clientWeb.addHeader("Content-Type", "application/octet-stream");
