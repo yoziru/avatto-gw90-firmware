@@ -12,6 +12,7 @@ extern void run_config_utils_tests(void);
 extern void run_ha_discovery_tests(void);
 extern void run_mqtt_cmd_tests(void);
 extern void run_profiling_tests(void);
+extern void run_web_csrf_tests(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -30,5 +31,6 @@ int main(int argc, char **argv) {
     run_ha_discovery_tests();
     run_mqtt_cmd_tests();
     run_profiling_tests();
+    run_web_csrf_tests();
     return UNITY_END();
 }

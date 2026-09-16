@@ -10,6 +10,7 @@
 #include "config.h"
 #include "encoding.h"
 #include "web.h"
+#include "web_csrf.h"
 #include "log.h"
 #include "etc.h"
 #include "zb.h"
@@ -53,20 +54,51 @@ void sendGzip(const char *contentType, const uint8_t content[], uint16_t content
     serverWeb.send_P(HTTP_CODE_OK, contentType, (const char *)content, contentLen);
 }
 
+const uint8_t authFailLimit = 5;
+const unsigned long authFailWindow = 60000;
+uint8_t authFailCount = 0;
+unsigned long authFailWindowStart = 0;
+
 bool checkAuth()
 {
+    String source = serverWeb.header("Origin");
+    if (source.length() == 0)
+        source = serverWeb.header("Referer");
+    const String host = serverWeb.hostHeader();
+    if (!sameOrigin(source.c_str(), host.c_str()))
+    {
+        serverWeb.send(HTTP_CODE_FORBIDDEN, contTypeText, "cross-origin request rejected");
+        return false;
+    }
+
     if (!ConfigSettings.webAuth)
         return true;
+
+    const unsigned long now = millis();
+    if (authFailCount >= authFailLimit)
+    {
+        if (now - authFailWindowStart < authFailWindow)
+        {
+            serverWeb.send(HTTP_CODE_TOO_MANY_REQUESTS, contTypeText, "too many failed logins");
+            return false;
+        }
+        authFailCount = 0;
+    }
+
     const char *www_realm = "Login Required";
     if (!serverWeb.authenticate(ConfigSettings.webUser, ConfigSettings.webPass))
     {
+        if (serverWeb.hasHeader("Authorization"))
+        {
+            if (authFailCount == 0)
+                authFailWindowStart = now;
+            authFailCount++;
+        }
         serverWeb.requestAuthentication(DIGEST_AUTH, www_realm, "Authentication failed");
         return false;
     }
-    else
-    {
-        return true;
-    }
+    authFailCount = 0;
+    return true;
 }
 
 template <typename Ring>
@@ -261,7 +293,7 @@ void initWebServer()
             }
         });
 
-    const char *headerkeys[] = {"Content-Length"};
+    const char *headerkeys[] = {"Content-Length", "Origin", "Referer"};
     size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
     registerStaticRoutes();
     serverWeb.collectHeaders(headerkeys, headerkeyssize);

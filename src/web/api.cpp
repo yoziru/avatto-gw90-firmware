@@ -242,18 +242,15 @@ void handleApi()
     const char *wrongArgs = "wrong args";
     const char *ok = "ok";
 
+    if (!checkAuth())
+    {
+        serverWeb.sendHeader(Authentication, "fail");
+        serverWeb.send(401, contTypeText, F("wrong login or password"));
+        return;
+    }
     if (ConfigSettings.webAuth)
     {
-        if (!checkAuth())
-        {
-            serverWeb.sendHeader(Authentication, "fail");
-            serverWeb.send(401, contTypeText, F("wrong login or password"));
-            return;
-        }
-        else
-        {
-            serverWeb.sendHeader(Authentication, ok);
-        }
+        serverWeb.sendHeader(Authentication, ok);
     }
     if (serverWeb.argName(0) != action)
     {
