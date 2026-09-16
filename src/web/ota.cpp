@@ -154,20 +154,6 @@ void runEspUpdateFirmware(uint8_t *data, size_t len)
         mbedtls_sha256_update(&fwSha256, data, len);
     }
     currentLength += len;
-
-    if (currentLength != totalLength)
-        return;
-
-    if (fwNeedsSignature(fwForce) && !verifyFirmwareSignature())
-    {
-        Update.abort();
-        printLogMsg("ESP OTA rejected: " + String(fwRejectError));
-        return;
-    }
-    Update.end(true);
-    bootGuardArm();
-    DEBUG_PRINTLN("Update success. Rebooting...");
-    ESP.restart();
 }
 
 String getEspUpdate(String esp_fw_url, bool force)
@@ -239,10 +225,6 @@ String getEspUpdate(String esp_fw_url, bool force)
     }
     clientWeb.end();
 
-    if (fwRejectError != nullptr)
-    {
-        return fwRejectError;
-    }
     if (currentLength != totalLength)
     {
         Update.abort();
@@ -254,5 +236,19 @@ String getEspUpdate(String esp_fw_url, bool force)
         printLogMsg("ESP OTA download incomplete");
         return fwIncompleteError;
     }
+    if (fwNeedsSignature(fwForce) && !verifyFirmwareSignature())
+    {
+        Update.abort();
+        printLogMsg("ESP OTA rejected: " + String(fwRejectError));
+        return fwRejectError;
+    }
+    if (!Update.end(true))
+    {
+        printLogMsg("ESP OTA finalize failed");
+        return "update finalize failed";
+    }
+    bootGuardArm();
+    DEBUG_PRINTLN("Update success. Rebooting...");
+    ESP.restart();
     return "ok";
 }
