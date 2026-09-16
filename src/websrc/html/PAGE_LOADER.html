@@ -22,21 +22,15 @@
       id="modal"
       data-bs-backdrop="static"
       data-bs-keyboard="false"
-      tabindex="100"
+      tabindex="-1"
       aria-modal="true"
       role="dialog"
+      aria-labelledby="modalTitle"
     >
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="modalTitle">Modal title</h5>
-            <button
-              type="button"
-              class="btn-close visually-hidden modal-btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-              data-i18n="c.close[aria-label]"
-            ></button>
           </div>
           <div class="modal-body" id="modalBody"></div>
           <div class="modal-footer" id="modalButtons"></div>
@@ -45,12 +39,15 @@
     </div>
     <nav class="navbar shadow sticky-top navbar-dark bg-dark">
       <div class="container-fluid">
-        <span
+        <button
+          type="button"
           class="navbar-toggler-icon"
-          onclick="
-              document.getElementById('sidenav').classList.toggle('sidenav-active');
-            "
-        ></span>
+          id="navToggle"
+          aria-label="Menu"
+          aria-expanded="false"
+          data-i18n="d.menu[aria-label]"
+          onclick="toggleSideNav(this)"
+        ></button>
         <h2
           data-replace="pageName"
           class="text-white"
@@ -66,14 +63,14 @@
             <button type="button" class="lang-option" data-lang="de" onclick="setLanguageFlag('de')">🇩🇪 Deutsch</button>
           </div>
         </div>
-        <span id="darkModeToggleMobile" class="navbar-dark-icon" onclick="toggleDarkModeMobile()" title="Toggle dark mode" data-i18n="d.toggleDark[title]" role="button" tabindex="0">
+        <button type="button" id="darkModeToggleMobile" class="navbar-dark-icon" onclick="toggleDarkModeMobile()" data-i18n="d.toggleDark[title]; d.toggleDark[aria-label]">
           <svg class="icon-moon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/>
           </svg>
           <svg class="icon-sun" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2a.5.5 0 0 1 1 0zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707z"/>
           </svg>
-        </span>
+        </button>
         <a href="/logout" class="btn logoutLink nav-link visually-hidden">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -103,6 +100,8 @@
                 <img
                   src="AVATTO.svg"
                   alt="AVATTO Logo"
+                  width="300"
+                  height="42"
                   class="d-inline-block align-text-middle"
                 />
               </a>
@@ -282,7 +281,7 @@
             </ul>
             <div class="mt-auto p-3 w-100 sidebar-lang">
               <div class="sidebar-lang-dropdown" id="langSwitcherSide">
-                <button type="button" class="lang-dropdown-btn" id="langBtnSide" onclick="toggleLangDropdownSide()" title="Language" data-i18n="d.language[title]">
+                <button type="button" class="lang-dropdown-btn" id="langBtnSide" onclick="toggleLangDropdownSide()" aria-haspopup="true" aria-expanded="false" title="Language" data-i18n="d.language[title]; d.language[aria-label]">
                   <span class="lang-dropdown-text">
                     <span id="langBtnFlagSide">🇬🇧</span>
                     <span id="langBtnLabelSide">English</span>

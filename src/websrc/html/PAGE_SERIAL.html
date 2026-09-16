@@ -2,7 +2,7 @@
   <form class="saveParams" method="POST" action="saveParams">
     <div class="card">
       <div class="card-header">
-        <img src="icon_serial_settings.svg" class="title_icon_style" />
+        <img src="icon_serial_settings.svg" class="title_icon_style" alt="" >
         <span data-i18n="z.serSet">Serial Settings</span>
       </div>
       <div class="card-body">
@@ -53,7 +53,7 @@
 
   <div class="card mt-2">
     <div class="card-header">
-      <img src="icon_config_generator.svg" class="title_icon_style" />
+      <img src="icon_config_generator.svg" class="title_icon_style" alt="" >
       <span data-i18n="z.cfgGen">Config Generator</span>
     </div>
     <div class="card-body">
@@ -70,38 +70,10 @@
               The IP address will change after connecting to Ethernet or Wi-Fi, and the configuration needs to be regenerated.
             </div>
             <label for="generatedFile" data-i18n="z.cfgGenLabel">Config Generator</label>
-            <div class="generator-options mb-2">
-              <div class="form-check form-check-inline">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="generatorType"
-                  id="z2m"
-                  checked
-                  onclick="generateConfig(this.id)"
-                />
-                <label class="form-check-label" for="z2m">Zigbee2MQTT</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="generatorType"
-                  id="zha"
-                  onclick="generateConfig(this.id)"
-                />
-                <label class="form-check-label" for="zha">ZHA</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="generatorType"
-                  id="usb"
-                  onclick="generateConfig(this.id)"
-                />
-                <label class="form-check-label" for="usb">USB</label>
-              </div>
+            <div class="seg mb-2" id="genSeg" role="group" aria-label="Config generator type">
+              <button type="button" class="seg-active" data-gen="z2m" aria-pressed="true" onclick="selectGenerator(this)">Zigbee2MQTT</button>
+              <button type="button" data-gen="zha" aria-pressed="false" onclick="selectGenerator(this)">ZHA</button>
+              <button type="button" data-gen="usb" aria-pressed="false" onclick="selectGenerator(this)">USB</button>
             </div>
             <textarea
               class="form-control mb-2"

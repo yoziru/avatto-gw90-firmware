@@ -2,7 +2,7 @@
     <form class="saveParams" method="POST" action="saveParams">
       <div class="card mb-4">
         <div class="card-header">
-          <img src="icon_wifi_config.svg" class="title_icon_style" />
+          <img src="icon_wifi_config.svg" class="title_icon_style" alt="" >
           <span data-i18n="w.title">Wi-Fi</span>
         </div>
         <div class="card-body">
@@ -279,15 +279,6 @@
     color: var(--success);
   }
 
-  .wifi-chev {
-    flex-shrink: 0;
-    color: var(--text-light);
-    font-size: 1.1rem;
-    line-height: 1;
-    cursor: pointer;
-  }
-  #wifiYourRow.info-open .wifi-chev svg { transform: rotate(-90deg); }
-
   .wifi-lock,
   .wifi-open {
     flex-shrink: 0;
@@ -305,10 +296,12 @@
     color: var(--text-light);
     font-size: 1.1rem;
     line-height: 1;
+    cursor: pointer;
   }
   /* Chevron points down when closed, up when open */
   .wifi-chev svg { transform: rotate(90deg); transition: transform 0.2s ease; }
-  .wifi-item.open .wifi-chev svg { transform: rotate(-90deg); }
+  .wifi-item.open .wifi-chev svg,
+  #wifiYourRow.info-open .wifi-chev svg { transform: rotate(-90deg); }
 
   /* "Connecting…" shimmer is global (.busy-shimmer in style.css, aliased to
      .wifi-join-status.connecting); only the weight stays page-local. */
@@ -330,14 +323,14 @@
     flex: 1 1 auto;
     width: auto;
     min-width: 0;
-    height: 40px;
+    height: 44px;
     margin: 0;
     padding: 0 1rem;
   }
   .wifi-connect .btn,
   .wifi-other-inner .btn {
     flex: 0 0 auto;
-    height: 40px;
+    height: 44px;
     margin: 0;
     padding: 0 1rem;
     display: inline-flex;
@@ -415,7 +408,7 @@
 
   /* Join-other inputs share the same height */
   .wifi-other-inner .form-control {
-    height: 40px;
+    height: 44px;
     padding: 0 1rem;
   }
   /* Masked text input instead of type=password: keeps Safari/Chrome from

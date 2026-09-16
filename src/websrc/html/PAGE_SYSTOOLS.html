@@ -7,38 +7,6 @@
     max-height: 480px;
     margin-bottom: 12px;
   }
-  .log-filter-seg {
-    display: inline-flex;
-    width: max-content;
-    max-width: 100%;
-    gap: 2px;
-    padding: 4px;
-    background: var(--bg-muted);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-  }
-  .log-filter-seg button {
-    margin: 0;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    height: 28px;
-    padding: 0 14px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-  .log-filter-seg button.seg-active {
-    background: var(--accent);
-    color: #1a1a2e;
-  }
-  .log-seg-row { display: flex; margin-bottom: 12px; }
   .mc-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .mc-grid .btn { flex: 1 1 calc(50% - 4px); }
   .log-tools-switches {
@@ -73,12 +41,15 @@
         <div class="card-body">
           <div class="row">
             <div class="col">
-              <div class="log-seg-row">
-                <div class="log-filter-seg" id="logFilterSeg" role="group" data-i18n="d.logFilter[aria-label]" aria-label="Log filter">
-                  <button type="button" data-logfilter="esp" class="seg-active" data-i18n="t.esp">ESP32</button>
-                  <button type="button" data-logfilter="zb" data-i18n="t.zbFrames">Zigbee ZNP Frames</button>
-                </div>
+              <div class="seg mb-3" id="logFilterSeg" role="group" data-i18n="d.logFilter[aria-label]" aria-label="Log filter">
+                <button type="button" data-logfilter="esp" class="seg-active" data-i18n="t.esp">ESP32</button>
+                <button type="button" data-logfilter="zb" data-i18n="t.zbFrames">Zigbee ZNP Frames</button>
               </div>
+              <textarea
+                class="form-control mb-2"
+                id="console"
+                rows="8"
+              ></textarea>
               <div class="log-tools-switches mb-3" id="humanizeWrap">
                 <div class="form-check form-switch mb-0">
                   <input
@@ -93,11 +64,6 @@
                   </label>
                 </div>
               </div>
-              <textarea
-                class="form-control mb-2"
-                id="console"
-                rows="8"
-              ></textarea>
               <div class="mc-grid">
                 <button
                   type="button"
@@ -135,7 +101,7 @@
     <div class="col-sm-12 mb-4">
       <div class="card">
         <div class="card-header">
-          <img src="icon_system_control.svg" class="title_icon_style" />
+          <img src="icon_system_control.svg" class="title_icon_style" alt="" >
           <span data-i18n="t.modCtrl">Module Control</span>
         </div>
         <div class="card-body">

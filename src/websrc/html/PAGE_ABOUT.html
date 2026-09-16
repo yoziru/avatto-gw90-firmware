@@ -1,11 +1,6 @@
-<head>
-    <style scoped>
-         :root {
-            --primary-orange: #f39c12;
-        }
-
+<style>
         .icon-box {
-            color: var(--primary-orange);
+            color: var(--accent-text);
             margin-right: 10px;
             font-size: 20px;
         }
@@ -30,6 +25,7 @@
             max-width: 280px;
             width: 100%;
             height: auto;
+            aspect-ratio: 1 / 1;
             object-fit: contain;
         }
 
@@ -61,7 +57,7 @@
         }
 
         .version-badge {
-            background: var(--primary-orange);
+            background: var(--accent);
             color: #1a1a2e;
             padding: 3px 14px;
             border-radius: 20px;
@@ -91,8 +87,8 @@
         }
 
         .dot.active {
-            background: var(--primary-orange);
-            border-color: var(--primary-orange);
+            background: var(--accent-text);
+            border-color: var(--accent-text);
         }
 
         /* Keep two cards at the same height */
@@ -112,7 +108,6 @@
 
         [data-theme="dark"] .dot { border-color: var(--border-color); }
         [data-theme="dark"] .version-badge { background: var(--accent); color: #1a1a2e; border-color: transparent; }
-
         /* Firmware update sections */
         .fw-status { font-size: 15px; }
         .fw-status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 12px; font-size: 15px; }
@@ -132,9 +127,8 @@
         .zb-fw-sub { font-size: 0.85rem; }
         .default-badge {
             font-size: 0.7rem; font-weight: 600; padding: 1px 8px; border-radius: 10px;
-            background: rgba(245,166,35,0.16); color: var(--accent); white-space: nowrap;
+            background: rgba(245,166,35,0.16); color: var(--accent-text); white-space: nowrap;
         }
-        html[data-theme="light"] .default-badge { color: #a86200; }
         .zb-fw-btns { display: flex; gap: 8px; flex-shrink: 0; }
         .file-pick {
             display: block; width: 280px; height: 38px; padding: 0 0.75rem;
@@ -169,20 +163,18 @@
             .info-list { width: 100%; }
         }
     </style>
-</head>
-<body>
 
 <div id="main">
 <div class="row">
                 <div class="col-sm-12 col-md-6 mb-4">
             <div class="card">
                  <div class="card-header">
-                    <img src="icon_brand_info.svg" class="title_icon_style" />
+                    <img src="icon_brand_info.svg" class="title_icon_style" alt="" >
                      <span data-i18n="a.device">Device</span>
                 </div>
                 <div class="card-body brand-content">
                     <div class="product-img-wrapper">
-                        <img src="device_about_info.png" alt="product-img" class="product-img">
+                        <img src="device_about_info.png" alt="product-img" width="572" height="572" class="product-img">
                     </div>
                     <div class="info-list" style="margin-top: 10px">
                         <div class="info-item"><span class="label" data-i18n="a.brand">Brand:</span><span>AVATTO</span></div>
@@ -202,7 +194,7 @@
         <div class="col-sm-12 col-md-6 mb-4">
             <div class="card">
                   <div class="card-header">
-                    <img src="icon_hardware_info.svg" class="title_icon_style" />
+                    <img src="icon_hardware_info.svg" class="title_icon_style" alt="" >
                      <span data-i18n="a.sysInfo">System Information</span>
                 </div>
                 <div class="card-body">
@@ -282,7 +274,7 @@
         <div class="col-sm-12 col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <img src="icon_firmware_update.svg" class="title_icon_style" />
+                    <img src="icon_firmware_update.svg" class="title_icon_style" alt="" >
                      <span data-i18n="a.espFw">ESP32 Firmware</span>
                 </div>
                 <div class="card-body">
@@ -349,7 +341,7 @@
         <div class="col-sm-12 col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <img src="icon_zigbee_info.svg" class="title_icon_style" />
+                    <img src="icon_zigbee_info.svg" class="title_icon_style" alt="" >
                      <span data-i18n="a.zbFwCard">Zigbee Firmware</span>
                 </div>
                 <div class="card-body">
@@ -357,7 +349,7 @@
                     <div id="zbFwStatus" class="fw-status"><span class="text-muted busy-shimmer" data-i18n="c.checking">Checking for updates...</span></div>
                     <div id="zbFwList" class="mb-2"></div>
                     <div class="form-check form-switch mb-3">
-                      <input class="form-check-input" type="checkbox" id="zbIncludePrerelease" />
+                      <input class="form-check-input" type="checkbox" role="switch" id="zbIncludePrerelease" />
                       <label class="form-check-label" for="zbIncludePrerelease" data-i18n="a.zbIncludePrerelease">Include pre-releases</label>
                     </div>
                     <section id="zbFwRoleSwitch" class="zb-fw-role-switch mb-3" style="display:none">
@@ -514,6 +506,3 @@
         xhr.send(data);
       });
     </script>
-
-</body>
-</html>
