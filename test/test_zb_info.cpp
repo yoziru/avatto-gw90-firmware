@@ -110,10 +110,34 @@ static void test_zb_info_chip_id_truncates(void) {
     TEST_ASSERT_EQUAL_STRING("CC2652P7-EXTREM", info.chipID);
 }
 
+static void test_zb_detect_after_attempt(void) {
+    using S = ZbDetectState;
+    TEST_ASSERT_EQUAL(static_cast<int>(S::KNOWN), static_cast<int>(zbDetectAfterAttempt(S::DETECTING, true)));
+    TEST_ASSERT_EQUAL(static_cast<int>(S::UNKNOWN), static_cast<int>(zbDetectAfterAttempt(S::DETECTING, false)));
+    TEST_ASSERT_EQUAL(static_cast<int>(S::KNOWN), static_cast<int>(zbDetectAfterAttempt(S::KNOWN, false)));
+    TEST_ASSERT_EQUAL(static_cast<int>(S::KNOWN), static_cast<int>(zbDetectAfterAttempt(S::UNKNOWN, true)));
+    TEST_ASSERT_EQUAL(static_cast<int>(S::UNKNOWN), static_cast<int>(zbDetectAfterAttempt(S::UNKNOWN, false)));
+}
+
+static void test_zb_detect_sentinel(void) {
+    TEST_ASSERT_EQUAL_STRING("checking", zbDetectSentinel(ZbDetectState::DETECTING));
+    TEST_ASSERT_EQUAL_STRING("unknown", zbDetectSentinel(ZbDetectState::UNKNOWN));
+    TEST_ASSERT_EQUAL_STRING("unknown", zbDetectSentinel(ZbDetectState::KNOWN));
+}
+
+static void test_zb_detect_known(void) {
+    TEST_ASSERT_TRUE(zbDetectKnown(ZbDetectState::KNOWN));
+    TEST_ASSERT_FALSE(zbDetectKnown(ZbDetectState::DETECTING));
+    TEST_ASSERT_FALSE(zbDetectKnown(ZbDetectState::UNKNOWN));
+}
+
 void run_zb_info_tests(void) {
     RUN_TEST(test_zb_info_json_roundtrip);
     RUN_TEST(test_zb_info_from_empty_json_is_unknown);
     RUN_TEST(test_zb_info_equals_detects_every_change);
     RUN_TEST(test_zb_info_has_data);
     RUN_TEST(test_zb_info_chip_id_truncates);
+    RUN_TEST(test_zb_detect_after_attempt);
+    RUN_TEST(test_zb_detect_sentinel);
+    RUN_TEST(test_zb_detect_known);
 }

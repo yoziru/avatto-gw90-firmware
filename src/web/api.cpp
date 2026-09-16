@@ -17,6 +17,7 @@
 #include "etc.h"
 #include "zb.h"
 #include "zb_ver.h"
+#include "zb_info.h"
 #include "version.h"
 #include "net.h"
 #include "tls_client.h"
@@ -631,13 +632,27 @@ void handleApi()
                 }
                 else if (serverWeb.arg(param) == "zbRev")
                 {
-                    resp = zbVer.zbRev > 0 ? (String)zbVer.zbRev : "Unknown";
+                    if (zbDetectKnown(zbInfoDetectState) && zbVer.zbRev > 0)
+                        resp = (String)zbVer.zbRev;
+                    else
+                        resp = zbDetectSentinel(zbInfoDetectState);
                 }
                 else if (serverWeb.arg(param) == "zbRole")
                 {
-                    if (zbRoleFromDeviceState(zbVer.deviceState) == ZbRole::UNKNOWN)
+                    // Cache is display-only: when a finished attempt left no
+                    // role, trigger one live read here. While a detection is
+                    // already pending/scheduled, report "checking" instead of
+                    // issuing a duplicate query. Flashing requires its own
+                    // live detection this boot (API_FLASH_ZB).
+                    if (zbInfoDetectState != ZbDetectState::DETECTING &&
+                        !(zbDetectKnown(zbInfoDetectState) && zbRoleFromDeviceState(zbVer.deviceState) != ZbRole::UNKNOWN))
+                    {
                         getZbVer();
-                    resp = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
+                    }
+                    if (zbDetectKnown(zbInfoDetectState) && zbRoleFromDeviceState(zbVer.deviceState) != ZbRole::UNKNOWN)
+                        resp = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
+                    else
+                        resp = zbDetectSentinel(zbInfoDetectState);
                 }
                 else if (serverWeb.arg(param) == "espVer")
                 {

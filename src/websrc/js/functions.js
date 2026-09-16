@@ -709,6 +709,9 @@ function ZBfwStartEvents() {
 			if (prgZb) prgZb.innerHTML = t("d.validating");
 			if (barZb) barZb.style.width = "0%";
 		}
+		// The ESP re-detects the freshly flashed revision/role over the next
+		// seconds; checkZbFirmware polls again while it reports "checking".
+		if (e.data.includes("Update done")) checkZbFirmware();
 	});
 	zbEventSource.addEventListener("ZB_FW_err", e => {
 		console.error("Error:", e.data);
@@ -1750,6 +1753,7 @@ function escHtml(s) {
 function firmwareVersionLabel(version) {
 	const value = String(version == null ? "" : version).trim();
 	if (!value || value.toLowerCase() === "unknown") return t("d.unknown");
+	if (value.toLowerCase() === "checking") return t("d.checking");
 	return /^v/i.test(value) ? escHtml(value) : "v" + escHtml(value);
 }
 
@@ -1895,7 +1899,10 @@ function initZbFirmwareSource() {
 
 // Zigbee firmware status on the About page: per-type rows that
 // only offer a flash when the selected Koenkk release is newer.
-async function checkZbFirmware() {
+let zbFwCheckSeq = 0;
+async function checkZbFirmware(retry = 0) {
+	if (retry === 0) zbFwCheckSeq++; // a fresh call cancels older retry chains
+	const seq = zbFwCheckSeq;
 	const st = getEl("zbFwStatus");
 	if (!st) return;
 	st.innerHTML = "<span class='text-muted busy-shimmer'>" + t("c.checking") + "</span>";
@@ -1904,10 +1911,14 @@ async function checkZbFirmware() {
 		[fwData, rev, role] = await Promise.all([fetchZigbeeFirmware(), fetchData("/api?action=1&param=zbRev", false), fetchData("/api?action=1&param=zbRole", false)]);
 	} catch (e) { console.warn("Zigbee version check failed:", e); }
 	const localRev = (rev || "").trim();
-	const localRole = normalizeZbRole(role);
+	const localRoleRaw = (role || "").trim().toLowerCase();
+	const localRole = normalizeZbRole(localRoleRaw);
+	// "checking" is display-only; every decision below keeps treating it as
+	// not-known (normalizeZbRole already maps it to "unknown").
+	const detecting = localRev.toLowerCase() === "checking" || localRoleRaw === "checking";
 	fillReplaceValues({
-		zigbeeFwRev: localRev || "unknown",
-		zigbeeFwRole: localRole === "router" ? "Router" : localRole === "coordinator" ? "Coordinator" : "Unknown"
+		zigbeeFwRev: localRev.toLowerCase() === "checking" ? "checking" : (localRev || "unknown"),
+		zigbeeFwRole: localRoleRaw === "checking" ? "checking" : (localRole === "router" ? "Router" : localRole === "coordinator" ? "Coordinator" : "Unknown")
 	});
 	if (!Array.isArray(fwData) || !fwData.length) {
 		_zbFwCache = { error: "index" };
@@ -1915,6 +1926,11 @@ async function checkZbFirmware() {
 		_zbFwCache = fwData.length ? { fws: fwData, localRev, localRole } : { error: "empty" };
 	}
 	renderZbFwList();
+	// Detection pending (e.g. the post-flash re-check): poll again until the
+	// ESP resolves it, then stop.
+	if (detecting && retry < 6 && seq === zbFwCheckSeq) {
+		setTimeout(() => checkZbFirmware(retry + 1), 5000);
+	}
 }
 
 let _zbFwCache = null; // {fws, localRev} | {error:'index'|'empty'}
@@ -2113,6 +2129,9 @@ I18N.zh["md.zbManualConfirm"] = "确认刷写 Zigbee 固件。所选文件可能
 I18N.en["md.espUnsignedConfirm"] = "This firmware file is not cryptographically signed. Install it anyway? Only continue with firmware you built yourself or otherwise trust.";
 I18N.de["md.espUnsignedConfirm"] = "Diese Firmware-Datei ist nicht kryptografisch signiert. Trotzdem installieren? Nur mit selbst erstellter oder anderweitig vertrauenswürdiger Firmware fortfahren.";
 I18N.zh["md.espUnsignedConfirm"] = "此固件文件未经过加密签名。仍要安装吗？请仅在你自行构建或信任该固件来源时继续。";
+I18N.en["d.checking"] = "Checking…";
+I18N.de["d.checking"] = "Prüfe …";
+I18N.zh["d.checking"] = "正在检查…";
 const languages = [
 	{ value: "en", text: "English", flag: "🇬🇧" },
 	{ value: "zh", text: "中文", flag: "🇨🇳" },
@@ -2157,6 +2176,7 @@ function tStatus(val) {
 		"Zigbee-to-Network": "sv.zbNet", "Zigbee-to-Serial": "sv.zbSer",
 		"Coordinator": "d.coord", "Router": "d.router",
 		"unknown": "sv.unknown", "Unknown": "sv.unknown",
+		"checking": "d.checking",
 		"embedded": "sv.embedded", "external": "sv.external",
 		"On (Access point)": "sv.on", "N/A": "sv.unknown", "n/a": "sv.unknown", "-": "sv.unknown"
 	};

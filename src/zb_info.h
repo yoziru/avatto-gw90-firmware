@@ -69,6 +69,45 @@ inline ZbInfo zbInfoFromJson(const JsonVariantConst &doc) noexcept
     return info;
 }
 
+// Detection lifecycle for the values above:
+//   UNKNOWN   - every attempt so far finished with nothing detected, no cache
+//   DETECTING - a live query is in flight or scheduled this boot, nothing known
+//   KNOWN     - values from the cache loaded at boot or a successful live read
+enum class ZbDetectState : uint8_t
+{
+    UNKNOWN,
+    DETECTING,
+    KNOWN
+};
+
+// Wire sentinels for the web UI (lowercase English tokens, like "unknown").
+constexpr const char *ZB_INFO_CHECKING = "checking";
+constexpr const char *ZB_INFO_UNKNOWN = "unknown";
+
+inline bool zbDetectKnown(ZbDetectState state) noexcept
+{
+    return state == ZbDetectState::KNOWN;
+}
+
+// Sentinel to emit instead of a value when there is nothing to show yet:
+// "checking" while detection is pending, otherwise "unknown".
+inline const char *zbDetectSentinel(ZbDetectState state) noexcept
+{
+    return state == ZbDetectState::DETECTING ? ZB_INFO_CHECKING : ZB_INFO_UNKNOWN;
+}
+
+// State after an attempt finishes: success -> KNOWN; failure keeps KNOWN when
+// values were already known (cache/earlier read), otherwise falls to UNKNOWN.
+inline ZbDetectState zbDetectAfterAttempt(ZbDetectState previous, bool success) noexcept
+{
+    if (success)
+        return ZbDetectState::KNOWN;
+    return previous == ZbDetectState::KNOWN ? ZbDetectState::KNOWN : ZbDetectState::UNKNOWN;
+}
+
+// Detection state for the global zbVer values (defined in zb_info.cpp).
+extern ZbDetectState zbInfoDetectState;
+
 // LittleFS persistence (implemented in zb_info.cpp):
 // loadZbInfo() at boot, saveZbInfo() after a live detection. saveZbInfo()
 // skips the write when the values are unchanged (LittleFS wear).

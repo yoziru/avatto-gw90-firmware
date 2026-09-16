@@ -13,6 +13,7 @@
 #include "etc.h"
 #include "zb.h"
 #include "zb_ver.h"
+#include "zb_info.h"
 #include "zones.h"
 #include "profiling.h"
 #include "version.h"
@@ -156,15 +157,20 @@ JsonDocument &getRootData()
     doc["espHeapLargest"] = String(heapLargest / 1024);
     doc["espHeapFrag"] = String(heapFragPct);
 #endif
-    if (zbVer.zbRev > 0)
+    // "checking" while a detection is pending, the value once known, "unknown"
+    // only after an attempt finished without a result.
+    const bool zbKnown = zbDetectKnown(zbInfoDetectState);
+    if (zbKnown && zbVer.zbRev > 0)
     {
         doc["zigbeeFwRev"] = String(zbVer.zbRev);
     }
     else
     {
-        doc["zigbeeFwRev"] = "unknown";
+        doc["zigbeeFwRev"] = zbDetectSentinel(zbInfoDetectState);
     }
-    doc["zigbeeFwRole"] = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
+    doc["zigbeeFwRole"] = zbKnown
+                              ? String(zbRoleName(zbRoleFromDeviceState(zbVer.deviceState)))
+                              : String(zbDetectSentinel(zbInfoDetectState));
     if (zbVer.chipID)
     {
         doc["zigbeeHwRev"] = String(zbVer.chipID);

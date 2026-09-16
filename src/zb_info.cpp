@@ -9,6 +9,10 @@
 
 extern zbVerStruct zbVer;
 
+// Starts as DETECTING: the boot sequence always schedules a live query
+// (startServers -> getZbVer). A cache load or a successful read makes it KNOWN.
+ZbDetectState zbInfoDetectState = ZbDetectState::DETECTING;
+
 namespace
 {
 const char *const zbInfoFile = "/config/zbInfo.json";
@@ -74,6 +78,7 @@ bool loadZbInfo()
     zbInfoApply(info);
     zbInfoSaved = info;
     zbInfoSavedValid = true;
+    zbInfoDetectState = ZbDetectState::KNOWN;
     return true;
 }
 

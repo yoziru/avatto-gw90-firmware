@@ -29,6 +29,53 @@ bool zbRoleDetectedThisBoot()
     return zbRoleLiveThisBoot;
 }
 
+// ---- Post-flash re-detection -------------------------------------------------
+// The ZB firmware task owns Serial2 while flashing, so it only requests the
+// refresh; loop() performs the actual UART reads after the task has finished
+// (see zbInfoRefreshLoop()).
+constexpr uint8_t ZB_INFO_REFRESH_MAX_ATTEMPTS = 4;
+constexpr unsigned long ZB_INFO_REFRESH_INTERVAL_MS = 3500; // ~15 s of retries
+
+static volatile bool zbInfoRefreshPending = false;
+static uint8_t zbInfoRefreshAttempts = 0;
+static unsigned long zbInfoRefreshLastMs = 0;
+
+void zbRequestInfoRefresh()
+{
+    zbInfoDetectState = ZbDetectState::DETECTING; // the flashed values are stale now
+    zbInfoRefreshAttempts = 0;
+    zbInfoRefreshLastMs = 0;
+    zbInfoRefreshPending = true;
+}
+
+void zbInfoRefreshLoop()
+{
+    if (!zbInfoRefreshPending)
+        return;
+    if (zbInfoRefreshAttempts > 0 && millis() - zbInfoRefreshLastMs < ZB_INFO_REFRESH_INTERVAL_MS)
+        return;
+
+    zbInfoRefreshLastMs = millis();
+    zbInfoRefreshAttempts++;
+    zbInfoDetectState = ZbDetectState::DETECTING;
+    getZbVer();
+
+    if (zbInfoDetectState == ZbDetectState::KNOWN)
+    {
+        zbInfoRefreshPending = false;
+        printLogMsg("[ZBVER] Post-flash refresh OK");
+        return;
+    }
+    if (zbInfoRefreshAttempts >= ZB_INFO_REFRESH_MAX_ATTEMPTS)
+    {
+        zbInfoRefreshPending = false;
+        zbInfoDetectState = ZbDetectState::UNKNOWN; // give up: not known, flashing stays gated
+        printLogMsg("[ZBVER] Post-flash refresh failed");
+        return;
+    }
+    zbInfoDetectState = ZbDetectState::DETECTING; // still retrying: keep showing "checking"
+}
+
 volatile unsigned long zbLastRxMs = 0;   // last time bytes were received from the coordinator
 volatile unsigned long zbClientTxMs = 0; // last time a TCP client sent bytes to the coordinator
 volatile uint32_t zbAutoResets = 0;      // count of automatic coordinator resets by zbHealthCheck
@@ -123,6 +170,10 @@ static void getZbRole()
 
 void getZbVer()
 {
+    if (zbInfoDetectState != ZbDetectState::KNOWN)
+    {
+        zbInfoDetectState = ZbDetectState::DETECTING; // query in flight, nothing to show
+    }
     // Keep last-known values while the query runs: with a cache loaded the UI
     // must not flip to "unknown" when this live read fails. Only clear when
     // nothing was ever detected.
@@ -176,6 +227,7 @@ void getZbVer()
         getZbRole();
         saveZbInfo();
     }
+    zbInfoDetectState = zbDetectAfterAttempt(zbInfoDetectState, versionRead);
 }
 
 // Send a Zigbee LED on/off command and wait for the coordinator's ack frame.
