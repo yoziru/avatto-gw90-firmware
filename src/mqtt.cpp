@@ -6,6 +6,7 @@
 #include <FS.h>
 #include <LittleFS.h>
 #include <PubSubClient.h>
+#include <WiFiClientSecure.h>
 
 #include "config.h"
 #include "web.h"
@@ -17,12 +18,25 @@
 
 extern zbVerStruct zbVer;
 
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
+extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
+
 WiFiClient clientMqtt;
+WiFiClientSecure clientMqttSecure;
 
 PubSubClient clientPubSub(clientMqtt);
 
 void mqttConnectSetup()
 {
+    if (MqttSettings.tls)
+    {
+        clientMqttSecure.setCACertBundle(x509_crt_bundle_start, x509_crt_bundle_end - x509_crt_bundle_start);
+        clientPubSub.setClient(clientMqttSecure);
+    }
+    else
+    {
+        clientPubSub.setClient(clientMqtt);
+    }
     clientPubSub.setServer(MqttSettings.serverIP, MqttSettings.port);
     clientPubSub.setCallback(mqttCallback);
 }
@@ -41,7 +55,7 @@ void mqttReconnect()
     if (clientPubSub.connect(String(deviceIdArr).c_str(), MqttSettings.user, MqttSettings.pass, willTopic.c_str(), willQoS, willRetain, willMessage))
     {
         MqttSettings.reconnectTime = 0;
-        printLogMsg("MQTT connected");
+        printLogMsg(MqttSettings.tls ? "MQTT connected (TLS)" : "MQTT connected");
         mqttOnConnect();
     }
     else

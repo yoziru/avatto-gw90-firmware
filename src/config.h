@@ -121,6 +121,7 @@ struct MqttSettingsStruct
   char topic[50];
   int interval;
   bool discovery;
+  bool tls;
   unsigned long reconnectTime;
   unsigned long heartbeatTime;
 };
