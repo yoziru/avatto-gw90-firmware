@@ -15,7 +15,7 @@ void handleEvents()
     // else gets a 401 and the frontend falls back to polling mode.
     if (!checkAuth())
     {
-        return; // 401 already sent by checkAuth()
+        return; // rejection already sent by checkAuth()
     }
     eventsClient = serverWeb.client();
     if (eventsClient)

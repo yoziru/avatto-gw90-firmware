@@ -243,11 +243,7 @@ void handleApi()
     const char *ok = "ok";
 
     if (!checkAuth())
-    {
-        serverWeb.sendHeader(Authentication, "fail");
-        serverWeb.send(401, contTypeText, F("wrong login or password"));
         return;
-    }
     if (ConfigSettings.webAuth)
     {
         serverWeb.sendHeader(Authentication, ok);

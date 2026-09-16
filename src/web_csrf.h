@@ -3,12 +3,10 @@
 
 #include <cstddef>
 #include <string_view>
+#include <strings.h>
 
 inline std::string_view authorityHost(std::string_view authority) noexcept
 {
-    const std::size_t at = authority.find('@');
-    if (at != std::string_view::npos)
-        authority = authority.substr(at + 1);
     if (!authority.empty() && authority.front() == '[')
     {
         const std::size_t close = authority.find(']');
@@ -38,18 +36,7 @@ inline bool sameOrigin(std::string_view source, std::string_view host) noexcept
     const std::string_view requestHost = authorityHost(host);
     if (sourceHost.empty() || requestHost.empty() || sourceHost.size() != requestHost.size())
         return false;
-    for (std::size_t i = 0; i < sourceHost.size(); i++)
-    {
-        char a = sourceHost[i];
-        char b = requestHost[i];
-        if (a >= 'A' && a <= 'Z')
-            a += 'a' - 'A';
-        if (b >= 'A' && b <= 'Z')
-            b += 'a' - 'A';
-        if (a != b)
-            return false;
-    }
-    return true;
+    return strncasecmp(sourceHost.data(), requestHost.data(), sourceHost.size()) == 0;
 }
 
 #endif

@@ -25,6 +25,7 @@ extern zbVerStruct zbVer;
 WebServer serverWeb(80);
 
 bool opened = false;
+bool zbUploadAuth = false;
 File fwFile;
 
 int totalLength;
@@ -54,19 +55,17 @@ void sendGzip(const char *contentType, const uint8_t content[], uint16_t content
     serverWeb.send_P(HTTP_CODE_OK, contentType, (const char *)content, contentLen);
 }
 
-const uint8_t authFailLimit = 5;
-const unsigned long authFailWindow = 60000;
-uint8_t authFailCount = 0;
-unsigned long authFailWindowStart = 0;
-
 bool checkAuth()
 {
     String source = serverWeb.header("Origin");
     if (source.length() == 0)
         source = serverWeb.header("Referer");
-    const String host = serverWeb.hostHeader();
+    String host = serverWeb.header("X-Forwarded-Host");
+    if (host.length() == 0)
+        host = serverWeb.hostHeader();
     if (!sameOrigin(source.c_str(), host.c_str()))
     {
+        printLogMsg("web: cross-origin request rejected: " + source);
         serverWeb.send(HTTP_CODE_FORBIDDEN, contTypeText, "cross-origin request rejected");
         return false;
     }
@@ -74,30 +73,12 @@ bool checkAuth()
     if (!ConfigSettings.webAuth)
         return true;
 
-    const unsigned long now = millis();
-    if (authFailCount >= authFailLimit)
-    {
-        if (now - authFailWindowStart < authFailWindow)
-        {
-            serverWeb.send(HTTP_CODE_TOO_MANY_REQUESTS, contTypeText, "too many failed logins");
-            return false;
-        }
-        authFailCount = 0;
-    }
-
     const char *www_realm = "Login Required";
     if (!serverWeb.authenticate(ConfigSettings.webUser, ConfigSettings.webPass))
     {
-        if (serverWeb.hasHeader("Authorization"))
-        {
-            if (authFailCount == 0)
-                authFailWindowStart = now;
-            authFailCount++;
-        }
         serverWeb.requestAuthentication(DIGEST_AUTH, www_realm, "Authentication failed");
         return false;
     }
-    authFailCount = 0;
     return true;
 }
 
@@ -230,12 +211,25 @@ void initWebServer()
     serverWeb.on(
         "/updateZB", HTTP_POST, []()
         {
+            if (!zbUploadAuth)
+                return;
+            zbUploadAuth = false;
             serverWeb.sendHeader("Connection", "close");
             serverWeb.send(HTTP_CODE_OK, contTypeText, "Upload OK. Try to flash...");
         },
         []()
         {
             HTTPUpload &upload = serverWeb.upload();
+            if (upload.status == UPLOAD_FILE_START)
+            {
+                zbUploadAuth = checkAuth();
+                if (!zbUploadAuth)
+                    return;
+                DEBUG_PRINTLN(String(millis()) + " Upload zigbee fw file: " + String(upload.filename.c_str()));
+                printLogMsg("[ZB_FW] upload: " + String(upload.filename.c_str()));
+            }
+            if (!zbUploadAuth)
+                return;
             if (opened == false)
             {
                 opened = true;
@@ -258,14 +252,7 @@ void initWebServer()
                 }
             }
 
-            if (upload.status == UPLOAD_FILE_START)
-            {
-                if (!checkAuth())
-                    return;
-                DEBUG_PRINTLN(String(millis()) + " Upload zigbee fw file: " + String(upload.filename.c_str()));
-                printLogMsg("[ZB_FW] upload: " + String(upload.filename.c_str()));
-            }
-            else if (upload.status == UPLOAD_FILE_WRITE)
+            if (upload.status == UPLOAD_FILE_WRITE)
             {
                 fwFile.write(upload.buf, sizeof(upload.buf));
             }
@@ -293,7 +280,7 @@ void initWebServer()
             }
         });
 
-    const char *headerkeys[] = {"Content-Length", "Origin", "Referer"};
+    const char *headerkeys[] = {"Content-Length", "Origin", "Referer", "X-Forwarded-Host"};
     size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
     registerStaticRoutes();
     serverWeb.collectHeaders(headerkeys, headerkeyssize);
