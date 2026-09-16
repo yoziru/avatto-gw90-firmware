@@ -13,6 +13,12 @@ static void test_sig_url_rejects_small_buffer(void) {
     TEST_ASSERT_FALSE(fwSigUrl("http://host/fw.bin", out, sizeof(out)));
 }
 
+static void test_sig_url_preserves_query(void) {
+    char out[64] = {0};
+    TEST_ASSERT_TRUE(fwSigUrl("https://host/fw.bin?token=abc", out, sizeof(out)));
+    TEST_ASSERT_EQUAL_STRING("https://host/fw.bin.sig?token=abc", out);
+}
+
 static void test_sig_url_handles_bad_input(void) {
     char out[64] = {0};
     TEST_ASSERT_FALSE(fwSigUrl(nullptr, out, sizeof(out)));
@@ -23,5 +29,6 @@ static void test_sig_url_handles_bad_input(void) {
 void run_fw_verify_tests(void) {
     RUN_TEST(test_sig_url_appends_suffix);
     RUN_TEST(test_sig_url_rejects_small_buffer);
+    RUN_TEST(test_sig_url_preserves_query);
     RUN_TEST(test_sig_url_handles_bad_input);
 }

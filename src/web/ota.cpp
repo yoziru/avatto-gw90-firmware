@@ -17,9 +17,6 @@
 #include "fw_verify.h"
 #include "tls_client.h"
 
-extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
-extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
-
 namespace
 {
 constexpr size_t FW_SHA256_LEN = 32;
@@ -33,16 +30,24 @@ bool fwHashActive = false;
 const char *fwRejectError = nullptr;
 char fwSigUrlBuf[FW_SIG_URL_MAX];
 
+void fwHashAbort()
+{
+    if (fwHashActive)
+    {
+        mbedtls_sha256_free(&fwSha256);
+        fwHashActive = false;
+    }
+}
+
 bool verifyFirmwareSignature()
 {
     uint8_t digest[FW_SHA256_LEN] = {0};
     mbedtls_sha256_finish(&fwSha256, digest);
-    mbedtls_sha256_free(&fwSha256);
-    fwHashActive = false;
+    fwHashAbort();
 
     HTTPClient clientSig;
     NetworkClientSecure client;
-    client.setCACertBundle(x509_crt_bundle_start, reinterpret_cast<uintptr_t>(x509_crt_bundle_end) - reinterpret_cast<uintptr_t>(x509_crt_bundle_start));
+    trustEspCertificateBundle(client);
     client.setTimeout(10000);
     clientSig.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     clientSig.begin(client, fwSigUrlBuf);
@@ -119,7 +124,7 @@ void progressFunc(unsigned int progress, unsigned int total)
 #endif
 };
 
-void runEspUpdateFirmware(uint8_t *data, size_t len)
+static void runEspUpdateFirmware(uint8_t *data, size_t len)
 {
     Update.write(data, len);
     if (fwHashActive)
@@ -162,11 +167,7 @@ String getEspUpdate(String esp_fw_url, bool force)
         DEBUG_PRINTLN("Cannot download firmware file.");
         printLogMsg("ESP OTA download failed");
         clientWeb.end();
-        if (fwHashActive)
-        {
-            mbedtls_sha256_free(&fwSha256);
-            fwHashActive = false;
-        }
+        fwHashAbort();
         return "download failed";
     }
 
@@ -200,11 +201,7 @@ String getEspUpdate(String esp_fw_url, bool force)
     if (currentLength != totalLength)
     {
         Update.abort();
-        if (fwHashActive)
-        {
-            mbedtls_sha256_free(&fwSha256);
-            fwHashActive = false;
-        }
+        fwHashAbort();
         printLogMsg("ESP OTA download incomplete");
         return fwIncompleteError;
     }
@@ -221,6 +218,5 @@ String getEspUpdate(String esp_fw_url, bool force)
     }
     bootGuardArm();
     DEBUG_PRINTLN("Update success. Rebooting...");
-    ESP.restart();
-    return "ok";
+    esp_restart();
 }
