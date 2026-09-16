@@ -10,6 +10,7 @@
 #include "config.h"
 #include "encoding.h"
 #include "web.h"
+#include "web_csrf.h"
 #include "log.h"
 #include "etc.h"
 #include "zb.h"
@@ -24,6 +25,7 @@ extern zbVerStruct zbVer;
 WebServer serverWeb(80);
 
 bool opened = false;
+static bool zbUploadAuth = false;
 File fwFile;
 
 int totalLength;
@@ -55,18 +57,29 @@ void sendGzip(const char *contentType, const uint8_t content[], uint16_t content
 
 bool checkAuth()
 {
+    String source = serverWeb.header("Origin");
+    if (source.length() == 0)
+        source = serverWeb.header("Referer");
+    String host = serverWeb.header("X-Forwarded-Host");
+    if (host.length() == 0)
+        host = serverWeb.hostHeader();
+    if (!sameOrigin(source.c_str(), host.c_str()))
+    {
+        printLogMsg("web: cross-origin request rejected: " + source);
+        serverWeb.send(HTTP_CODE_FORBIDDEN, contTypeText, "cross-origin request rejected");
+        return false;
+    }
+
     if (!ConfigSettings.webAuth)
         return true;
+
     const char *www_realm = "Login Required";
     if (!serverWeb.authenticate(ConfigSettings.webUser, ConfigSettings.webPass))
     {
         serverWeb.requestAuthentication(DIGEST_AUTH, www_realm, "Authentication failed");
         return false;
     }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
 template <typename Ring>
@@ -198,12 +211,25 @@ void initWebServer()
     serverWeb.on(
         "/updateZB", HTTP_POST, []()
         {
+            if (!zbUploadAuth)
+                return;
+            zbUploadAuth = false;
             serverWeb.sendHeader("Connection", "close");
             serverWeb.send(HTTP_CODE_OK, contTypeText, "Upload OK. Try to flash...");
         },
         []()
         {
             HTTPUpload &upload = serverWeb.upload();
+            if (upload.status == UPLOAD_FILE_START)
+            {
+                zbUploadAuth = checkAuth();
+                if (!zbUploadAuth)
+                    return;
+                DEBUG_PRINTLN(String(millis()) + " Upload zigbee fw file: " + String(upload.filename.c_str()));
+                printLogMsg("[ZB_FW] upload: " + String(upload.filename.c_str()));
+            }
+            if (!zbUploadAuth)
+                return;
             if (opened == false)
             {
                 opened = true;
@@ -226,20 +252,12 @@ void initWebServer()
                 }
             }
 
-            if (upload.status == UPLOAD_FILE_START)
-            {
-                if (!checkAuth())
-                    return;
-                DEBUG_PRINTLN(String(millis()) + " Upload zigbee fw file: " + String(upload.filename.c_str()));
-                printLogMsg("[ZB_FW] upload: " + String(upload.filename.c_str()));
-            }
-            else if (upload.status == UPLOAD_FILE_WRITE)
+            if (upload.status == UPLOAD_FILE_WRITE)
             {
                 fwFile.write(upload.buf, sizeof(upload.buf));
             }
             else if (upload.status == UPLOAD_FILE_END)
             {
-                serverWeb.send(HTTP_CODE_OK, contTypeText, "OK");
                 delay(500);
                 fwFile.close();
                 delay(500);
@@ -261,7 +279,7 @@ void initWebServer()
             }
         });
 
-    const char *headerkeys[] = {"Content-Length"};
+    const char *headerkeys[] = {"Content-Length", "Origin", "Referer", "X-Forwarded-Host"};
     size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
     registerStaticRoutes();
     serverWeb.collectHeaders(headerkeys, headerkeyssize);

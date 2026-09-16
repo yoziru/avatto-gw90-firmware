@@ -110,6 +110,8 @@ void wifiCommitPending()
 
 void handleSaveParams()
 {
+    if (!checkAuth())
+        return;
     String result;
     JsonDocument doc;
     const char *pageId = "pageId";

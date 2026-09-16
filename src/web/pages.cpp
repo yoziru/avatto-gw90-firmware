@@ -392,15 +392,8 @@ void handleStatus()
     if (ConfigSettings.webAuth)
     {
         if (!checkAuth())
-        {
-            serverWeb.sendHeader("Authentication", "fail");
-            serverWeb.send(HTTP_CODE_UNAUTHORIZED, contTypeText, F("wrong login or password"));
             return;
-        }
-        else
-        {
-            serverWeb.sendHeader("Authentication", "ok");
-        }
+        serverWeb.sendHeader("Authentication", "ok");
     }
 
     JsonDocument &doc = getRootData();

@@ -15,7 +15,7 @@ void handleEvents()
     // else gets a 401 and the frontend falls back to polling mode.
     if (!checkAuth())
     {
-        return; // 401 already sent by checkAuth()
+        return; // rejection already sent by checkAuth()
     }
     eventsClient = serverWeb.client();
     if (eventsClient)
@@ -23,7 +23,6 @@ void handleEvents()
         eventsClient.println("HTTP/1.1 200 OK");
         eventsClient.println("Content-Type: text/event-stream;");
         eventsClient.println("Connection: close");
-        eventsClient.println("Access-Control-Allow-Origin: *");
         eventsClient.println("Cache-Control: no-cache");
         eventsClient.println();
         eventsClient.flush();
