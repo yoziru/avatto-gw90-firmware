@@ -23,7 +23,6 @@ void handleEvents()
         eventsClient.println("HTTP/1.1 200 OK");
         eventsClient.println("Content-Type: text/event-stream;");
         eventsClient.println("Connection: close");
-        eventsClient.println("Access-Control-Allow-Origin: *");
         eventsClient.println("Cache-Control: no-cache");
         eventsClient.println();
         eventsClient.flush();

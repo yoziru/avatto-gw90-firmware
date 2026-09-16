@@ -28,6 +28,8 @@ inline std::string_view urlHost(std::string_view url) noexcept
     return authorityHost(rest);
 }
 
+// Host-only policy: ports and schemes are ignored on purpose (Host may or may
+// not carry a port depending on the setup), so only the host name is compared.
 inline bool sameOrigin(std::string_view source, std::string_view host) noexcept
 {
     if (source.empty())

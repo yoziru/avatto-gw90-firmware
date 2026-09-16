@@ -25,7 +25,7 @@ extern zbVerStruct zbVer;
 WebServer serverWeb(80);
 
 bool opened = false;
-bool zbUploadAuth = false;
+static bool zbUploadAuth = false;
 File fwFile;
 
 int totalLength;
@@ -258,7 +258,6 @@ void initWebServer()
             }
             else if (upload.status == UPLOAD_FILE_END)
             {
-                serverWeb.send(HTTP_CODE_OK, contTypeText, "OK");
                 delay(500);
                 fwFile.close();
                 delay(500);

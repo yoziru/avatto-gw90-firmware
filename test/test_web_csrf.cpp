@@ -21,6 +21,18 @@ static void test_same_origin_allow_missing_source(void) {
     TEST_ASSERT_TRUE(sameOrigin("", "192.168.1.50"));
 }
 
+static void test_same_origin_allow_port_on_source_only(void) {
+    TEST_ASSERT_TRUE(sameOrigin("http://192.168.1.50:3000", "192.168.1.50"));
+}
+
+static void test_same_origin_allow_port_on_host_only(void) {
+    TEST_ASSERT_TRUE(sameOrigin("http://192.168.1.50", "192.168.1.50:8080"));
+}
+
+static void test_same_origin_allow_different_scheme(void) {
+    TEST_ASSERT_TRUE(sameOrigin("https://192.168.1.50", "192.168.1.50"));
+}
+
 static void test_same_origin_reject_other_host(void) {
     TEST_ASSERT_FALSE(sameOrigin("http://evil.example", "192.168.1.50"));
 }
@@ -52,6 +64,9 @@ void run_web_csrf_tests(void) {
     RUN_TEST(test_same_origin_allow_referer_with_path);
     RUN_TEST(test_same_origin_allow_hostname_case);
     RUN_TEST(test_same_origin_allow_missing_source);
+    RUN_TEST(test_same_origin_allow_port_on_source_only);
+    RUN_TEST(test_same_origin_allow_port_on_host_only);
+    RUN_TEST(test_same_origin_allow_different_scheme);
     RUN_TEST(test_same_origin_reject_other_host);
     RUN_TEST(test_same_origin_reject_other_referer);
     RUN_TEST(test_same_origin_reject_null);
