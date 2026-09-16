@@ -7,6 +7,17 @@ void zbCheck();
 void zbHealthCheck();
 void zbLedToggle();
 
+// True when the installed role was confirmed by a live coordinator response in
+// the current boot. A cached role is display-only and must not authorize
+// Zigbee flashing (see API_FLASH_ZB).
+bool zbRoleDetectedThisBoot();
+
+// Post-flash re-detection: the ZB firmware task requests it after a successful
+// flash, loop() performs the bounded retries (Serial2 is owned by the task
+// while flashing, so the UART reads must not happen there).
+void zbRequestInfoRefresh();
+void zbInfoRefreshLoop();
+
 // Coordinator health metrics (for the web UI).
 unsigned long zbGetLastRxMs();
 unsigned long zbGetLastClientTxMs();

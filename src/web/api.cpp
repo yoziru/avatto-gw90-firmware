@@ -17,6 +17,7 @@
 #include "etc.h"
 #include "zb.h"
 #include "zb_ver.h"
+#include "zb_info.h"
 #include "version.h"
 #include "net.h"
 #include "tls_client.h"
@@ -300,7 +301,18 @@ void handleApi()
                 }
 
                 const String targetRole = requestedRole.length() ? requestedRole : urlRole;
-                const ZbRole installedZbRole = zbRoleFromDeviceState(zbVer.deviceState);
+
+                // Safety: a role from /config/zbInfo.json is last-known display
+                // data and may be stale. Only a live detection in this boot may
+                // authorize flashing, so if this boot has not confirmed the role
+                // yet, query the coordinator now and refuse when it stays unknown.
+                if (!zbRoleDetectedThisBoot())
+                {
+                    getZbVer();
+                }
+                const ZbRole installedZbRole = zbRoleDetectedThisBoot()
+                                                   ? zbRoleFromDeviceState(zbVer.deviceState)
+                                                   : ZbRole::UNKNOWN;
                 String installedRole = zbRoleName(installedZbRole);
                 installedRole.toLowerCase();
                 if (!targetRole.length())
@@ -620,13 +632,23 @@ void handleApi()
                 }
                 else if (serverWeb.arg(param) == "zbRev")
                 {
-                    resp = zbVer.zbRev > 0 ? (String)zbVer.zbRev : "Unknown";
+                    char revBuf[16];
+                    resp = zbRevDisplay(zbInfoDetectState, zbVer.zbRev, revBuf, sizeof(revBuf));
                 }
                 else if (serverWeb.arg(param) == "zbRole")
                 {
-                    if (zbRoleFromDeviceState(zbVer.deviceState) == ZbRole::UNKNOWN)
+                    // Cache is display-only: when a finished attempt left no
+                    // role, trigger one live read here. While a detection is
+                    // already pending/scheduled, report "checking" instead of
+                    // issuing a duplicate query. Flashing requires its own
+                    // live detection this boot (API_FLASH_ZB).
+                    const bool roleKnown = zbInfoDetectState == ZbDetectState::KNOWN &&
+                                           zbRoleFromDeviceState(zbVer.deviceState) != ZbRole::UNKNOWN;
+                    if (zbInfoDetectState != ZbDetectState::DETECTING && !roleKnown)
+                    {
                         getZbVer();
-                    resp = zbRoleName(zbRoleFromDeviceState(zbVer.deviceState));
+                    }
+                    resp = zbRoleDisplay(zbInfoDetectState, zbVer.deviceState);
                 }
                 else if (serverWeb.arg(param) == "espVer")
                 {

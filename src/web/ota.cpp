@@ -97,6 +97,10 @@ void checkFwHexTask(void *param)
     esp_task_wdt_reset();
 
     if (0 == checkFwHex(hexFilePath)) {
+        // The installed revision/role may have changed: ask loop() to re-detect
+        // once the coordinator has rebooted. Serial2 is free again here - the
+        // re-detection itself must not run from this task.
+        zbRequestInfoRefresh();
         sendEvent("ZB_FW_info", sizeof("ZB_FW_info"), "Update done!");
     } else {
         sendEvent("ZB_FW_err", sizeof("ZB_FW_err"), "Update failed!");

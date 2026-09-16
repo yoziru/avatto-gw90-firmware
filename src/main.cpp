@@ -20,6 +20,7 @@
 #include "etc.h"
 #include "mqtt.h"
 #include "zb.h"
+#include "zb_info.h"
 #include "version.h"
 
 #ifdef BUILD_DEBUG
@@ -351,6 +352,11 @@ void setup()
     DEBUG_PRINTLN(F("System vars load OK"));
   }
 
+  if (loadZbInfo())
+  {
+    DEBUG_PRINTLN(F("Zigbee info cache load OK"));
+  }
+
   if (!loadConfigSerial())
   {
     DEBUG_PRINTLN(F("Error load config serial"));
@@ -441,6 +447,7 @@ void loop(void)
   tmrZbHealth.update();
   bootGuardLoop();
   tempSensorLoop();     // non-blocking async temp read (no 1.3s stall in handlers)
+  zbInfoRefreshLoop();  // post-flash version/role re-detection (bounded retries)
   wifiCommitPending(); // commit a staged wifi save once the STA link is up
   // Serve the web server whenever it has been started. handleClient() is a
   // no-op when disableWeb/serial-only means it never ran; the old

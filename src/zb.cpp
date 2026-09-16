@@ -16,8 +16,65 @@
 #include "etc.h"
 #include "zb.h"
 #include "zb_ver.h"
+#include "zb_info.h"
 
 zbVerStruct zbVer;
+
+// Set only by a successful live ZDO_EXT_NWK_INFO read in the current boot.
+// A cached role (zbInfo.json) is display-only and must never authorize flashing.
+static bool zbRoleLiveThisBoot = false;
+
+bool zbRoleDetectedThisBoot()
+{
+    return zbRoleLiveThisBoot;
+}
+
+// ---- Post-flash re-detection -------------------------------------------------
+// The ZB firmware task owns Serial2 while flashing, so it only requests the
+// refresh; loop() performs the actual UART reads after the task has finished
+// (see zbInfoRefreshLoop()).
+constexpr uint8_t ZB_INFO_REFRESH_MAX_ATTEMPTS = 4;
+constexpr unsigned long ZB_INFO_REFRESH_INTERVAL_MS = 3500; // ~15 s of retries
+
+static volatile bool zbInfoRefreshPending = false;
+static uint8_t zbInfoRefreshAttempts = 0;
+static unsigned long zbInfoRefreshLastMs = 0;
+
+void zbRequestInfoRefresh()
+{
+    zbInfoDetectState = ZbDetectState::DETECTING; // the flashed values are stale now
+    zbInfoRefreshAttempts = 0;
+    zbInfoRefreshLastMs = 0;
+    zbInfoRefreshPending = true;
+}
+
+void zbInfoRefreshLoop()
+{
+    if (!zbInfoRefreshPending)
+        return;
+    if (zbInfoRefreshAttempts > 0 && millis() - zbInfoRefreshLastMs < ZB_INFO_REFRESH_INTERVAL_MS)
+        return;
+
+    zbInfoRefreshLastMs = millis();
+    zbInfoRefreshAttempts++;
+    zbInfoDetectState = ZbDetectState::DETECTING;
+    getZbVer();
+
+    if (zbInfoDetectState == ZbDetectState::KNOWN)
+    {
+        zbInfoRefreshPending = false;
+        printLogMsg("[ZBVER] Post-flash refresh OK");
+        return;
+    }
+    if (zbInfoRefreshAttempts >= ZB_INFO_REFRESH_MAX_ATTEMPTS)
+    {
+        zbInfoRefreshPending = false;
+        zbInfoDetectState = ZbDetectState::UNKNOWN; // give up: not known, flashing stays gated
+        printLogMsg("[ZBVER] Post-flash refresh failed");
+        return;
+    }
+    zbInfoDetectState = ZbDetectState::DETECTING; // still retrying: keep showing "checking"
+}
 
 volatile unsigned long zbLastRxMs = 0;   // last time bytes were received from the coordinator
 volatile unsigned long zbClientTxMs = 0; // last time a TCP client sent bytes to the coordinator
@@ -101,15 +158,30 @@ static void getZbRole()
             continue;
         }
         zbVer.deviceState = response[2];
-        printLogMsg(String("[ZBROLE] ") + zbRoleName(zbRoleFromDeviceState(zbVer.deviceState)) + " (state " + zbVer.deviceState + ")");
+        const ZbRole liveRole = zbRoleFromDeviceState(zbVer.deviceState);
+        if (liveRole != ZbRole::UNKNOWN)
+        {
+            zbRoleLiveThisBoot = true;
+        }
+        printLogMsg(String("[ZBROLE] ") + zbRoleName(liveRole) + " (state " + zbVer.deviceState + ")");
         return;
     }
 }
 
 void getZbVer()
 {
-    zbVer.zbRev = 0;
-    zbVer.deviceState = 0xFF;
+    if (zbInfoDetectState != ZbDetectState::KNOWN)
+    {
+        zbInfoDetectState = ZbDetectState::DETECTING; // query in flight, nothing to show
+    }
+    // Keep last-known values while the query runs: with a cache loaded the UI
+    // must not flip to "unknown" when this live read fails. Only clear when
+    // nothing was ever detected.
+    if (!zbInfoKnown())
+    {
+        zbVer.zbRev = 0;
+        zbVer.deviceState = 0xFF;
+    }
     const byte cmdFrameStart = 0xFE;
     const byte zero = 0x00;
     const byte cmd1 = 0x21;
@@ -153,7 +225,9 @@ void getZbVer()
     if (versionRead)
     {
         getZbRole();
+        saveZbInfo();
     }
+    zbInfoDetectState = zbDetectAfterAttempt(zbInfoDetectState, versionRead);
 }
 
 // Send a Zigbee LED on/off command and wait for the coordinator's ack frame.
@@ -210,9 +284,14 @@ void zbCheck()
             delay(1000);
         }
         printLogMsg("[ZBCHK] Wrong answer");
-        printLogMsg("[ZBVER] Unknown");
-        zbVer.zbRev = 0;
-        zbVer.deviceState = 0xFF;
+        // Keep last-known values unless a version or role was actually
+        // detected - a chip ID alone must not suppress the unknown report.
+        if (zbVer.zbRev == 0 && zbRoleFromDeviceState(zbVer.deviceState) == ZbRole::UNKNOWN)
+        {
+            printLogMsg("[ZBVER] Unknown");
+            zbVer.zbRev = 0;
+            zbVer.deviceState = 0xFF;
+        }
     }
     else
     {
@@ -567,6 +646,9 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
     }
 flash_quit:
     fwFile.close();
+    // The coordinator's firmware may just have changed: the role is no longer
+    // live-confirmed until a fresh read, so any further flash must re-check it.
+    zbRoleLiveThisBoot = false;
     Serial2.updateBaudRate(ConfigSettings.serialSpeed); 
     CCTool.restart();         // Restart
     DEBUG_PRINTLN(F("fw.hex data send complete"));
@@ -655,6 +737,7 @@ void zbInit()
         DEBUG_PRINTLN(zb_chip);
         printLogMsg(String("[ZBCHIP] ") + zb_chip);
         zbVer.chipID = zb_chip;
+        saveZbInfo();
         CCTool.restart();
     }
     else
