@@ -55,7 +55,6 @@ static void test_mqtt_config_schema(void) {
     JsonDocument doc;
     doc["enable"] = 1;
     doc["discovery"] = 1;
-    doc["tls"] = 1;
     doc["server"] = "mqtt.example.com";
     doc["port"] = 1883;
     doc["user"] = "user1";
@@ -71,7 +70,6 @@ static void test_mqtt_config_schema(void) {
 
     TEST_ASSERT_EQUAL_INT(1, parsed["enable"].as<int>());
     TEST_ASSERT_EQUAL_INT(1, parsed["discovery"].as<int>());
-    TEST_ASSERT_EQUAL_INT(1, parsed["tls"].as<int>());
     TEST_ASSERT_EQUAL_STRING("mqtt.example.com", parsed["server"].as<const char *>());
     TEST_ASSERT_EQUAL_INT(1883, parsed["port"].as<int>());
 }

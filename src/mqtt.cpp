@@ -15,11 +15,9 @@
 #include "mqtt.h"
 #include "mqtt_cmd.h"
 #include "ha_discovery.h"
+#include "tls_client.h"
 
 extern zbVerStruct zbVer;
-
-extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
-extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
 
 WiFiClient clientMqtt;
 WiFiClientSecure clientMqttSecure;
@@ -31,7 +29,7 @@ void mqttConnectSetup()
     if (MqttSettings.tls)
     {
         clientMqttSecure.setHandshakeTimeout(10);
-        clientMqttSecure.setCACertBundle(x509_crt_bundle_start, x509_crt_bundle_end - x509_crt_bundle_start);
+        trustEspCertificateBundle(clientMqttSecure);
         clientPubSub.setClient(clientMqttSecure);
     }
     else
