@@ -19,6 +19,7 @@
 #include "zb_ver.h"
 #include "version.h"
 #include "net.h"
+#include "tls_client.h"
 
 #include "webh/PAGE_ROOT.html.gz.h"
 #include "webh/PAGE_GENERAL.html.gz.h"
@@ -360,7 +361,7 @@ void handleApi()
 
                 HTTPClient http;
                 NetworkClientSecure client;
-                client.setInsecure();
+                trustEspCertificateBundle(client);
                 client.setTimeout(10000);
 
                 http.begin(client, fwUrl);

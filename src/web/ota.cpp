@@ -10,6 +10,7 @@
 #include "config.h"
 #include "web.h"
 #include "zb.h"
+#include "tls_client.h"
 
 void checkFwHexTask(void *param)
 {
@@ -66,7 +67,7 @@ void getEspUpdate(String esp_fw_url)
     printLogMsg("ESP OTA download start");
     HTTPClient clientWeb;
     NetworkClientSecure client;
-    client.setInsecure();
+    trustEspCertificateBundle(client);
     clientWeb.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     clientWeb.begin(client, esp_fw_url);
     clientWeb.addHeader("Content-Type", "application/octet-stream");
