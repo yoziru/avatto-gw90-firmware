@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+## v1.1.3 — 2026-09-16
+
 ### Features
 
 - **Optional TLS for MQTT.** The MQTT page has a TLS encryption switch; when enabled the gateway connects over TLS with certificate validation against the ESP32's built-in CA bundle, so broker credentials and commands are no longer sent in plaintext. The port is not changed automatically — set 8883 (or your broker's TLS port) yourself, and the change applies after a reboot. The server field takes an IP address only, so the certificate chain is validated but not the hostname — brokers using self-signed or private-CA certificates are not supported. Existing configurations stay on plaintext MQTT.
