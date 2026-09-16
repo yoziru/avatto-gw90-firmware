@@ -107,6 +107,10 @@ Releases are cut from `main` via the GitHub **Release** workflow (`patch`/`minor
 
 Full details: `ARCHITECTURE.md`.
 
+## Security
+
+Security model, supported versions and private vulnerability reporting: see [`SECURITY.md`](SECURITY.md).
+
 ## License & Attribution
 
 This project is based on [AVATTO's official GW90-TI firmware](https://github.com/AVATTO-smart/avatto-gw90-firmware), with extensive modifications for stability, Home Assistant integration, and developer tooling. Changes relative to upstream are documented in `CHANGELOG.md`.
