@@ -4,8 +4,8 @@
 
 static const char FW_SIGNING_PUBKEY_PEM[] =
     "-----BEGIN PUBLIC KEY-----\n"
-    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETkGOx/VoIAnYqHMznDRRryw87e3A\n"
-    "kXyWXfaJwBDJJpJqGWyIxb263byyR0ZZnPAfQtWNeeuNCFdG+z988PAKGw==\n"
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPjPqwbnP+p5yD+9GTayf3h5DioKb\n"
+    "PAK0trLM2boKNbE+iLNWjA7YVedMJP1dP49n6gdUILgcRBiv6itDtO57Tg==\n"
     "-----END PUBLIC KEY-----\n";
 
 #endif
