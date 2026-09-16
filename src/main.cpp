@@ -226,7 +226,7 @@ void setupCoordinatorMode()
   Serial.print(F(" (")); Serial.print(static_cast<uint8_t>(ConfigSettings.coordinator_mode)); Serial.println(F(")"));
   Serial.print(F("[MODE] keepWeb=")); Serial.println(ConfigSettings.keepWeb);
   Serial.print(F("[MODE] disableWeb=")); Serial.println(ConfigSettings.disableWeb);
-  if (ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH || ConfigSettings.keepWeb)
+  if (networkExpected())
   { // start network overseer
     Serial.println(F("[MODE] Registering WiFi event & starting overseer timer"));
     if (tmrNetworkOverseer.state() == STOPPED)

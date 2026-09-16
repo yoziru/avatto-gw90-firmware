@@ -394,7 +394,7 @@ void connectWifi()
   }
   else
   {
-    if (!(ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH && ConfigSettings.keepWeb))
+    if (!networkExpected())
     { // dont start ap in keepWeb
       DEBUG_PRINTLN(F("[connectWifi] NO SSID & PASS"));
       startAP(true);

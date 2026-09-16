@@ -157,6 +157,11 @@ extern ConfigSettingsStruct ConfigSettings;
 extern MqttSettingsStruct MqttSettings;
 extern WgSettingsStruct WgSettings;
 
+inline bool networkExpected() noexcept
+{
+  return ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH || ConfigSettings.keepWeb;
+}
+
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.print(String(x))
 #define DEBUG_PRINTLN(x) Serial.println(String(x))

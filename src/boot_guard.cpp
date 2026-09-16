@@ -61,8 +61,7 @@ void bootGuardRollback()
 
 bool bootGuardHealthOk()
 {
-    const bool networkExpected = ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH || ConfigSettings.keepWeb;
-    if (networkExpected && !ConfigSettings.connectedEther && WiFi.status() != WL_CONNECTED && !ConfigSettings.apStarted)
+    if (networkExpected() && !ConfigSettings.connectedEther && WiFi.status() != WL_CONNECTED && !ConfigSettings.apStarted)
     {
         return false;
     }
@@ -102,12 +101,6 @@ void bootGuardBegin()
 
     bootGuardArmed = true;
     bootGuardBootMs = millis();
-    if (bootGuardAttempts > BOOT_GUARD_MAX_BOOT_ATTEMPTS)
-    {
-        printLogMsg(String("[BOOT] OTA boot guard: ") + String(bootGuardAttempts) + " attempts without health");
-        bootGuardRollback();
-        return;
-    }
     printLogMsg(String("[BOOT] OTA boot guard: attempt ") + String(bootGuardAttempts) + "/" + String(BOOT_GUARD_MAX_BOOT_ATTEMPTS));
 }
 
