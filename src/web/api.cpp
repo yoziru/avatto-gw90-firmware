@@ -19,6 +19,7 @@
 #include "zb_ver.h"
 #include "version.h"
 #include "net.h"
+#include "tls_client.h"
 
 #include "webh/PAGE_ROOT.html.gz.h"
 #include "webh/PAGE_GENERAL.html.gz.h"
@@ -32,9 +33,6 @@
 #include "webh/PAGE_WG.html.gz.h"
 
 extern zbVerStruct zbVer;
-
-extern const uint8_t x509_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
-extern const uint8_t x509_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
 
 namespace
 {
@@ -363,7 +361,7 @@ void handleApi()
 
                 HTTPClient http;
                 NetworkClientSecure client;
-                client.setCACertBundle(x509_crt_bundle_start, reinterpret_cast<uintptr_t>(x509_crt_bundle_end) - reinterpret_cast<uintptr_t>(x509_crt_bundle_start));
+                trustEspCertificateBundle(client);
                 client.setTimeout(10000);
 
                 http.begin(client, fwUrl);
