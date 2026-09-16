@@ -58,16 +58,36 @@ const api = {
 	pages: pages
 };
 
+let modalReturnFocus = null;
+
+function setPageInert(state) {
+	const targets = [];
+	const sidenav = document.getElementById("sidenav");
+	if (sidenav) targets.push(sidenav);
+	document.querySelectorAll("nav.navbar, .col.py-3").forEach(e => targets.push(e));
+	targets.forEach(e => state ? e.setAttribute("inert", "") : e.removeAttribute("inert"));
+}
+
 function showModal(show) {
 	const modal = document.getElementById("modal");
-	if (modal) {
-		if (show) {
-			modal.classList.add("show");
-			modal.style.display = "block";
-		} else {
-			modal.classList.remove("show");
-			modal.style.display = "none";
+	if (!modal) return;
+	if (show) {
+		const wasOpen = modal.classList.contains("show");
+		if (!wasOpen) modalReturnFocus = document.activeElement;
+		modal.classList.add("show");
+		modal.style.display = "block";
+		setPageInert(true);
+		if (!wasOpen) {
+			const target = modal.querySelector("#modalButtons button, #modalBody button, #modalBody input, #modalBody [href], #modalButtons [href]");
+			if (target) target.focus();
+			else modal.focus();
 		}
+	} else {
+		modal.classList.remove("show");
+		modal.style.display = "none";
+		setPageInert(false);
+		if (modalReturnFocus && typeof modalReturnFocus.focus === "function") modalReturnFocus.focus();
+		modalReturnFocus = null;
 	}
 }
 
@@ -85,8 +105,6 @@ function getQA(sel) { return document.querySelectorAll(sel); }
 
 function initBsHandlers() {
 	document.addEventListener("click", function (e) {
-		const tabBtn = e.target.closest("[data-bs-toggle='tab']");
-		if (tabBtn) { e.preventDefault(); switchTab(tabBtn); return; }
 		const dismissModal = e.target.closest("[data-bs-dismiss='modal']");
 		if (dismissModal) { showModal(false); return; }
 		const modal = getEl("modal");
@@ -108,7 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (isMobile()) {
 		if (!(localStorage.getItem("shv_sdnv_frst_t") == 1)) {
 			const sidenav = getEl("sidenav");
-			if (sidenav) { sidenav.classList.add("sidenav-active"); localStorage.setItem("shv_sdnv_frst_t", 1); setTimeout(() => sidenav.classList.remove("sidenav-active"), 2000); }
+			if (sidenav) { setSideNavOpen(true); localStorage.setItem("shv_sdnv_frst_t", 1); setTimeout(() => setSideNavOpen(false), 2000); }
 		}
 		setupSwipeHandler();
 		const pc = getEl("pageContent");
@@ -130,28 +148,46 @@ document.addEventListener("DOMContentLoaded", function () {
 	initLanguage();
 	initDarkModeToggle();
 	initBsHandlers();
+
+	window.addEventListener("popstate", function () {
+		loadPage(window.location.pathname, true);
+		getQA(".nav-active").forEach(n => n.classList.remove("nav-active"));
+		const link = document.querySelector("a[href='" + window.location.pathname + "']");
+		if (link && link.parentElement) link.parentElement.classList.add("nav-active");
+	});
 });
 
 function copyCode() {
-	let textArea = getEl("generatedFile");
+	const textArea = getEl("generatedFile");
+	if (!textArea) return;
+	const confirmCopied = () => {
+		const btn = getQ("button[onclick='copyCode()']");
+		if (!btn || btn.dataset.copied) return;
+		btn.dataset.copied = "1";
+		const original = btn.textContent;
+		btn.textContent = t("z.copied");
+		btn.classList.remove("btn-outline-primary");
+		btn.classList.add("btn-outline-success");
+		setTimeout(() => {
+			btn.textContent = original;
+			btn.classList.remove("btn-outline-success");
+			btn.classList.add("btn-outline-primary");
+			delete btn.dataset.copied;
+		}, 1500);
+	};
 	if (!navigator.clipboard) {
 		textArea.focus();
 		textArea.select();
 		try {
-			let successful = document.execCommand("copy");
-			console.log("Fallback: Copying text command was " + (successful ? "successful" : "unsuccessful"));
+			if (document.execCommand("copy")) confirmCopied();
 		} catch (err) {
-			console.error("Fallback: Oops, unable to copy", err);
+			console.error("Fallback: unable to copy", err);
 		}
 	} else {
-		navigator.clipboard.writeText(textArea.value).then(function () {
-			console.log("Async: Copying to clipboard was successful!");
-		}, function (err) {
+		navigator.clipboard.writeText(textArea.value).then(confirmCopied, function (err) {
 			console.error("Async: Could not copy text: ", err);
 		});
 	}
-	const clipIco = getEl("clipIco");
-	if (clipIco) clipIco.setAttribute("xlink:href", "icons.svg#clipboard2-check");
 }
 
 function generateConfig(params) {
@@ -195,8 +231,18 @@ advanced:
 	getEl("generatedFile").value = result;
 }
 
-function loadPage(url) {
-	window.history.pushState("", document.title, url);
+function selectGenerator(btn) {
+	const seg = btn.closest(".seg");
+	if (seg) seg.querySelectorAll("button").forEach(b => {
+		const active = b === btn;
+		b.classList.toggle("seg-active", active);
+		b.setAttribute("aria-pressed", active ? "true" : "false");
+	});
+	generateConfig(btn.dataset.gen);
+}
+
+function loadPage(url, fromHistory) {
+	if (!fromHistory) window.history.pushState("", document.title, url);
 	console.log("[loadPage] url: " + url);
 	window.scrollTo(0, 0);
 	switch (url) {
@@ -307,13 +353,18 @@ function apiGetPage(page, doneCall) {
 				form.addEventListener("submit", function (e) {
 					e.preventDefault();
 					const btn = form.querySelector("button[type='submit']");
-					getQA(":disabled").forEach(d => d.removeAttribute("disabled"));
+					// Disabled fields still carry saved values (static IP, MQTT/WG
+					// details). Include them in this form's payload, then restore
+					// their state so the UI stays disabled instead of going live.
+					const disabled = Array.from(form.querySelectorAll(":disabled"));
+					disabled.forEach(d => d.removeAttribute("disabled"));
+					const formData = new FormData(form);
+					disabled.forEach(d => d.setAttribute("disabled", ""));
 					const sp = createSpinner();
 					const sp2 = el("span", { "class": classHide });
 					btn.appendChild(sp);
 					btn.appendChild(sp2);
 					btn.disabled = true;
-					const formData = new FormData(form);
 					formData.append("pageId", page.num);
 					fetch(e.currentTarget.action, { method: "POST", body: formData }).then(() => {
 						modalConstructor("saveOk");
@@ -438,6 +489,20 @@ function toggleDarkModeMobile() {
 	applyTheme(document.documentElement.getAttribute("data-theme") !== "dark");
 }
 
+function setSideNavOpen(open) {
+	const nav = document.getElementById("sidenav");
+	if (!nav) return;
+	nav.classList.toggle("sidenav-active", open);
+	const btn = document.getElementById("navToggle");
+	if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function toggleSideNav(btn) {
+	const nav = document.getElementById("sidenav");
+	if (!nav) return;
+	setSideNavOpen(!nav.classList.contains("sidenav-active"));
+}
+
 function initDarkModeToggle() {
 	const saved = localStorage.getItem("theme");
 	const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -510,8 +575,6 @@ function startZbFlashFromGit() {
 	}
 	closeModal();
 	setTimeout(() => {
-		const fwTab = getEl("fw-tab");
-		if (fwTab) switchTab(fwTab);
 		const prgZb = getEl("prg_zb");
 		const barZb = getEl("bar_zb");
 		const updBtnZb = getEl("updButton_zb");
@@ -531,20 +594,6 @@ function startZbFlashFromGit() {
 			startFlashProcess(firmwareUrl, latestZbFirmware.role, latestZbFirmware.localRole !== latestZbFirmware.role);
 		}, 2000);
 	}, 300);
-}
-
-function switchTab(tabEl) {
-	const tabLinks = getQA("[data-bs-toggle='tab']");
-	tabLinks.forEach(t => t.classList.remove("active"));
-	tabEl.classList.add("active");
-	const target = tabEl.getAttribute("data-bs-target");
-	if (target) {
-		getQA(".tab-pane").forEach(p => {
-			p.classList.remove("active", "show");
-		});
-		const pane = getQ(target);
-		if (pane) pane.classList.add("active", "show");
-	}
 }
 
 function startFlashProcess(fwUrl, role, roleSwitch) {
@@ -1236,9 +1285,8 @@ function isMobile() {
 }
 
 function sidenavAutoclose(now) {
-	const sidenav = getEl("sidenav");
-	if (now) { if (sidenav) sidenav.classList.remove("sidenav-active"); }
-	else { setTimeout(() => { if (sidenav) sidenav.classList.remove("sidenav-active"); }, 5000); }
+	if (now) { setSideNavOpen(false); }
+	else { setTimeout(() => setSideNavOpen(false), 5000); }
 }
 
 function setupSwipeHandler() {
@@ -1250,13 +1298,13 @@ function setupSwipeHandler() {
 		if (event.type == "touchend") {
 			let endPoint = event.changedTouches[0].clientX;
 			if (startPoint < 30 && (endPoint - startPoint) > 50) {
-				if (sidenav) sidenav.classList.add("sidenav-active");
+				setSideNavOpen(true);
 				sidenavAutoclose();
 			} else if (endPoint == startPoint) {
 				// tap: only close the drawer when tapping outside of it
 				const t = event.changedTouches[0];
 				const el = document.elementFromPoint(t.clientX, t.clientY);
-				if (sidenav && el && !sidenav.contains(el)) sidenav.classList.remove("sidenav-active");
+				if (sidenav && el && !sidenav.contains(el)) setSideNavOpen(false);
 			}
 		} else {
 			startPoint = event.touches[0].clientX;
@@ -1947,14 +1995,14 @@ en: {
 "g.workMode": "Work Mode", "g.netMode": "Network Mode", "g.recommended": "Recommended", "g.netDesc": "Ethernet with automatic Wi-Fi fallback", "g.serMode": "Serial Mode", "g.serDesc": "Directly connect to computer via USB (serial test)", "g.keepWeb": "Keep Network & Web", "g.keepHint": "Keeps one channel active (Wi-Fi, Ethernet or Wi-Fi AP, in that order) so the web interface stays reachable.", "g.rtControl": "Real-time Control", "g.ledHint": "Use toggle buttons to control LED status (current session, not saved after reboot)", "g.pwrLed": "Power Indicator LED", "g.wifiLed": "Wi-Fi/Serial Mode LED", "g.ledSaveHint": "Use the switches below to control LED behavior (saved after reboot)", "g.disPwr": "Disable Power LED", "g.disUsb": "Disable USB LED", "g.sysVar": "System Variables", "g.hostname": "Hostname (The device will be displayed on the network with this name)", "g.logRefresh": "Log refresh interval (milliseconds)", "g.timezone": "Time Zone",
 "e.conn": "Connection", "e.dhcp": "Enable DHCP (recommended)", "e.ipSet": "IP Settings", "e.ip": "IP", "e.mask": "Subnet Mask", "e.gw": "Default Gateway",
 "w.title": "Wi-Fi", "w.yourNet": "Your Network", "w.ipSet": "IP Settings", "w.dhcp": "DHCP", "w.asleep": "WiFi is asleep (Ethernet is the active uplink) - live IP appears here when WiFi is used.", "w.ip": "IP Address", "w.mask": "Subnet Mask", "w.router": "Router", "w.save": "Save", "w.forget": "Forget This Network", "w.noNet": "No network configured", "w.otherNet": "Other Networks", "w.joinOther": "Join Other Network…", "w.ssidPh": "Network name (SSID)", "w.passPh": "Password", "w.join": "Join", "w.connect": "Connect", "w.scanning": "Scanning…", "w.scanTimeout": "Scan timed out. Tap to retry.", "w.noFound": "No Wi-Fi networks found.", "w.connecting": "Connecting…", "w.connected": "Connected", "w.connFailPw": "Wi-Fi authentication failed. Check the password and security mode.", "w.noSsid": "Network not found. Check the SSID, range, and that the network is broadcasting.", "w.security": "This network's security mode is not supported. Check the router settings.", "w.weakSignal": "The Wi-Fi signal is too weak or unstable. Move closer to the router and try again.", "w.apReject": "The access point rejected the connection. Check its settings and try again.", "w.connFail": "Could not connect. Check the SSID, password, and router.", "w.connNoStatus": "Connection status unavailable.", "w.saveFail": "Save failed. Check your network.", "w.saved": "Saved", "w.forgetting": "Forgetting…", "w.forgotten": "Network forgotten.", "w.forgetFail": "Failed to forget network.", "w.forgetConfirm": "Forget this Wi-Fi network?", "w.enterSsid": "Enter a network name.", "w.pw8": "Password must be at least 8 characters.", "w.wpa": "WPA2/WPA3", "w.open": "Open", "w.noNetsYet": "No networks yet.",
-"z.serSet": "Serial Settings", "z.baud": "Baud Rate", "z.port": "Port", "z.cfgGen": "Config Generator", "z.apAlert": "It seems that AVATTO-GW90-Ti is operating in access point mode (IP address is 192.168.1.1). The IP address will change after connecting to Ethernet or Wi-Fi, and the configuration needs to be regenerated.", "z.cfgGenLabel": "Config Generator", "z.copy": "Copy to Clipboard",
+"z.serSet": "Serial Settings", "z.baud": "Baud Rate", "z.port": "Port", "z.cfgGen": "Config Generator", "z.apAlert": "It seems that AVATTO-GW90-Ti is operating in access point mode (IP address is 192.168.1.1). The IP address will change after connecting to Ethernet or Wi-Fi, and the configuration needs to be regenerated.", "z.cfgGenLabel": "Config Generator", "z.copy": "Copy to Clipboard", "z.copied": "Copied!",
 "sec.webSrv": "Web Server", "sec.disWeb": "Disable Web Server when interface is connected", "sec.enAuth": "Enable Web Server Authentication", "sec.user": "Username", "sec.pass": "Password", "sec.access": "Access Control", "sec.enWhite": "Enable Connection IP Whitelist", "sec.allowed": "Allowed IPs",
 "m.conn": "Connection", "m.server": "Server", "m.port": "Port", "m.user": "Username", "m.pass": "Password", "m.topicDisc": "Topic & Discovery", "m.topic": "Topic", "m.interval": "Interval (seconds)", "m.haDisc": "Enable Home Assistant Discovery",
 "wg.tunnel": "Tunnel", "wg.localAddr": "Local Address", "wg.localAddrEx": "e.g. 10.0.0.2/24", "wg.privKey": "Local Private Key", "wg.privKeyPh": "Enter WireGuard private key", "wg.privNote": "44-character base64 private key", "wg.endpoint": "Endpoint", "wg.remoteAddr": "Remote Endpoint Address", "wg.remoteNote": "IP address or domain of the remote endpoint", "wg.remotePub": "Remote Public Key", "wg.remotePubNote": "44-character base64 public key", "wg.port": "Port", "wg.portNote": "UDP port, 1-65535",
 "t.logs": "Logs", "t.esp": "ESP32", "t.zbFrames": "Zigbee ZNP Frames", "t.human": "Human-readable frames", "t.clear": "Clear Console", "t.checkConn": "Check Zigbee Connection", "t.checkVer": "Check Zigbee Version", "t.modCtrl": "Module Control", "t.rstZb": "Restart Zigbee", "t.zbRefresh": "Zigbee Refresh Mode", "t.routerRe": "Router Reconnect", "t.rstEsp": "Restart ESP32",
 "a.device": "Device", "a.brand": "Brand:", "a.name": "Name:", "a.nameVal": "AVATTO Zigbee Smart Gateway", "a.fw": "Firmware:", "a.date": "Date:", "a.sysInfo": "System Information", "a.zstar": "Zig-Star Model:", "a.mcu": "MCU:", "a.zb": "Zigbee:", "a.eth": "Ethernet:", "a.ifaces": "Interfaces:", "a.if1": "RJ45 Ethernet (Supports PoE)", "a.if2": "USB Type-C", "a.if3": "Zigbee Antenna Interface", "a.espFwVer": "ESP32 Firmware Version:", "a.espFreq": "ESP32 Frequency:", "a.cores": "Cores @", "a.flashSize": "ESP32 Flash Size:", "a.mem": "ESP32 Memory (Free/Total):", "a.zbHw": "CC2652P Hardware Version:", "a.zbFw": "CC2652P Firmware Version:", "a.espFw": "ESP32 Firmware", "a.installGh": "Install update from GitHub", "a.coordNote": "Coordinator is the default choice for ZHA and Zigbee2MQTT. Flash Router only to join or extend another Zigbee network.", "a.zbFwCard": "Zigbee Firmware", "a.rev": "rev", "a.espFwUpd": "ESP32 file update", "a.zbFwUpd": "Zigbee File Update",
 "md.warn": "WARNING", "md.warnBody": "Flashing unofficial, incorrect or corrupted firmware can damage or brick your device!!!", "md.agree": "I agree and I am taking the risk", "md.rstEsp": "Restart ESP32", "md.rstBody": "The device will restart and the connection will be interrupted for a few seconds. Continue?", "md.espFw": "ESP32 firmware", "md.updateNow": "Update now", "md.gitUpd": "ESP32 GIT UPDATE", "md.gitUpdBody": "Downloading and flashing latest release from Github. This window will automatically close when the device reboots.", "md.later": "Later", "md.noRemind": "Don't remind", "md.zbSel": "Select Zigbee Firmware Type", "md.coord": "Coordinator", "md.router": "Router", "md.latestZb": "Latest Zigbee Firmware", "md.devRestart": "DEVICE RESTART", "md.waitDev": "Waiting for device... This window will automatically close when the device reboots.", "md.wifiConn": "Wi-Fi network connection", "md.wifiConnecting": "Connecting to the network in progress... Wait for the result.", "md.connErr": "Connection error, check SSID, PASSWORD and try again", "md.setSaved": "Settings saved", "md.savedBody": "New parameters saved. Some settings require a reboot.", "md.later2": "Restart manually later", "md.restartNow": "Restart now", "md.noResp": "No response from the device, this may happen if the device changed IP address or if the USB mode was selected.",
-"d.saveErr": "Error saving settings. Check your network", "d.netErr": "Error. Check your network", "d.pageErr": "Page load error: ", "d.githubStart": "Github download starting...", "d.prepDev": "Preparing device...", "d.invalidLink": "Invalid firmware link", "d.dlFw": "Downloading firmware...", "d.dlFail": "Download failed: ", "d.evTimeout": "EventSource timeout", "d.connFailPoll": "Connection failed, using polling mode...", "d.downloaded": "Downloading... ", "d.dlComplete": "Download complete, starting flash...", "d.flashing": "Flashing... ", "d.flashDone": "Flash complete!", "d.validating": "Validating and flashing...", "d.progress": "progress: ", "d.updDoneReboot": "Update completed!<br>Rebooting!", "d.updAvail": "Update available: ", "d.upToDate": "Up to date", "d.noGh": "Could not reach GitHub. Use file upload below.", "d.noZbIdx": "Could not reach the firmware index. Use file upload below.", "d.noZbFw": "No Zigbee firmware in the index.", "d.updAvailShort": "update available", "d.allUpToDate": "All variants up to date", "d.noFwData": "No firmware data available.", "d.noFwDataSub": "Please check your internet connection or try again later.", "d.noFwFor": "No firmware found for '", "d.availTypes": "Available firmware types:", "d.fwDetails": "Firmware Details:", "d.name": "Name:", "d.version": "Version:", "d.type": "Type:", "d.desc": "Description:", "d.baud": "Baud Rate:", "d.dongle": "Dongle Type:", "d.localVer": "Local version: v", "d.ghVer": "GitHub version: ", "d.file": "File: ", "d.errFetch": "Error fetching version information.", "d.updateAvailEx": "Update Available!", "d.currentLatest": "Current: v", "d.upToDateEx": "Up to date", "d.currentVer": "Current version: v", "d.router": "Router", "d.coord": "Coordinator", "d.default": "default", "d.flash": "Flash ", "d.protected": "Protected · ", "d.unknown": "UNKNOWN", "d.uploadPct": "Uploading: ", "d.uplComplete": "Upload complete! <br>Start verifing & flashing...", "d.opTimeout": "Operation timed out. Please check device status.", "d.showHidePw": "Show / hide password", "d.showHideKey": "Show / hide private key", "d.darkMode": "Dark Mode", "d.lightMode": "Light Mode", "d.ipSettings": "IP settings", "d.loadingFw": "Loading firmware information...", "d.loading": "Loading...", "d.goTo": "Go to ", "d.newIp": "New IP address is ", "d.devReboot": "Device will now reboot for the new settings to take effect.", "d.connectedEx": "Connected!", "d.logFilter": "Log filter", "md.espUpdAvail": "ESP32 update available", "d.newFw": "New firmware (${tag}) was found on GitHub. It was downloaded ${count} times. Go -> About -> ESP32 Firmware to update.", "d.latestIs": "Latest: ", "d.dlCount": "downloaded ${count} times", "d.updatesAvail": "${n} update(s) available", "d.localRev": "local rev", "d.noNotes": "(no release notes)", "d.saving": "Saving…", "d.openNet": "Open network", "d.language": "Language", "d.toggleDark": "Toggle dark mode",
+"d.saveErr": "Error saving settings. Check your network", "d.netErr": "Error. Check your network", "d.pageErr": "Page load error: ", "d.githubStart": "Github download starting...", "d.prepDev": "Preparing device...", "d.invalidLink": "Invalid firmware link", "d.dlFw": "Downloading firmware...", "d.dlFail": "Download failed: ", "d.evTimeout": "EventSource timeout", "d.connFailPoll": "Connection failed, using polling mode...", "d.downloaded": "Downloading... ", "d.dlComplete": "Download complete, starting flash...", "d.flashing": "Flashing... ", "d.flashDone": "Flash complete!", "d.validating": "Validating and flashing...", "d.progress": "progress: ", "d.updDoneReboot": "Update completed!<br>Rebooting!", "d.updAvail": "Update available: ", "d.upToDate": "Up to date", "d.noGh": "Could not reach GitHub. Use file upload below.", "d.noZbIdx": "Could not reach the firmware index. Use file upload below.", "d.noZbFw": "No Zigbee firmware in the index.", "d.updAvailShort": "update available", "d.allUpToDate": "All variants up to date", "d.noFwData": "No firmware data available.", "d.noFwDataSub": "Please check your internet connection or try again later.", "d.noFwFor": "No firmware found for '", "d.availTypes": "Available firmware types:", "d.fwDetails": "Firmware Details:", "d.name": "Name:", "d.version": "Version:", "d.type": "Type:", "d.desc": "Description:", "d.baud": "Baud Rate:", "d.dongle": "Dongle Type:", "d.localVer": "Local version: v", "d.ghVer": "GitHub version: ", "d.file": "File: ", "d.errFetch": "Error fetching version information.", "d.updateAvailEx": "Update Available!", "d.currentLatest": "Current: v", "d.upToDateEx": "Up to date", "d.currentVer": "Current version: v", "d.router": "Router", "d.coord": "Coordinator", "d.default": "default", "d.flash": "Flash ", "d.protected": "Protected · ", "d.unknown": "UNKNOWN", "d.uploadPct": "Uploading: ", "d.uplComplete": "Upload complete! <br>Start verifing & flashing...", "d.opTimeout": "Operation timed out. Please check device status.", "d.showHidePw": "Show / hide password", "d.showHideKey": "Show / hide private key", "d.darkMode": "Dark Mode", "d.lightMode": "Light Mode", "d.ipSettings": "IP settings", "d.loadingFw": "Loading firmware information...", "d.loading": "Loading...", "d.goTo": "Go to ", "d.newIp": "New IP address is ", "d.devReboot": "Device will now reboot for the new settings to take effect.", "d.connectedEx": "Connected!", "d.logFilter": "Log filter", "md.espUpdAvail": "ESP32 update available", "d.newFw": "New firmware (${tag}) was found on GitHub. It was downloaded ${count} times. Go -> About -> ESP32 Firmware to update.", "d.latestIs": "Latest: ", "d.dlCount": "downloaded ${count} times", "d.updatesAvail": "${n} update(s) available", "d.localRev": "local rev", "d.noNotes": "(no release notes)", "d.saving": "Saving…", "d.openNet": "Open network", "d.language": "Language", "d.toggleDark": "Toggle dark mode", "d.menu": "Menu",
 "sv.yes": "Yes", "sv.no": "No", "sv.on": "On", "sv.off": "Off", "sv.connected": "Connected", "sv.notConn": "Not connected", "sv.active": "Active", "sv.asleep": "Asleep", "sv.notCfg": "Not configured", "sv.client": "Client", "sv.ap": "AP", "sv.accessPoint": "Access Point", "sv.ethernet": "Ethernet", "sv.wifi": "WiFi", "sv.wifiFb": "WiFi (fallback)", "sv.none": "None", "sv.apStarted": "AP started", "sv.notStarted": "Not started", "sv.serialPass": "Serial passthrough", "sv.usbPass": "USB passthrough", "sv.zbNet": "Zigbee-to-Network", "sv.zbSer": "Zigbee-to-Serial", "sv.unknown": "unknown", "sv.embedded": "embedded", "sv.external": "external"
 },
 de: {
@@ -1964,14 +2012,14 @@ de: {
 "g.workMode": "Betriebsart", "g.netMode": "Netzwerkmodus", "g.recommended": "Empfohlen", "g.netDesc": "Ethernet mit automatischem WLAN-Fallback", "g.serMode": "Serieller Modus", "g.serDesc": "Direkt per USB mit dem Computer verbinden (serieller Test)", "g.keepWeb": "Netzwerk & Web behalten", "g.keepHint": "Hält einen Kanal aktiv (WLAN, Ethernet oder WLAN-AP, in dieser Reihenfolge), damit die Weboberfläche erreichbar bleibt.", "g.rtControl": "Echtzeitsteuerung", "g.ledHint": "LEDs per Tastendruck schalten (nur aktuelle Sitzung, geht nach Neustart verloren)", "g.pwrLed": "Power-LED", "g.wifiLed": "WLAN/Seriell-LED", "g.ledSaveHint": "Schalter unten steuern das LED-Verhalten dauerhaft (bleibt nach Neustart)", "g.disPwr": "Power-LED deaktivieren", "g.disUsb": "USB-LED deaktivieren", "g.sysVar": "Systemvariablen", "g.hostname": "Hostname (unter diesem Namen erscheint das Gerät im Netzwerk)", "g.logRefresh": "Log-Aktualisierung (Millisekunden)", "g.timezone": "Zeitzone",
 "e.conn": "Verbindung", "e.dhcp": "DHCP aktivieren (empfohlen)", "e.ipSet": "IP-Einstellungen", "e.ip": "IP", "e.mask": "Netzmaske", "e.gw": "Standard-Gateway",
 "w.title": "WLAN", "w.yourNet": "Eigenes Netzwerk", "w.ipSet": "IP-Einstellungen", "w.dhcp": "DHCP", "w.asleep": "WLAN ist im Standby (Ethernet ist der aktive Uplink) – Live-IP erscheint hier, sobald WLAN genutzt wird.", "w.ip": "IP-Adresse", "w.mask": "Netzmaske", "w.router": "Router", "w.save": "Speichern", "w.forget": "Dieses Netzwerk entfernen", "w.noNet": "Kein Netzwerk eingerichtet", "w.otherNet": "Weitere Netzwerke", "w.joinOther": "Anderes Netzwerk hinzufügen …", "w.ssidPh": "Netzwerkname (SSID)", "w.passPh": "Passwort", "w.join": "Beitreten", "w.connect": "Verbinden", "w.scanning": "Suche läuft …", "w.scanTimeout": "Suche abgelaufen. Zum Wiederholen tippen.", "w.noFound": "Keine WLAN-Netzwerke gefunden.", "w.connecting": "Verbinde …", "w.connected": "Verbunden", "w.connFailPw": "WLAN-Authentifizierung fehlgeschlagen. Passwort und Sicherheitsmodus prüfen.", "w.noSsid": "Netzwerk nicht gefunden. SSID, Reichweite und sichtbare Ausstrahlung prüfen.", "w.security": "Der Sicherheitsmodus dieses Netzwerks wird nicht unterstützt. Router-Einstellungen prüfen.", "w.weakSignal": "WLAN-Signal zu schwach oder instabil. Näher an den Router gehen und erneut versuchen.", "w.apReject": "Der Access Point hat die Verbindung abgelehnt. Einstellungen prüfen und erneut versuchen.", "w.connFail": "Verbindung nicht möglich. SSID, Passwort und Router prüfen.", "w.connNoStatus": "Verbindungsstatus nicht verfügbar.", "w.saveFail": "Speichern fehlgeschlagen. Netzwerk prüfen.", "w.saved": "Gespeichert", "w.forgetting": "Wird entfernt …", "w.forgotten": "Netzwerk entfernt.", "w.forgetFail": "Entfernen fehlgeschlagen.", "w.forgetConfirm": "Dieses WLAN-Netzwerk entfernen?", "w.enterSsid": "Netzwerknamen eingeben.", "w.pw8": "Das Passwort braucht mindestens 8 Zeichen.", "w.wpa": "WPA2/WPA3", "w.open": "Offen", "w.noNetsYet": "Noch keine Netzwerke.",
-"z.serSet": "Serielle Einstellungen", "z.baud": "Baudrate", "z.port": "Port", "z.cfgGen": "Konfigurationsgenerator", "z.apAlert": "Das Gerät läuft wohl im Access-Point-Modus (IP 192.168.1.1). Nach Verbindung per Ethernet oder WLAN ändert sich die IP – bitte Konfiguration neu erzeugen.", "z.cfgGenLabel": "Konfigurationsgenerator", "z.copy": "In Zwischenablage kopieren",
+"z.serSet": "Serielle Einstellungen", "z.baud": "Baudrate", "z.port": "Port", "z.cfgGen": "Konfigurationsgenerator", "z.apAlert": "Das Gerät läuft wohl im Access-Point-Modus (IP 192.168.1.1). Nach Verbindung per Ethernet oder WLAN ändert sich die IP – bitte Konfiguration neu erzeugen.", "z.cfgGenLabel": "Konfigurationsgenerator", "z.copy": "In Zwischenablage kopieren", "z.copied": "Kopiert!",
 "sec.webSrv": "Webserver", "sec.disWeb": "Webserver bei aktiver Verbindung deaktivieren", "sec.enAuth": "Webserver-Authentifizierung aktivieren", "sec.user": "Benutzername", "sec.pass": "Passwort", "sec.access": "Zugriffskontrolle", "sec.enWhite": "IP-Whitelist für Verbindungen aktivieren", "sec.allowed": "Erlaubte IPs",
 "m.conn": "Verbindung", "m.server": "Server", "m.port": "Port", "m.user": "Benutzername", "m.pass": "Passwort", "m.topicDisc": "Topic & Discovery", "m.topic": "Topic", "m.interval": "Intervall (Sekunden)", "m.haDisc": "Home-Assistant-Discovery aktivieren",
 "wg.tunnel": "Tunnel", "wg.localAddr": "Lokale Adresse", "wg.localAddrEx": "z. B. 10.0.0.2/24", "wg.privKey": "Lokaler privater Schlüssel", "wg.privKeyPh": "WireGuard-Private-Key eingeben", "wg.privNote": "44-stelliger Base64-Private-Key", "wg.endpoint": "Endpunkt", "wg.remoteAddr": "Remote-Endpunkt-Adresse", "wg.remoteNote": "IP-Adresse oder Domain des Remote-Endpunkts", "wg.remotePub": "Öffentlicher Schlüssel (Remote)", "wg.remotePubNote": "44-stelliger Base64-Public-Key", "wg.port": "Port", "wg.portNote": "UDP-Port, 1–65535",
 "t.logs": "Protokolle", "t.esp": "ESP32", "t.zbFrames": "Zigbee-ZNP-Frames", "t.human": "Lesbare Frame-Ansicht", "t.clear": "Konsole leeren", "t.checkConn": "Zigbee-Verbindung prüfen", "t.checkVer": "Zigbee-Version prüfen", "t.modCtrl": "Modulsteuerung", "t.rstZb": "Zigbee neu starten", "t.zbRefresh": "Zigbee-Auffrischmodus", "t.routerRe": "Router erneut verbinden", "t.rstEsp": "ESP32 neu starten",
 "a.device": "Gerät", "a.brand": "Marke:", "a.name": "Name:", "a.nameVal": "AVATTO Zigbee Smart Gateway", "a.fw": "Firmware:", "a.date": "Datum:", "a.sysInfo": "Systeminformationen", "a.zstar": "Zig-Star-Modell:", "a.mcu": "MCU:", "a.zb": "Zigbee:", "a.eth": "Ethernet:", "a.ifaces": "Schnittstellen:", "a.if1": "RJ45-Ethernet (mit PoE)", "a.if2": "USB Typ-C", "a.if3": "Zigbee-Antennenanschluss", "a.espFwVer": "ESP32-Firmware-Version:", "a.espFreq": "ESP32-Takt:", "a.cores": "Kerne @", "a.flashSize": "ESP32-Flashgröße:", "a.mem": "ESP32-Speicher (frei/gesamt):", "a.zbHw": "CC2652P-Hardwareversion:", "a.zbFw": "CC2652P-Firmwareversion:", "a.espFw": "ESP32-Firmware", "a.installGh": "Update von GitHub installieren", "a.coordNote": "Koordinator ist die Standardwahl für ZHA und Zigbee2MQTT. Router nur flashen, um einem anderen Zigbee-Netz beizutreten oder es zu erweitern.", "a.zbFwCard": "Zigbee-Firmware", "a.rev": "Rev.", "a.espFwUpd": "ESP32-Datei-Update", "a.zbFwUpd": "Zigbee-Datei-Update",
 "md.warn": "WARNUNG", "md.warnBody": "Das Flashen inoffizieller, falscher oder beschädigter Firmware kann das Gerät beschädigen oder unbrauchbar machen!!!", "md.agree": "Ich stimme zu und trage das Risiko", "md.rstEsp": "ESP32 neu starten", "md.rstBody": "Das Gerät startet neu, die Verbindung wird kurz unterbrochen. Fortfahren?", "md.espFw": "ESP32-Firmware", "md.updateNow": "Jetzt updaten", "md.gitUpd": "ESP32-GIT-UPDATE", "md.gitUpdBody": "Lade das neueste Release von GitHub und flashe es. Dieses Fenster schließt sich automatisch nach dem Neustart.", "md.later": "Später", "md.noRemind": "Nicht mehr erinnern", "md.zbSel": "Zigbee-Firmwaretyp wählen", "md.coord": "Koordinator", "md.router": "Router", "md.latestZb": "Neueste Zigbee-Firmware", "md.devRestart": "GERÄTENEUSTART", "md.waitDev": "Warte auf Gerät … Das Fenster schließt sich automatisch nach dem Neustart.", "md.wifiConn": "WLAN-Verbindung", "md.wifiConnecting": "Verbinde mit Netzwerk … Bitte auf Ergebnis warten.", "md.connErr": "Verbindungsfehler, SSID und Passwort prüfen und erneut versuchen", "md.setSaved": "Einstellungen gespeichert", "md.savedBody": "Neue Parameter gespeichert. Manche brauchen einen Neustart.", "md.later2": "Später manuell neu starten", "md.restartNow": "Jetzt neu starten", "md.noResp": "Keine Antwort vom Gerät – evtl. hat es die IP gewechselt oder der USB-Modus ist aktiv.",
-"d.saveErr": "Fehler beim Speichern. Netzwerk prüfen", "d.netErr": "Fehler. Netzwerk prüfen", "d.pageErr": "Seitenladefehler: ", "d.githubStart": "GitHub-Download startet …", "d.prepDev": "Gerät wird vorbereitet …", "d.invalidLink": "Ungültiger Firmware-Link", "d.dlFw": "Firmware wird geladen …", "d.dlFail": "Download fehlgeschlagen: ", "d.evTimeout": "EventSource-Timeout", "d.connFailPoll": "Verbindung fehlgeschlagen, Polling-Modus …", "d.downloaded": "Lade … ", "d.dlComplete": "Download fertig, flashe …", "d.flashing": "Flashe … ", "d.flashDone": "Flashen abgeschlossen!", "d.validating": "Prüfe und flashe …", "d.progress": "Fortschritt: ", "d.updDoneReboot": "Update fertig!<br>Neustart!", "d.updAvail": "Update verfügbar: ", "d.upToDate": "Aktuell", "d.noGh": "GitHub nicht erreichbar. Datei-Upload unten nutzen.", "d.noZbIdx": "Firmware-Index nicht erreichbar. Datei-Upload unten nutzen.", "d.noZbFw": "Keine Zigbee-Firmware im Index.", "d.updAvailShort": "Update verfügbar", "d.allUpToDate": "Alle Varianten aktuell", "d.noFwData": "Keine Firmware-Daten verfügbar.", "d.noFwDataSub": "Bitte Internetverbindung prüfen oder später erneut versuchen.", "d.noFwFor": "Keine Firmware gefunden für '", "d.availTypes": "Verfügbare Firmwaretypen:", "d.fwDetails": "Firmware-Details:", "d.name": "Name:", "d.version": "Version:", "d.type": "Typ:", "d.desc": "Beschreibung:", "d.baud": "Baudrate:", "d.dongle": "Dongle-Typ:", "d.localVer": "Lokale Version: v", "d.ghVer": "GitHub-Version: ", "d.file": "Datei: ", "d.errFetch": "Fehler beim Laden der Versionsinfos.", "d.updateAvailEx": "Update verfügbar!", "d.currentLatest": "Aktuell: v", "d.upToDateEx": "Aktuell", "d.currentVer": "Aktuelle Version: v", "d.router": "Router", "d.coord": "Koordinator", "d.default": "Standard", "d.flash": "Flashe ", "d.protected": "Geschützt · ", "d.unknown": "UNBEKANNT", "d.uploadPct": "Lade hoch: ", "d.uplComplete": "Upload fertig! <br>Prüfe & flashe …", "d.opTimeout": "Zeitüberschreitung. Bitte Gerätestatus prüfen.", "d.showHidePw": "Passwort zeigen / verbergen", "d.showHideKey": "Private-Key zeigen / verbergen", "d.darkMode": "Dunkelmodus", "d.lightMode": "Hellmodus", "d.ipSettings": "IP-Einstellungen", "d.loadingFw": "Lade Firmware-Infos …", "d.loading": "Lade …", "d.goTo": "Zu ", "d.newIp": "Neue IP-Adresse: ", "d.devReboot": "Das Gerät startet neu, damit die Einstellungen wirken.", "d.connectedEx": "Verbunden!", "d.logFilter": "Log-Filter", "md.espUpdAvail": "ESP32-Update verfügbar", "d.newFw": "Neue Firmware (${tag}) auf GitHub gefunden. ${count}× heruntergeladen. Updaten unter Über -> ESP32-Firmware.", "d.latestIs": "Neueste: ", "d.dlCount": "${count}× heruntergeladen", "d.updatesAvail": "${n} Update(s) verfügbar", "d.localRev": "lokale Rev.", "d.noNotes": "(keine Release-Notes)", "d.saving": "Speichere …", "d.openNet": "Offenes Netzwerk", "d.language": "Sprache", "d.toggleDark": "Dunkelmodus umschalten",
+"d.saveErr": "Fehler beim Speichern. Netzwerk prüfen", "d.netErr": "Fehler. Netzwerk prüfen", "d.pageErr": "Seitenladefehler: ", "d.githubStart": "GitHub-Download startet …", "d.prepDev": "Gerät wird vorbereitet …", "d.invalidLink": "Ungültiger Firmware-Link", "d.dlFw": "Firmware wird geladen …", "d.dlFail": "Download fehlgeschlagen: ", "d.evTimeout": "EventSource-Timeout", "d.connFailPoll": "Verbindung fehlgeschlagen, Polling-Modus …", "d.downloaded": "Lade … ", "d.dlComplete": "Download fertig, flashe …", "d.flashing": "Flashe … ", "d.flashDone": "Flashen abgeschlossen!", "d.validating": "Prüfe und flashe …", "d.progress": "Fortschritt: ", "d.updDoneReboot": "Update fertig!<br>Neustart!", "d.updAvail": "Update verfügbar: ", "d.upToDate": "Aktuell", "d.noGh": "GitHub nicht erreichbar. Datei-Upload unten nutzen.", "d.noZbIdx": "Firmware-Index nicht erreichbar. Datei-Upload unten nutzen.", "d.noZbFw": "Keine Zigbee-Firmware im Index.", "d.updAvailShort": "Update verfügbar", "d.allUpToDate": "Alle Varianten aktuell", "d.noFwData": "Keine Firmware-Daten verfügbar.", "d.noFwDataSub": "Bitte Internetverbindung prüfen oder später erneut versuchen.", "d.noFwFor": "Keine Firmware gefunden für '", "d.availTypes": "Verfügbare Firmwaretypen:", "d.fwDetails": "Firmware-Details:", "d.name": "Name:", "d.version": "Version:", "d.type": "Typ:", "d.desc": "Beschreibung:", "d.baud": "Baudrate:", "d.dongle": "Dongle-Typ:", "d.localVer": "Lokale Version: v", "d.ghVer": "GitHub-Version: ", "d.file": "Datei: ", "d.errFetch": "Fehler beim Laden der Versionsinfos.", "d.updateAvailEx": "Update verfügbar!", "d.currentLatest": "Aktuell: v", "d.upToDateEx": "Aktuell", "d.currentVer": "Aktuelle Version: v", "d.router": "Router", "d.coord": "Koordinator", "d.default": "Standard", "d.flash": "Flashe ", "d.protected": "Geschützt · ", "d.unknown": "UNBEKANNT", "d.uploadPct": "Lade hoch: ", "d.uplComplete": "Upload fertig! <br>Prüfe & flashe …", "d.opTimeout": "Zeitüberschreitung. Bitte Gerätestatus prüfen.", "d.showHidePw": "Passwort zeigen / verbergen", "d.showHideKey": "Private-Key zeigen / verbergen", "d.darkMode": "Dunkelmodus", "d.lightMode": "Hellmodus", "d.ipSettings": "IP-Einstellungen", "d.loadingFw": "Lade Firmware-Infos …", "d.loading": "Lade …", "d.goTo": "Zu ", "d.newIp": "Neue IP-Adresse: ", "d.devReboot": "Das Gerät startet neu, damit die Einstellungen wirken.", "d.connectedEx": "Verbunden!", "d.logFilter": "Log-Filter", "md.espUpdAvail": "ESP32-Update verfügbar", "d.newFw": "Neue Firmware (${tag}) auf GitHub gefunden. ${count}× heruntergeladen. Updaten unter Über -> ESP32-Firmware.", "d.latestIs": "Neueste: ", "d.dlCount": "${count}× heruntergeladen", "d.updatesAvail": "${n} Update(s) verfügbar", "d.localRev": "lokale Rev.", "d.noNotes": "(keine Release-Notes)", "d.saving": "Speichere …", "d.openNet": "Offenes Netzwerk", "d.language": "Sprache", "d.toggleDark": "Dunkelmodus umschalten", "d.menu": "Menü",
 "sv.yes": "Ja", "sv.no": "Nein", "sv.on": "Ein", "sv.off": "Aus", "sv.connected": "Verbunden", "sv.notConn": "Nicht verbunden", "sv.active": "Aktiv", "sv.asleep": "Standby", "sv.notCfg": "Nicht konfiguriert", "sv.client": "Client", "sv.ap": "AP", "sv.accessPoint": "Zugangspunkt", "sv.ethernet": "Ethernet", "sv.wifi": "WLAN", "sv.wifiFb": "WLAN (Fallback)", "sv.none": "Keine", "sv.apStarted": "AP gestartet", "sv.notStarted": "Nicht gestartet", "sv.serialPass": "Serieller Passthrough", "sv.usbPass": "USB-Passthrough", "sv.zbNet": "Zigbee-zu-Netzwerk", "sv.zbSer": "Zigbee-zu-Seriell", "sv.unknown": "unbekannt", "sv.embedded": "integriert", "sv.external": "extern"
 },
 zh: {
@@ -1981,14 +2029,14 @@ zh: {
 "g.workMode": "工作模式", "g.netMode": "网络模式", "g.recommended": "推荐", "g.netDesc": "以太网连接，Wi-Fi 自动备用", "g.serMode": "串口模式", "g.serDesc": "通过 USB 直连电脑（串口测试）", "g.keepWeb": "保持网络和 Web 访问", "g.keepHint": "按顺序保持一个通道可用（Wi-Fi、以太网或 Wi-Fi 热点），确保 Web 界面始终可以打开。", "g.rtControl": "实时控制", "g.ledHint": "点击按钮切换 LED 状态（仅本次有效，重启后恢复）", "g.pwrLed": "电源指示灯", "g.wifiLed": "Wi-Fi/串口模式灯", "g.ledSaveHint": "以下开关控制 LED 行为（保存后重启依然有效）", "g.disPwr": "关闭电源灯", "g.disUsb": "关闭 USB 灯", "g.sysVar": "系统参数", "g.hostname": "主机名（设备在网络中显示的名称）", "g.logRefresh": "日志刷新间隔（毫秒）", "g.timezone": "时区",
 "e.conn": "连接", "e.dhcp": "启用 DHCP（推荐）", "e.ipSet": "IP 设置", "e.ip": "IP 地址", "e.mask": "子网掩码", "e.gw": "默认网关",
 "w.title": "Wi-Fi", "w.yourNet": "我的网络", "w.ipSet": "IP 设置", "w.dhcp": "DHCP", "w.asleep": "Wi-Fi 待机中（当前走以太网）— 使用 Wi-Fi 时在此显示实时 IP。", "w.ip": "IP 地址", "w.mask": "子网掩码", "w.router": "路由器", "w.save": "保存", "w.forget": "忽略此网络", "w.noNet": "尚未配置网络", "w.otherNet": "其他网络", "w.joinOther": "加入其他网络…", "w.ssidPh": "网络名称（SSID）", "w.passPh": "密码", "w.join": "加入", "w.connect": "连接", "w.scanning": "正在扫描…", "w.scanTimeout": "扫描超时，点击重试。", "w.noFound": "未发现 Wi-Fi 网络。", "w.connecting": "正在连接…", "w.connected": "已连接", "w.connFailPw": "Wi-Fi 身份验证失败，请检查密码和安全模式。", "w.noSsid": "未找到网络，请检查 SSID、距离以及网络是否正在广播。", "w.security": "不支持此网络的安全模式，请检查路由器设置。", "w.weakSignal": "Wi-Fi 信号太弱或不稳定，请靠近路由器后重试。", "w.apReject": "接入点拒绝了连接，请检查其设置后重试。", "w.connFail": "无法连接，请检查 SSID、密码和路由器。", "w.connNoStatus": "无法获取连接状态。", "w.saveFail": "保存失败，请检查网络。", "w.saved": "已保存", "w.forgetting": "正在忽略…", "w.forgotten": "已忽略该网络。", "w.forgetFail": "忽略网络失败。", "w.forgetConfirm": "确定忽略此 Wi-Fi 网络吗？", "w.enterSsid": "请输入网络名称。", "w.pw8": "密码至少需要 8 位。", "w.wpa": "WPA2/WPA3", "w.open": "开放网络", "w.noNetsYet": "暂无网络。",
-"z.serSet": "串口设置", "z.baud": "波特率", "z.port": "端口", "z.cfgGen": "配置生成器", "z.apAlert": "设备当前处于热点模式（IP 为 192.168.1.1）。连接以太网或 Wi-Fi 后 IP 会变化，需要重新生成配置。", "z.cfgGenLabel": "配置生成器", "z.copy": "复制到剪贴板",
+"z.serSet": "串口设置", "z.baud": "波特率", "z.port": "端口", "z.cfgGen": "配置生成器", "z.apAlert": "设备当前处于热点模式（IP 为 192.168.1.1）。连接以太网或 Wi-Fi 后 IP 会变化，需要重新生成配置。", "z.cfgGenLabel": "配置生成器", "z.copy": "复制到剪贴板", "z.copied": "已复制！",
 "sec.webSrv": "Web 服务", "sec.disWeb": "连接建立后关闭 Web 服务", "sec.enAuth": "启用 Web 登录验证", "sec.user": "用户名", "sec.pass": "密码", "sec.access": "访问控制", "sec.enWhite": "启用连接 IP 白名单", "sec.allowed": "允许的 IP",
 "m.conn": "连接", "m.server": "服务器", "m.port": "端口", "m.user": "用户名", "m.pass": "密码", "m.topicDisc": "主题与发现", "m.topic": "主题", "m.interval": "上报间隔（秒）", "m.haDisc": "启用 Home Assistant 自动发现",
 "wg.tunnel": "隧道", "wg.localAddr": "本地地址", "wg.localAddrEx": "例如 10.0.0.2/24", "wg.privKey": "本地私钥", "wg.privKeyPh": "输入 WireGuard 私钥", "wg.privNote": "44 位 Base64 私钥", "wg.endpoint": "对端", "wg.remoteAddr": "对端地址", "wg.remoteNote": "对端的 IP 地址或域名", "wg.remotePub": "对端公钥", "wg.remotePubNote": "44 位 Base64 公钥", "wg.port": "端口", "wg.portNote": "UDP 端口，1-65535",
 "t.logs": "日志", "t.esp": "ESP32", "t.zbFrames": "Zigbee ZNP 帧", "t.human": "帧解析显示", "t.clear": "清空控制台", "t.checkConn": "检查 Zigbee 连接", "t.checkVer": "检查 Zigbee 版本", "t.modCtrl": "模块控制", "t.rstZb": "重启 Zigbee", "t.zbRefresh": "Zigbee 刷新模式", "t.routerRe": "路由器重连", "t.rstEsp": "重启 ESP32",
 "a.device": "设备", "a.brand": "品牌：", "a.name": "名称：", "a.nameVal": "AVATTO Zigbee 智能网关", "a.fw": "固件：", "a.date": "日期：", "a.sysInfo": "系统信息", "a.zstar": "Zig-Star 型号：", "a.mcu": "主控：", "a.zb": "Zigbee：", "a.eth": "以太网：", "a.ifaces": "接口：", "a.if1": "RJ45 以太网（支持 PoE）", "a.if2": "USB Type-C", "a.if3": "Zigbee 天线接口", "a.espFwVer": "ESP32 固件版本：", "a.espFreq": "ESP32 主频：", "a.cores": "核 @", "a.flashSize": "ESP32 闪存：", "a.mem": "ESP32 内存（可用/总计）：", "a.zbHw": "CC2652P 硬件版本：", "a.zbFw": "CC2652P 固件版本：", "a.espFw": "ESP32 固件", "a.installGh": "从 GitHub 安装更新", "a.coordNote": "ZHA 和 Zigbee2MQTT 默认使用协调器固件。只有加入或扩展其他 Zigbee 网络时才刷路由器固件。", "a.zbFwCard": "Zigbee 固件", "a.rev": "版本", "a.espFwUpd": "ESP32 文件更新", "a.zbFwUpd": "Zigbee 文件更新",
 "md.warn": "警告", "md.warnBody": "刷入非官方、错误或损坏的固件可能损坏设备甚至变砖！！！", "md.agree": "我已知晓风险并同意", "md.rstEsp": "重启 ESP32", "md.rstBody": "设备即将重启，连接会中断几秒钟，继续吗？", "md.espFw": "ESP32 固件", "md.updateNow": "立即更新", "md.gitUpd": "ESP32 GIT 更新", "md.gitUpdBody": "正在从 GitHub 下载并刷入最新版本，设备重启后本窗口会自动关闭。", "md.later": "稍后", "md.noRemind": "不再提醒", "md.zbSel": "选择 Zigbee 固件类型", "md.coord": "协调器", "md.router": "路由器", "md.latestZb": "最新 Zigbee 固件", "md.devRestart": "设备重启", "md.waitDev": "正在等待设备…设备重启后本窗口会自动关闭。", "md.wifiConn": "Wi-Fi 网络连接", "md.wifiConnecting": "正在连接网络…请等待结果。", "md.connErr": "连接失败，请检查 SSID 和密码后重试", "md.setSaved": "设置已保存", "md.savedBody": "新参数已保存，部分设置需要重启生效。", "md.later2": "稍后手动重启", "md.restartNow": "立即重启", "md.noResp": "设备无响应，可能是 IP 已变化或当前为 USB 模式。",
-"d.saveErr": "保存设置失败，请检查网络", "d.netErr": "出错了，请检查网络", "d.pageErr": "页面加载失败：", "d.githubStart": "GitHub 下载开始…", "d.prepDev": "正在准备设备…", "d.invalidLink": "固件链接无效", "d.dlFw": "正在下载固件…", "d.dlFail": "下载失败：", "d.evTimeout": "事件推送超时", "d.connFailPoll": "连接失败，使用轮询模式…", "d.downloaded": "正在下载…", "d.dlComplete": "下载完成，开始刷机…", "d.flashing": "正在刷机…", "d.flashDone": "刷机完成！", "d.validating": "正在校验并刷机…", "d.progress": "进度：", "d.updDoneReboot": "更新完成！<br>正在重启！", "d.updAvail": "有可用更新：", "d.upToDate": "已是最新", "d.noGh": "无法连接 GitHub，请用下方文件上传。", "d.noZbIdx": "无法获取固件索引，请用下方文件上传。", "d.noZbFw": "索引中没有 Zigbee 固件。", "d.updAvailShort": "有可用更新", "d.allUpToDate": "所有版本均为最新", "d.noFwData": "暂无固件信息。", "d.noFwDataSub": "请检查网络连接，稍后再试。", "d.noFwFor": "未找到固件：'", "d.availTypes": "可用固件类型：", "d.fwDetails": "固件详情：", "d.name": "名称：", "d.version": "版本：", "d.type": "类型：", "d.desc": "描述：", "d.baud": "波特率：", "d.dongle": "适配器类型：", "d.localVer": "本地版本：v", "d.ghVer": "GitHub 版本：", "d.file": "文件：", "d.errFetch": "获取版本信息失败。", "d.updateAvailEx": "有可用更新！", "d.currentLatest": "当前：v", "d.upToDateEx": "已是最新", "d.currentVer": "当前版本：v", "d.router": "路由器", "d.coord": "协调器", "d.default": "默认", "d.flash": "刷入 ", "d.protected": "加密 · ", "d.unknown": "未知", "d.uploadPct": "正在上传：", "d.uplComplete": "上传完成！<br>开始校验并刷机…", "d.opTimeout": "操作超时，请检查设备状态。", "d.showHidePw": "显示 / 隐藏密码", "d.showHideKey": "显示 / 隐藏私钥", "d.darkMode": "深色模式", "d.lightMode": "浅色模式", "d.ipSettings": "IP 设置", "d.loadingFw": "正在加载固件信息…", "d.loading": "正在加载…", "d.goTo": "前往 ", "d.newIp": "新 IP 地址为 ", "d.devReboot": "设备即将重启以应用新设置。", "d.connectedEx": "已连接！", "d.logFilter": "日志过滤", "md.espUpdAvail": "ESP32 有可用更新", "d.newFw": "GitHub 发现新固件（${tag}），已被下载 ${count} 次。请前往“关于 -> ESP32 固件”更新。", "d.latestIs": "最新：", "d.dlCount": "已被下载 ${count} 次", "d.updatesAvail": "${n} 个可用更新", "d.localRev": "本地版本", "d.noNotes": "（暂无更新说明）", "d.saving": "正在保存…", "d.openNet": "开放网络", "d.language": "语言", "d.toggleDark": "切换深色模式",
+"d.saveErr": "保存设置失败，请检查网络", "d.netErr": "出错了，请检查网络", "d.pageErr": "页面加载失败：", "d.githubStart": "GitHub 下载开始…", "d.prepDev": "正在准备设备…", "d.invalidLink": "固件链接无效", "d.dlFw": "正在下载固件…", "d.dlFail": "下载失败：", "d.evTimeout": "事件推送超时", "d.connFailPoll": "连接失败，使用轮询模式…", "d.downloaded": "正在下载…", "d.dlComplete": "下载完成，开始刷机…", "d.flashing": "正在刷机…", "d.flashDone": "刷机完成！", "d.validating": "正在校验并刷机…", "d.progress": "进度：", "d.updDoneReboot": "更新完成！<br>正在重启！", "d.updAvail": "有可用更新：", "d.upToDate": "已是最新", "d.noGh": "无法连接 GitHub，请用下方文件上传。", "d.noZbIdx": "无法获取固件索引，请用下方文件上传。", "d.noZbFw": "索引中没有 Zigbee 固件。", "d.updAvailShort": "有可用更新", "d.allUpToDate": "所有版本均为最新", "d.noFwData": "暂无固件信息。", "d.noFwDataSub": "请检查网络连接，稍后再试。", "d.noFwFor": "未找到固件：'", "d.availTypes": "可用固件类型：", "d.fwDetails": "固件详情：", "d.name": "名称：", "d.version": "版本：", "d.type": "类型：", "d.desc": "描述：", "d.baud": "波特率：", "d.dongle": "适配器类型：", "d.localVer": "本地版本：v", "d.ghVer": "GitHub 版本：", "d.file": "文件：", "d.errFetch": "获取版本信息失败。", "d.updateAvailEx": "有可用更新！", "d.currentLatest": "当前：v", "d.upToDateEx": "已是最新", "d.currentVer": "当前版本：v", "d.router": "路由器", "d.coord": "协调器", "d.default": "默认", "d.flash": "刷入 ", "d.protected": "加密 · ", "d.unknown": "未知", "d.uploadPct": "正在上传：", "d.uplComplete": "上传完成！<br>开始校验并刷机…", "d.opTimeout": "操作超时，请检查设备状态。", "d.showHidePw": "显示 / 隐藏密码", "d.showHideKey": "显示 / 隐藏私钥", "d.darkMode": "深色模式", "d.lightMode": "浅色模式", "d.ipSettings": "IP 设置", "d.loadingFw": "正在加载固件信息…", "d.loading": "正在加载…", "d.goTo": "前往 ", "d.newIp": "新 IP 地址为 ", "d.devReboot": "设备即将重启以应用新设置。", "d.connectedEx": "已连接！", "d.logFilter": "日志过滤", "md.espUpdAvail": "ESP32 有可用更新", "d.newFw": "GitHub 发现新固件（${tag}），已被下载 ${count} 次。请前往“关于 -> ESP32 固件”更新。", "d.latestIs": "最新：", "d.dlCount": "已被下载 ${count} 次", "d.updatesAvail": "${n} 个可用更新", "d.localRev": "本地版本", "d.noNotes": "（暂无更新说明）", "d.saving": "正在保存…", "d.openNet": "开放网络", "d.language": "语言", "d.toggleDark": "切换深色模式", "d.menu": "菜单",
 "sv.yes": "是", "sv.no": "否", "sv.on": "开", "sv.off": "关", "sv.connected": "已连接", "sv.notConn": "未连接", "sv.active": "正常", "sv.asleep": "待机中", "sv.notCfg": "未配置", "sv.client": "客户端", "sv.ap": "热点", "sv.accessPoint": "接入点", "sv.ethernet": "以太网", "sv.wifi": "Wi-Fi", "sv.wifiFb": "Wi-Fi（备用）", "sv.none": "无", "sv.apStarted": "热点已启动", "sv.notStarted": "未启动", "sv.serialPass": "串口直通", "sv.usbPass": "USB 直通", "sv.zbNet": "Zigbee 转网络", "sv.zbSer": "Zigbee 转串口", "sv.unknown": "未知", "sv.embedded": "内置", "sv.external": "外置"
 }
 };
@@ -2187,12 +2235,18 @@ function updateLangFlags(lng) {
 
 function toggleLangDropdown() {
 	const w = document.getElementById("langSwitcher");
-	if (w) w.classList.toggle("open");
+	if (!w) return;
+	const open = w.classList.toggle("open");
+	const btn = document.getElementById("langBtn");
+	if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function toggleLangDropdownSide() {
 	const w = document.getElementById("langSwitcherSide");
-	if (w) w.classList.toggle("open");
+	if (!w) return;
+	const open = w.classList.toggle("open");
+	const btn = document.getElementById("langBtnSide");
+	if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function closeLangDropdowns() {
@@ -2200,12 +2254,23 @@ function closeLangDropdowns() {
 		const w = document.getElementById(id);
 		if (w) w.classList.remove("open");
 	});
+	["langBtn", "langBtnSide"].forEach(id => {
+		const b = document.getElementById(id);
+		if (b) b.setAttribute("aria-expanded", "false");
+	});
 }
 
 document.addEventListener("click", function (e) {
 	["langSwitcher", "langSwitcherSide"].forEach(id => {
 		const w = document.getElementById(id);
 		if (w && !w.contains(e.target)) w.classList.remove("open");
+	});
+	["langSwitcher", "langSwitcherSide"].forEach(id => {
+		const w = document.getElementById(id);
+		if (w && !w.contains(e.target)) {
+			const btn = w.querySelector("button[aria-expanded]");
+			if (btn) btn.setAttribute("aria-expanded", "false");
+		}
 	});
 });
 

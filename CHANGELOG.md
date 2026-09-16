@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+### Fixes
+
+- **Web UI is readable in both themes.** Amber links, outline buttons, status pills, warning buttons and helper text failed WCAG AA contrast on light backgrounds; they now use a darker amber/emphasis tone while keeping the amber look in dark mode. Alert links inherit the alert's own text colour.
+- **Dialogs behave for keyboard and screen-reader users.** Focus moves into the dialog and returns to the button that opened it, the page behind is disabled while it is open, the invisible tabbable close button is gone, and the dialog is labelled by its title.
+- **Saving a page no longer breaks its form state.** The disabled/greyed-out fields (static IP, MQTT/WireGuard details, auth fields) are restored after the save instead of being left editable, and the save only touches its own form.
+- **Browser Back returns to the previous page** instead of leaving the app.
+- **The mobile hamburger and dark-mode toggle are real buttons** — reachable and operable by keyboard with proper labels, not `<span>`s.
+- **Decorative icons no longer announce as image file names** to screen readers.
+- **"Copy to Clipboard" confirms with a brief "Copied!" state** (previously the icon it tried to update did not exist).
+- **The About page no longer injects a stray `<head>`/`<body>`** into the page, and its version badge uses the same amber as the rest of the UI in both themes.
+- **No more sideways scroll on desktop and tablet widths.** The sidebar logo used to widen the sidebar past its grid column, pushing the page 6–75px wider than the viewport around 992–1475px; the logo now scales to fit and the content column absorbs the remainder.
+- **The mobile page title no longer overlaps the language and theme buttons**, and long titles truncate cleanly. The duplicate Logout link is dropped from the mobile bar (it stays in the drawer).
+
+### Improvements
+
+- Larger touch targets for the hamburger, language/theme toggles, log filter, and Wi-Fi join controls.
+- Mobile and control polish: the language and theme buttons line up in the header, the "Human-readable frames" toggle sits below the console so switching log filters no longer shifts it, the Z2M/ZHA config generator uses the same segmented control as the log filter, and the "Include pre-releases" switch renders as a switch instead of a radio.
+- Less page jumping while it loads: the device diagram, sidebar logo and About product image reserve their space up front instead of pushing the page down once they finish loading, and the phone header no longer doubles its side padding.
+- Reduced-motion preference now disables all UI animations, not just the busy shimmer.
+- Removed unused tab machinery, dead progress-bar/switch CSS, and duplicated Wi-Fi chevron rules.
+
 ## v1.1.2 — 2026-09-09
 
 ### Features
