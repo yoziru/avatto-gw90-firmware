@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 ### Features
 
 - **Optional TLS for MQTT.** The MQTT page has a TLS encryption switch; when enabled the gateway connects over TLS with certificate validation against the ESP32's built-in CA bundle, so broker credentials and commands are no longer sent in plaintext. The port is not changed automatically — set 8883 (or your broker's TLS port) yourself, and the change applies after a reboot. The server field takes an IP address only, so the certificate chain is validated but not the hostname — brokers using self-signed or private-CA certificates are not supported. Existing configurations stay on plaintext MQTT.
+- **A failed firmware update can no longer brick the gateway.** An OTA arms a boot guard. The new firmware must come back with a working uplink — Ethernet, WiFi, or its own recovery access point — and, once a Zigbee client (ZHA/Zigbee2MQTT) has sent frames, a coordinator that answers them; an idle coordinator is not treated as a fault. A boot that crashes or never reaches that state is retried up to 3 times, then the device switches back to the previous firmware slot and reboots into it — only when that slot really holds a valid app. The guard is armed by an OTA only, so normal reboots are untouched; a power cut during the ~1 minute settle window still uses an attempt, and firmware that crashes before the guard starts (static init or early setup) cannot be recovered automatically — that needs bootloader rollback support.
 
 ### Fixes
 

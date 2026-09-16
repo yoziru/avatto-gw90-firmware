@@ -7,6 +7,7 @@
 
 #include <esp_task_wdt.h>
 
+#include "boot_guard.h"
 #include "config.h"
 #include "encoding.h"
 #include "web.h"
@@ -194,6 +195,7 @@ void initWebServer()
             {
                 if (Update.end(true))
                 {
+                    bootGuardArm();
                     DEBUG_PRINTLN("Update success. Rebooting...");
                     serverWeb.send(HTTP_CODE_OK, contTypeText, "OK");
                     delay(2000);

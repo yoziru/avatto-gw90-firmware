@@ -7,6 +7,7 @@
 
 #include <esp_task_wdt.h>
 
+#include "boot_guard.h"
 #include "config.h"
 #include "web.h"
 #include "zb.h"
@@ -57,6 +58,7 @@ void runEspUpdateFirmware(uint8_t *data, size_t len)
     if (currentLength != totalLength)
         return;
     Update.end(true);
+    bootGuardArm();
     DEBUG_PRINTLN("Update success. Rebooting...");
     ESP.restart();
 }
