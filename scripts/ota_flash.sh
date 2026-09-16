@@ -28,11 +28,11 @@ echo "Uploading firmware to http://$DEVICE_IP/update ..."
 if [ -n "${OTA_USER:-}" ]; then
     curl -sS -u "${OTA_USER}:${OTA_PASS:-}" \
         -F "firmware=@$BIN;filename=$(basename "$BIN")" \
-        "http://$DEVICE_IP/update"
+        "http://$DEVICE_IP/update?force=1"
 else
     curl -sS \
         -F "firmware=@$BIN;filename=$(basename "$BIN")" \
-        "http://$DEVICE_IP/update"
+        "http://$DEVICE_IP/update?force=1"
 fi
 echo ""
 echo "OTA triggered. Waiting for device to come back..."

@@ -28,6 +28,7 @@ WebServer serverWeb(80);
 bool opened = false;
 static bool zbUploadAuth = false;
 File fwFile;
+bool updateRejected = false;
 
 int totalLength;
 int currentLength = 0;
@@ -162,6 +163,11 @@ void initWebServer()
         "/update", HTTP_POST, []()
         {
         serverWeb.sendHeader("Connection", "close");
+        if (updateRejected)
+        {
+            serverWeb.send(HTTP_CODE_BAD_REQUEST, contTypeText, "unsigned firmware; add force=1 to install anyway");
+            return;
+        }
         serverWeb.send(HTTP_CODE_OK, contTypeText, (Update.hasError()) ? "FAIL" : "OK"); },
         []()
         {
@@ -169,8 +175,16 @@ void initWebServer()
             static long contentLength = 0;
             if (upload.status == UPLOAD_FILE_START)
             {
+                updateRejected = false;
                 if (!checkAuth())
                     return;
+
+                updateRejected = serverWeb.arg("force") != "1";
+                if (updateRejected)
+                {
+                    DEBUG_PRINTLN("Unsigned firmware upload refused; add force=1 to confirm");
+                    return;
+                }
 
                 DEBUG_PRINTLN("hostHeader: " + serverWeb.hostHeader());
                 contentLength = serverWeb.header("Content-Length").toInt();
@@ -186,6 +200,8 @@ void initWebServer()
             }
             else if (upload.status == UPLOAD_FILE_WRITE)
             {
+                if (updateRejected)
+                    return;
                 if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
                 {
                     Update.printError(Serial);
@@ -193,6 +209,8 @@ void initWebServer()
             }
             else if (upload.status == UPLOAD_FILE_END)
             {
+                if (updateRejected)
+                    return;
                 if (Update.end(true))
                 {
                     bootGuardArm();

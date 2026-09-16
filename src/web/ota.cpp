@@ -6,12 +6,108 @@
 #include <WiFi.h>
 
 #include <esp_task_wdt.h>
+#include <mbedtls/pk.h>
+#include <mbedtls/sha256.h>
 
 #include "boot_guard.h"
 #include "config.h"
 #include "web.h"
 #include "zb.h"
+#include "fw_pubkey.h"
+#include "fw_verify.h"
 #include "tls_client.h"
+
+namespace
+{
+constexpr size_t FW_SHA256_LEN = 32;
+constexpr size_t FW_SIG_MAX = 128;
+constexpr size_t FW_SIG_URL_MAX = 256;
+const char *const fwUnsignedError = "unsigned firmware; add force=1 to install anyway";
+const char *const fwBadSignatureError = "invalid firmware signature; add force=1 to install anyway";
+const char *const fwIncompleteError = "firmware download incomplete";
+
+mbedtls_sha256_context fwSha256;
+bool fwHashActive = false;
+bool fwForce = false;
+const char *fwRejectError = nullptr;
+char fwSigUrlBuf[FW_SIG_URL_MAX];
+
+size_t readSmallBody(HTTPClient &client, uint8_t *out, size_t outSize)
+{
+    WiFiClient *stream = client.getStreamPtr();
+    int len = client.getSize();
+    size_t total = 0;
+    const uint32_t deadline = millis() + 10000;
+    while (client.connected() && len != 0 && total < outSize)
+    {
+        const size_t size = stream->available();
+        if (size == 0)
+        {
+            if (millis() > deadline)
+            {
+                break;
+            }
+            delay(1);
+            continue;
+        }
+        const size_t read = stream->readBytes(out + total, min(size, outSize - total));
+        total += read;
+        if (len > 0)
+        {
+            len -= static_cast<int>(read);
+        }
+    }
+    return total;
+}
+
+bool verifyFirmwareSignature()
+{
+    uint8_t digest[FW_SHA256_LEN] = {0};
+    mbedtls_sha256_finish(&fwSha256, digest);
+    mbedtls_sha256_free(&fwSha256);
+    fwHashActive = false;
+
+    HTTPClient clientSig;
+    NetworkClientSecure client;
+    client.setInsecure();
+    clientSig.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    clientSig.begin(client, fwSigUrlBuf);
+    if (clientSig.GET() != HTTP_CODE_OK)
+    {
+        DEBUG_PRINTLN("Firmware signature download failed");
+        clientSig.end();
+        fwRejectError = fwUnsignedError;
+        return false;
+    }
+
+    uint8_t signature[FW_SIG_MAX] = {0};
+    const size_t sigLen = readSmallBody(clientSig, signature, sizeof(signature));
+    clientSig.end();
+    if (sigLen == 0)
+    {
+        DEBUG_PRINTLN("Firmware signature is empty");
+        fwRejectError = fwUnsignedError;
+        return false;
+    }
+
+    mbedtls_pk_context pk;
+    mbedtls_pk_init(&pk);
+    int ret = mbedtls_pk_parse_public_key(&pk, reinterpret_cast<const unsigned char *>(FW_SIGNING_PUBKEY_PEM), sizeof(FW_SIGNING_PUBKEY_PEM));
+    if (ret == 0)
+    {
+        ret = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, digest, sizeof(digest), signature, sigLen);
+    }
+    mbedtls_pk_free(&pk);
+    if (ret != 0)
+    {
+        DEBUG_PRINTLN("Firmware signature verification failed: " + String(ret));
+        fwRejectError = fwBadSignatureError;
+        return false;
+    }
+    printLogMsg("ESP OTA signature verified");
+    return true;
+}
+} // namespace
 
 void checkFwHexTask(void *param)
 {
@@ -53,20 +149,47 @@ void progressFunc(unsigned int progress, unsigned int total)
 void runEspUpdateFirmware(uint8_t *data, size_t len)
 {
     Update.write(data, len);
+    if (fwHashActive)
+    {
+        mbedtls_sha256_update(&fwSha256, data, len);
+    }
     currentLength += len;
 
     if (currentLength != totalLength)
         return;
+
+    if (fwNeedsSignature(fwForce) && !verifyFirmwareSignature())
+    {
+        Update.abort();
+        printLogMsg("ESP OTA rejected: " + String(fwRejectError));
+        return;
+    }
     Update.end(true);
     bootGuardArm();
     DEBUG_PRINTLN("Update success. Rebooting...");
     ESP.restart();
 }
 
-void getEspUpdate(String esp_fw_url)
+String getEspUpdate(String esp_fw_url, bool force)
 {
     DEBUG_PRINTLN("getEspUpdate: " + esp_fw_url);
     printLogMsg("ESP OTA download start");
+
+    fwForce = force;
+    fwRejectError = nullptr;
+    fwHashActive = false;
+    if (fwNeedsSignature(force))
+    {
+        if (!fwSigUrl(esp_fw_url.c_str(), fwSigUrlBuf, sizeof(fwSigUrlBuf)))
+        {
+            printLogMsg("ESP OTA rejected: firmware URL too long");
+            return "firmware URL too long";
+        }
+        mbedtls_sha256_init(&fwSha256);
+        mbedtls_sha256_starts(&fwSha256, 0);
+        fwHashActive = true;
+    }
+
     HTTPClient clientWeb;
     NetworkClientSecure client;
     trustEspCertificateBundle(client);
@@ -75,38 +198,61 @@ void getEspUpdate(String esp_fw_url)
     clientWeb.addHeader("Content-Type", "application/octet-stream");
 
     int resp = clientWeb.GET();
-    DEBUG_PRINTLN("Response: " + resp);
-    if (resp == HTTP_CODE_OK)
-    {
-        totalLength = clientWeb.getSize();
-        int len = totalLength;
-        Update.begin(totalLength);
-        Update.onProgress(progressFunc);
-        DEBUG_PRINT("FW Size: ");
-
-        DEBUG_PRINTLN(totalLength);
-        uint8_t buff[128] = {0};
-        WiFiClient *stream = clientWeb.getStreamPtr();
-        DEBUG_PRINTLN("Updating firmware...");
-        while (clientWeb.connected() && (len > 0 || len == -1))
-        {
-            size_t size = stream->available();
-            if (size)
-            {
-                int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-                runEspUpdateFirmware(buff, c);
-
-                if (len > 0)
-                {
-                    len -= c;
-                }
-            }
-        }
-    }
-    else
+    DEBUG_PRINTLN("Response: " + String(resp));
+    if (resp != HTTP_CODE_OK)
     {
         DEBUG_PRINTLN("Cannot download firmware file.");
         printLogMsg("ESP OTA download failed");
+        clientWeb.end();
+        if (fwHashActive)
+        {
+            mbedtls_sha256_free(&fwSha256);
+            fwHashActive = false;
+        }
+        return "download failed";
+    }
+
+    totalLength = clientWeb.getSize();
+    currentLength = 0;
+    Update.begin(totalLength);
+    Update.onProgress(progressFunc);
+    DEBUG_PRINT("FW Size: ");
+
+    DEBUG_PRINTLN(totalLength);
+    uint8_t buff[128] = {0};
+    WiFiClient *stream = clientWeb.getStreamPtr();
+    DEBUG_PRINTLN("Updating firmware...");
+    int len = totalLength;
+    while (clientWeb.connected() && (len > 0 || len == -1))
+    {
+        size_t size = stream->available();
+        if (size)
+        {
+            int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+            runEspUpdateFirmware(buff, c);
+
+            if (len > 0)
+            {
+                len -= c;
+            }
+        }
     }
     clientWeb.end();
+
+    if (fwRejectError != nullptr)
+    {
+        return fwRejectError;
+    }
+    if (currentLength != totalLength)
+    {
+        Update.abort();
+        if (fwHashActive)
+        {
+            mbedtls_sha256_free(&fwSha256);
+            fwHashActive = false;
+        }
+        printLogMsg("ESP OTA download incomplete");
+        return fwIncompleteError;
+    }
+    return "ok";
 }
