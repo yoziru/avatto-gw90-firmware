@@ -68,8 +68,7 @@ void wifiCommitPending();
 
 void checkFwHexTask(void *param);
 void progressFunc(unsigned int progress, unsigned int total);
-void getEspUpdate(String esp_fw_url);
-void runEspUpdateFirmware(uint8_t *data, size_t len);
+String getEspUpdate(String esp_fw_url, bool force);
 
 #define UPD_FILE "https://github.com/yoziru/avatto-gw90-firmware/releases/latest/download/AVATTO-GW90-Ti.bin"
 

@@ -552,11 +552,14 @@ void handleApi()
                     ledUSBToggle();
                     break;
                 case CMD_ESP_UPD_URL:
+                {
+                    const bool force = serverWeb.arg("force") == "1";
                     if (serverWeb.hasArg(argUrl))
-                        getEspUpdate(serverWeb.arg(argUrl));
+                        result = getEspUpdate(serverWeb.arg(argUrl), force);
                     else
-                        getEspUpdate(UPD_FILE);
-                    break;
+                        result = getEspUpdate(UPD_FILE, force);
+                }
+                break;
                 case CMD_ZB_CHK_REV:
                     getZbVer();
                     break;

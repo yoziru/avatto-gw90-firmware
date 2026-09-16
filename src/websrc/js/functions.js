@@ -522,10 +522,17 @@ function rebootWait() {
 function espFlashGitWait() {
 	ESPfwStartEvents();
 	setTimeout(() => {
-		fetch(apiLink + api.actions.API_CMD + "&cmd=9");
 		console.log("[flash] start");
 		const prg = getEl("prg");
 		if (prg) prg.innerHTML = t("d.githubStart");
+		fetch(apiLink + api.actions.API_CMD + "&cmd=9")
+			.then((r) => r.text())
+			.then((text) => {
+				if (text && text !== "ok") {
+					if (prg) prg.innerHTML = '<span style="color:red">' + escHtml(text) + "</span>";
+				}
+			})
+			.catch(() => {});
 	}, 500);
 }
 
@@ -2103,6 +2110,9 @@ I18N.zh["md.switchRole"] = "切换角色并刷写";
 I18N.en["md.zbManualConfirm"] = "Confirm Zigbee firmware flash. The selected file may change the device between coordinator and router roles, which can stop the current Zigbee network from working. Continue?";
 I18N.de["md.zbManualConfirm"] = "Zigbee-Firmware-Flashen bestätigen. Die ausgewählte Datei kann die Rolle zwischen Koordinator und Router ändern und dadurch das aktuelle Zigbee-Netz außer Betrieb setzen. Fortfahren?";
 I18N.zh["md.zbManualConfirm"] = "确认刷写 Zigbee 固件。所选文件可能会在协调器和路由器角色之间切换，从而导致当前 Zigbee 网络停止工作。继续吗？";
+I18N.en["md.espUnsignedConfirm"] = "This firmware file is not cryptographically signed. Install it anyway? Only continue with firmware you built yourself or otherwise trust.";
+I18N.de["md.espUnsignedConfirm"] = "Diese Firmware-Datei ist nicht kryptografisch signiert. Trotzdem installieren? Nur mit selbst erstellter oder anderweitig vertrauenswürdiger Firmware fortfahren.";
+I18N.zh["md.espUnsignedConfirm"] = "此固件文件未经过加密签名。仍要安装吗？请仅在你自行构建或信任该固件来源时继续。";
 const languages = [
 	{ value: "en", text: "English", flag: "🇬🇧" },
 	{ value: "zh", text: "中文", flag: "🇨🇳" },

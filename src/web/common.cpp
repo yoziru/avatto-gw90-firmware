@@ -28,6 +28,8 @@ WebServer serverWeb(80);
 bool opened = false;
 static bool zbUploadAuth = false;
 File fwFile;
+bool updateRejected = false;
+bool updateResponded = false;
 
 int totalLength;
 int currentLength = 0;
@@ -133,6 +135,14 @@ void printLogMsg(const String &msg)
     logConsole.push('\n');
 }
 
+static void sendUpdateResponse(int code, const char *message)
+{
+    if (updateResponded)
+        return;
+    updateResponded = true;
+    serverWeb.send(code, contTypeText, message);
+}
+
 void initWebServer()
 {
     serverWeb.onNotFound([]()
@@ -161,16 +171,35 @@ void initWebServer()
     serverWeb.on(
         "/update", HTTP_POST, []()
         {
+        if (updateResponded)
+            return;
         serverWeb.sendHeader("Connection", "close");
-        serverWeb.send(HTTP_CODE_OK, contTypeText, (Update.hasError()) ? "FAIL" : "OK"); },
+        if (updateRejected)
+        {
+            sendUpdateResponse(HTTP_CODE_BAD_REQUEST, "unsigned firmware; add force=1 to install anyway");
+            return;
+        }
+        sendUpdateResponse(HTTP_CODE_OK, (Update.hasError()) ? "FAIL" : "OK"); },
         []()
         {
             HTTPUpload &upload = serverWeb.upload();
             static long contentLength = 0;
             if (upload.status == UPLOAD_FILE_START)
             {
+                updateResponded = false;
+                updateRejected = false;
                 if (!checkAuth())
+                {
+                    updateResponded = true;
                     return;
+                }
+
+                updateRejected = serverWeb.arg("force") != "1";
+                if (updateRejected)
+                {
+                    DEBUG_PRINTLN("Unsigned firmware upload refused; add force=1 to confirm");
+                    return;
+                }
 
                 DEBUG_PRINTLN("hostHeader: " + serverWeb.hostHeader());
                 contentLength = serverWeb.header("Content-Length").toInt();
@@ -186,6 +215,8 @@ void initWebServer()
             }
             else if (upload.status == UPLOAD_FILE_WRITE)
             {
+                if (updateRejected || updateResponded)
+                    return;
                 if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
                 {
                     Update.printError(Serial);
@@ -193,11 +224,13 @@ void initWebServer()
             }
             else if (upload.status == UPLOAD_FILE_END)
             {
+                if (updateRejected || updateResponded)
+                    return;
                 if (Update.end(true))
                 {
                     bootGuardArm();
                     DEBUG_PRINTLN("Update success. Rebooting...");
-                    serverWeb.send(HTTP_CODE_OK, contTypeText, "OK");
+                    sendUpdateResponse(HTTP_CODE_OK, "OK");
                     delay(2000);
                     ESP.restart();
                 }
@@ -205,7 +238,7 @@ void initWebServer()
                 {
                     DEBUG_PRINTLN("Update error: ");
                     Update.printError(Serial);
-                    serverWeb.send(HTTP_CODE_OK, contTypeText, "FAIL");
+                    sendUpdateResponse(HTTP_CODE_OK, "FAIL");
                 }
             }
         });
