@@ -300,7 +300,18 @@ void handleApi()
                 }
 
                 const String targetRole = requestedRole.length() ? requestedRole : urlRole;
-                const ZbRole installedZbRole = zbRoleFromDeviceState(zbVer.deviceState);
+
+                // Safety: a role from /config/zbInfo.json is last-known display
+                // data and may be stale. Only a live detection in this boot may
+                // authorize flashing, so if this boot has not confirmed the role
+                // yet, query the coordinator now and refuse when it stays unknown.
+                if (!zbRoleDetectedThisBoot())
+                {
+                    getZbVer();
+                }
+                const ZbRole installedZbRole = zbRoleDetectedThisBoot()
+                                                   ? zbRoleFromDeviceState(zbVer.deviceState)
+                                                   : ZbRole::UNKNOWN;
                 String installedRole = zbRoleName(installedZbRole);
                 installedRole.toLowerCase();
                 if (!targetRole.length())

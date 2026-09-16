@@ -20,6 +20,7 @@
 #include "etc.h"
 #include "mqtt.h"
 #include "zb.h"
+#include "zb_info.h"
 #include "version.h"
 
 #ifdef BUILD_DEBUG
@@ -349,6 +350,11 @@ void setup()
   else
   {
     DEBUG_PRINTLN(F("System vars load OK"));
+  }
+
+  if (loadZbInfo())
+  {
+    DEBUG_PRINTLN(F("Zigbee info cache load OK"));
   }
 
   if (!loadConfigSerial())

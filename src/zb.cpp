@@ -16,8 +16,18 @@
 #include "etc.h"
 #include "zb.h"
 #include "zb_ver.h"
+#include "zb_info.h"
 
 zbVerStruct zbVer;
+
+// Set only by a successful live ZDO_EXT_NWK_INFO read in the current boot.
+// A cached role (zbInfo.json) is display-only and must never authorize flashing.
+static bool zbRoleLiveThisBoot = false;
+
+bool zbRoleDetectedThisBoot()
+{
+    return zbRoleLiveThisBoot;
+}
 
 volatile unsigned long zbLastRxMs = 0;   // last time bytes were received from the coordinator
 volatile unsigned long zbClientTxMs = 0; // last time a TCP client sent bytes to the coordinator
@@ -101,15 +111,26 @@ static void getZbRole()
             continue;
         }
         zbVer.deviceState = response[2];
-        printLogMsg(String("[ZBROLE] ") + zbRoleName(zbRoleFromDeviceState(zbVer.deviceState)) + " (state " + zbVer.deviceState + ")");
+        const ZbRole liveRole = zbRoleFromDeviceState(zbVer.deviceState);
+        if (liveRole != ZbRole::UNKNOWN)
+        {
+            zbRoleLiveThisBoot = true;
+        }
+        printLogMsg(String("[ZBROLE] ") + zbRoleName(liveRole) + " (state " + zbVer.deviceState + ")");
         return;
     }
 }
 
 void getZbVer()
 {
-    zbVer.zbRev = 0;
-    zbVer.deviceState = 0xFF;
+    // Keep last-known values while the query runs: with a cache loaded the UI
+    // must not flip to "unknown" when this live read fails. Only clear when
+    // nothing was ever detected.
+    if (!zbInfoKnown())
+    {
+        zbVer.zbRev = 0;
+        zbVer.deviceState = 0xFF;
+    }
     const byte cmdFrameStart = 0xFE;
     const byte zero = 0x00;
     const byte cmd1 = 0x21;
@@ -153,6 +174,7 @@ void getZbVer()
     if (versionRead)
     {
         getZbRole();
+        saveZbInfo();
     }
 }
 
@@ -210,9 +232,12 @@ void zbCheck()
             delay(1000);
         }
         printLogMsg("[ZBCHK] Wrong answer");
-        printLogMsg("[ZBVER] Unknown");
-        zbVer.zbRev = 0;
-        zbVer.deviceState = 0xFF;
+        if (!zbInfoKnown())
+        {
+            printLogMsg("[ZBVER] Unknown");
+            zbVer.zbRev = 0;
+            zbVer.deviceState = 0xFF;
+        }
     }
     else
     {
@@ -567,6 +592,9 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
     }
 flash_quit:
     fwFile.close();
+    // The coordinator's firmware may just have changed: the role is no longer
+    // live-confirmed until a fresh read, so any further flash must re-check it.
+    zbRoleLiveThisBoot = false;
     Serial2.updateBaudRate(ConfigSettings.serialSpeed); 
     CCTool.restart();         // Restart
     DEBUG_PRINTLN(F("fw.hex data send complete"));
@@ -655,6 +683,7 @@ void zbInit()
         DEBUG_PRINTLN(zb_chip);
         printLogMsg(String("[ZBCHIP] ") + zb_chip);
         zbVer.chipID = zb_chip;
+        saveZbInfo();
         CCTool.restart();
     }
     else
