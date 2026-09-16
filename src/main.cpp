@@ -11,6 +11,7 @@
 #include <DNSServer.h>
 #include <CCTools.h>
 
+#include "boot_guard.h"
 #include "config.h"
 #include "net.h"
 #include "bridge.h"
@@ -278,6 +279,8 @@ void setup()
   Serial.println("[DEBUG] Use Serial Monitor to view mode switching and system logs");
   Serial.println("[DEBUG] ==========================================\n");
 
+  bootGuardBegin();
+
   ConfigSettings.apStarted = false;
   ConfigSettings.serialSpeed = 115200;
   DEBUG_PRINTLN(F("Start"));
@@ -436,6 +439,7 @@ void loop(void)
   tmrBtnLongPress.update();
   tmrNetworkOverseer.update();
   tmrZbHealth.update();
+  bootGuardLoop();
   tempSensorLoop();     // non-blocking async temp read (no 1.3s stall in handlers)
   wifiCommitPending(); // commit a staged wifi save once the STA link is up
   // Serve the web server whenever it has been started. handleClient() is a
