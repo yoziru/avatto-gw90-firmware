@@ -288,6 +288,7 @@ bool loadConfigMqtt()
   const char *topic = "topic";
   const char *interval = "interval";
   const char *discovery = "discovery";
+  const char *tls = "tls";
 
   if (!LittleFS.exists(configFileMqtt))
   {
@@ -303,6 +304,7 @@ bool loadConfigMqtt()
     doc[topic] = String(deviceIdArr);
     doc[interval] = 60;
     doc[discovery] = 0;
+    doc[tls] = 0;
     writeDefaultConfig(configFileMqtt, doc);
   }
 
@@ -321,6 +323,7 @@ bool loadConfigMqtt()
   strlcpy(MqttSettings.topic, doc[topic] | "", sizeof(MqttSettings.topic));
   MqttSettings.interval = (int)doc[interval];
   MqttSettings.discovery = (int)doc[discovery];
+  MqttSettings.tls = (int)doc[tls];
   return true;
 }
 // Load WG configuration

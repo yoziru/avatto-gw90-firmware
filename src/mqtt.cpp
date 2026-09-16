@@ -6,6 +6,7 @@
 #include <FS.h>
 #include <LittleFS.h>
 #include <PubSubClient.h>
+#include <WiFiClientSecure.h>
 
 #include "config.h"
 #include "web.h"
@@ -14,15 +15,27 @@
 #include "mqtt.h"
 #include "mqtt_cmd.h"
 #include "ha_discovery.h"
+#include "tls_client.h"
 
 extern zbVerStruct zbVer;
 
 WiFiClient clientMqtt;
+WiFiClientSecure clientMqttSecure;
 
 PubSubClient clientPubSub(clientMqtt);
 
 void mqttConnectSetup()
 {
+    if (MqttSettings.tls)
+    {
+        clientMqttSecure.setHandshakeTimeout(10);
+        trustEspCertificateBundle(clientMqttSecure);
+        clientPubSub.setClient(clientMqttSecure);
+    }
+    else
+    {
+        clientPubSub.setClient(clientMqtt);
+    }
     clientPubSub.setServer(MqttSettings.serverIP, MqttSettings.port);
     clientPubSub.setCallback(mqttCallback);
 }
@@ -41,7 +54,7 @@ void mqttReconnect()
     if (clientPubSub.connect(String(deviceIdArr).c_str(), MqttSettings.user, MqttSettings.pass, willTopic.c_str(), willQoS, willRetain, willMessage))
     {
         MqttSettings.reconnectTime = 0;
-        printLogMsg("MQTT connected");
+        printLogMsg(MqttSettings.tls ? "MQTT connected (TLS)" : "MQTT connected");
         mqttOnConnect();
     }
     else

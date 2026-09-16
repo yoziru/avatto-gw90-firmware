@@ -578,6 +578,8 @@ void handleMqtt()
         doc["discoveryMqtt"] = checked;
     }
 
+    doc["tlsMqtt"] = MqttSettings.tls;
+
     serializeJson(doc, result);
     serverWeb.sendHeader(respHeaderName, result);
 }
