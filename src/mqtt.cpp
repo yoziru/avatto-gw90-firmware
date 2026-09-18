@@ -120,7 +120,10 @@ void mqttPublishState()
     root["uptime"] = readableTime;
 
     float CPUtemp = getCPUtemp();
-    root["temperature"] = CPUtemp;
+    if (!isnan(CPUtemp))
+    {
+        root["temperature"] = CPUtemp;
+    }
     
     root["connections"] = ConfigSettings.connectedClients;
     

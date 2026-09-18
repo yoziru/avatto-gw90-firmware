@@ -136,7 +136,8 @@ JsonDocument &getRootData()
     doc["uptime"] = readableTime;
 
     float CPUtemp = getCPUtemp();
-    doc["deviceTemp"] = String(CPUtemp, 1);
+    // Raw die temperature; "--" until the first async radio read completes.
+    doc["deviceTemp"] = isnan(CPUtemp) ? String("--") : String(CPUtemp, 1);
     doc["hwRev"] = deviceModel;
     doc["espModel"] = String(ESP.getChipModel());
     doc["espCores"] = String(ESP.getChipCores());

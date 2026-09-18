@@ -331,25 +331,10 @@ void setup()
   }
 
   DEBUG_PRINTLN(F("LITTLEFS OK"));
-  if (!loadSystemVar())
+  if (!LittleFS.exists("/config") && !LittleFS.mkdir("/config"))
   {
-    DEBUG_PRINTLN(F("Error load system vars"));
-    const char *path = "/config";
-
-    if (LittleFS.mkdir(path))
-    {
-      DEBUG_PRINTLN(F("Config dir created"));
-      delay(500);
-      ESP.restart();
-    }
-    else
-    {
-      DEBUG_PRINTLN(F("mkdir failed"));
-    }
-  }
-  else
-  {
-    DEBUG_PRINTLN(F("System vars load OK"));
+    DEBUG_PRINTLN(F("Error creating config dir"));
+    ESP.restart();
   }
 
   if (loadZbInfo())

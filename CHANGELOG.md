@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+### Fixes
+
+- **The status page reports the chip's real temperature** instead of a stand-in that was auto-adjusted on first boot to look like a ~30 °C room. That calibration hid the actual die temperature (around 70 °C on this gateway), so overheating would have gone unnoticed. The value is now the raw ESP32 die temperature and is labelled "CPU temperature"; it is normal for it to read far above room temperature. Until the first radio-powered read completes the status page shows `--` and MQTT omits the value.
+- A failed sensor read (PHY not up, the 53.3 °C sentinel) is no longer cached as a temperature; the last valid reading is kept and the read retried on the next refresh.
+
+### Improvements
+
+- Faster boot and less flash wear: the temperature auto-calibration is gone, so the gateway no longer performs a blocking ~1.3 s radio power-up and rewrites `/config/system.json` on every boot.
+
 ## v1.1.3 — 2026-09-16
 
 ### Features

@@ -47,7 +47,6 @@ enum class CoordinatorMode : uint8_t
 };
 
 extern const char *coordMode;// coordMode node name
-extern const char *configFileSystem;
 extern const char *configFileWifi;
 extern const char *configFileEther;
 extern const char *configFileGeneral;
@@ -58,7 +57,6 @@ extern const char *configFileWg;
 extern const char *deviceModel;
 
 IPAddress parse_ip_address(const char *str);
-bool loadSystemVar();
 bool loadConfigWifi();
 bool loadConfigEther();
 bool loadConfigGeneral();
@@ -89,7 +87,6 @@ struct ConfigSettingsStruct
     IPAddress connectedClientIp[MAX_SOCKET_CLIENTS];  // Socket client IP
     int connectedClients;              // Connected clients
     unsigned long socketTime;          // Socket time
-    int tempOffset;                    // Temperature offset
     bool webAuth;                      // Web server authentication
     char webUser[50];                  // Web server user
     char webPass[50];                  // Web server password
