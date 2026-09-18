@@ -121,7 +121,7 @@ The AVATTO GW90-TI is a PoE-powered Zigbee gateway. An **ESP32-D0WDR2-V3** bridg
 │   ├── encoding.h          # URL decode, hex→bin (pure)
 │   ├── zb_ver.h            # ZNP version-response decode (pure)
 │   ├── zones.h             # Timezone POSIX-rule table (pure)
-│   ├── config_utils.h      # temp-offset clamp, WG private-key lookup (pure)
+│   ├── config_utils.h      # WG private-key lookup (pure)
 │   ├── ha_discovery.h      # HA discovery entity table + message builder (pure)
 │   ├── wifi_save_logic.h   # Commit-on-connect + connect-throttle logic (pure)
 │   ├── web_routes.h        # Auto-generated static asset routes
@@ -191,7 +191,7 @@ Up to `MAX_SOCKET_CLIENTS` (5) `WiFiClient`s. Each loop iteration:
 
 ### 4.4 `config.cpp` / `config.h`
 
-`ConfigSettingsStruct`, `MqttSettingsStruct`, `WgSettingsStruct`, `zbVerStruct` globals. All loaders use the shared `readJsonConfig()` helper (open → deserialize → on error log + delete the file so defaults regenerate next boot). Pure helpers live in `config_utils.h` (temp-offset clamp, WG private-key key migration).
+`ConfigSettingsStruct`, `MqttSettingsStruct`, `WgSettingsStruct`, `zbVerStruct` globals. All loaders use the shared `readJsonConfig()` helper (open → deserialize → on error log + delete the file so defaults regenerate next boot). Pure helpers live in `config_utils.h` (WG private-key key migration).
 
 ### 4.5 `web/` — web server, API, pages
 
@@ -257,7 +257,6 @@ All config lives in **LittleFS** under `/config/` as JSON. Each subsystem has a 
 
 | File | Content |
 |------|---------|
-| `/config/system.json` | `tempOffset` calibration (see §12) |
 | `/config/configWifi.json` | `ssid`, `pass`, `dhcpWiFi`, `ip`, `mask`, `gw` |
 | `/config/configEther.json` | `dhcp`, `ip`, `mask`, `gw` |
 | `/config/configGeneral.json` | `hostname`, `disableLeds`, `refreshLogs`, `disableLedPwr`, `disableLedUSB`, `coordMode`, `keepWeb`, `timeZoneName` |
@@ -363,9 +362,10 @@ The ESP32 TSENS shares the SAR ADC with the RF PHY. On IDF 5.x the radio stays i
 
 Design (all in `etc.cpp`):
 
+- **Raw die temperature**: the reported value is `(raw - 32) / 1.8` with no calibration offset. It measures the silicon, not the room; the die runs well above ambient (observed ~70 °C on this sealed PoE gateway).
 - **Demand-driven**: the radio only powers up when a consumer asks — the status/home page (`getRootData()` → `getCPUtemp()`) or MQTT state publish. With neither active, the radio stays down: no loop spikes and no 2.4 GHz noise near the coordinator. A `tempRequested` flag gates the state machine.
-- **Non-blocking**: `tempSensorLoop()` runs as a state machine from `loop()` (Idle → WaitSettle ~1.2 s → 5 samples ~20 ms apart → TearDown). `getCPUtemp()` never blocks; it returns the cache and requests a refresh.
-- **Calibration**: on first boot the offset needed to report ~30 °C is stored in `/config/system.json` (raw die temp on this sealed PoE gateway is ~71 °C). A stale offset outside ±10 °C is clamped to 0 and recalibrated; `tempSetCalibrated()` caches the offset-adjusted value so the first page view is correct.
+- **Non-blocking**: `tempSensorLoop()` runs as a state machine from `loop()` (Idle → WaitSettle ~1.2 s → 5 samples ~20 ms apart → TearDown). `getCPUtemp()` never blocks; it returns the cache and requests a refresh. Until the first valid read it returns NAN — the status page renders `--` and MQTT omits the key.
+- **Sentinel-safe**: a read whose median is `0x80` (PHY not up) is discarded — the previous valid value is kept and the read retried after the refresh interval, so 53.3 °C is never reported.
 - Reads are capped at one per 15 s; per-read logging is `DEBUG`-only.
 
 ---

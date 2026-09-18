@@ -85,7 +85,7 @@ src/
 ├── checksum.h      ZNP checksum (pure)
 ├── encoding.h      URL decode, hex→bin (pure)
 ├── zb_ver.h        ZNP version-response decode (pure)
-├── config_utils.h  temp-offset clamp, WG private-key lookup (pure)
+├── config_utils.h  WG private-key lookup (pure)
 ├── ha_discovery.h  HA discovery entity table + message builder (pure)
 ├── wifi_save_logic.h  WiFi commit-on-connect + connect throttle (pure)
 ├── fw_verify.h     Detached .sig URL + force decision (pure)
@@ -123,7 +123,6 @@ scripts/
 
 | File | Content |
 |------|---------|
-| `/config/system.json` | Temp offset calibration |
 | `/config/configWifi.json` | WiFi credentials |
 | `/config/configEther.json` | Ethernet DHCP/static IP |
 | `/config/configGeneral.json` | Hostname, coordinator mode, LED settings |
@@ -203,5 +202,5 @@ Write entries for users, not developers. The changelog doubles as the GitHub rel
 - **LAN8720 PHY**: GPIO5 must be toggled LOW→HIGH before `ETH.begin()` or it fails after `ESP.restart()`.
 - **cppcheck vs GCC 14.2**: `pio check` without `--skip-packages` fails parsing the toolchain's `type_traits` (cppcheck 2.21 limitation). Always use `--skip-packages`.
 - **Native tests**: `mise run test` runs the Unity suite (native env). Only pure logic is testable (no hardware deps).
-- **CPU temp**: The TSENS shares the SAR ADC with the RF PHY, so a real read requires powering the radio. Reads are **demand-driven** (only when the status page or MQTT asks) and **non-blocking** (state machine in `loop()`, `tempSensorLoop`); the reported value is a cache calibrated against ~30 °C (`/config/system.json`).
+- **CPU temp**: The TSENS shares the SAR ADC with the RF PHY, so a real read requires powering the radio. Reads are **demand-driven** (only when the status page or MQTT asks) and **non-blocking** (state machine in `loop()`, `tempSensorLoop`); the reported value is the **raw die temperature** (no calibration offset). The `0x80` sentinel (PHY down) is discarded, not cached; until the first valid read the UI shows `--` and MQTT omits the value.
 - **Version is constant**: `tools/gen_version.py` reads `tools/version` as-is (no auto-increment). Only the release workflow bumps it; builds from a dirty working tree get a `-dirty` suffix (`tools/version_util.py`'s `describe()`), so they're distinguishable from clean CI/release builds.

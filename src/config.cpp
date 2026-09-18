@@ -49,57 +49,6 @@ static bool readJsonConfig(const char *path, JsonDocument &doc)
   return true;
 }
 
-// Auto-calibrate against a ~30°C reference (room temperature): store the
-// offset needed so the reported temperature reads 30°C. False only when the
-// calibration cannot even be persisted (first boot with unwritable FS).
-static bool calibrateTempOffset()
-{
-  float CPUtemp = getCPUtemp(true);
-  int correct = static_cast<int>(CPUtemp - 30.0f);
-
-  JsonDocument doc;
-  doc["tempOffset"] = correct;
-  DEBUG_PRINTLN(String("calibrated tempOffset to ") + correct);
-
-  File configFile = LittleFS.open(configFileSystem, FILE_WRITE);
-  if (!configFile)
-  {
-    DEBUG_PRINTLN(F("failed write"));
-    return false;
-  }
-  serializeJson(doc, configFile);
-  configFile.close();
-
-  ConfigSettings.tempOffset = correct;
-  tempSetCalibrated(CPUtemp); // cache the offset-adjusted value for display
-  return true;
-}
-
-bool loadSystemVar()
-{
-  File configFile = LittleFS.open(configFileSystem, FILE_READ);
-  if (!configFile)
-  {
-    DEBUG_PRINTLN(F("failed open. try to write defaults"));
-
-    return calibrateTempOffset();
-  }
-
-  JsonDocument doc;
-  deserializeJson(doc, configFile);
-  configFile.close();
-
-  // Sanity-clamp a stale/bogus calibration (e.g. written by firmware that read
-  // the frozen 0x80 TSENS sentinel) so a nonsense offset can't skew the report.
-  // A zero/missing offset means "not calibrated yet" and is handled below.
-  ConfigSettings.tempOffset = clampTempOffset(doc["tempOffset"] | 0);
-  if (ConfigSettings.tempOffset == 0)
-  {
-    // No calibration stored yet: calibrate now against the 30°C reference.
-    calibrateTempOffset();
-  }
-  return true;
-}
 // Load WiFi configuration
 bool loadConfigWifi()
 {

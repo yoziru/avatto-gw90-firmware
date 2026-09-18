@@ -13,9 +13,8 @@ uint8_t temprature_sens_read();
 #define STRINGIFY(s) STRINGIFY1(s)
 #define STRINGIFY1(s) #s
 
-float getCPUtemp(bool clear = false);
+float getCPUtemp();
 void tempSensorLoop();
-void tempSetCalibrated(float raw);
 
 void zigbeeRouterRejoin();
 void zigbeeEnableBSL();

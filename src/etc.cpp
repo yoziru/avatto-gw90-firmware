@@ -16,7 +16,6 @@
 extern CCTools CCTool;
 
 const char *coordMode = "coordMode";         // coordMode node name
-const char *configFileSystem = "/config/system.json";
 const char *configFileWifi = "/config/configWifi.json";
 const char *configFileEther = "/config/configEther.json";
 const char *configFileGeneral = "/config/configGeneral.json";
@@ -70,16 +69,14 @@ static float rawTempToCelsius(uint8_t raw)
   return (raw - 32) / 1.8f;
 }
 
-float readtemp(bool clear)
-{
-  const float c = rawTempToCelsius(temprature_sens_read());
-  return clear ? c : c - ConfigSettings.tempOffset;
-}
-
 // The ESP32 TSENS shares the SAR ADC with the RF PHY. On ESP-IDF 5.x the radio
 // stays in modem-sleep after esp_wifi_start(), so temprature_sens_read()
 // returns the fixed 0x80 sentinel (53.3°C). A real scan forces the PHY up and
 // clocks the ADC, giving a live reading.
+//
+// The value is the raw die (chip) temperature, not ambient temperature. The
+// die runs well above ambient under load; it is reported as-is so thermal
+// issues are visible instead of being hidden behind a calibration offset.
 //
 // The read is performed asynchronously by a small state machine driven from
 // loop() (tempSensorLoop). getCPUtemp() only ever returns the cached value, so
@@ -91,7 +88,8 @@ static const uint32_t kTempReadIntervalMs = 15000;
 static const uint32_t kTempSettleMs = 1200;
 static const uint8_t kTempSampleCount = 5;
 
-static float cachedTemp = 0.0f;
+static float cachedTemp = NAN;
+static bool tempValid = false;
 static uint32_t lastTempReadMs = 0;
 // Set by a consumer (status page / MQTT) when the cached value is stale. The
 // radio is only powered up for a read while this is set - with no page open
@@ -129,40 +127,6 @@ static uint8_t median5(uint8_t s[5])
   return s[2];
 }
 
-// Synchronous read - only used by boot-time calibration (getCPUtemp(true)),
-// where blocking is fine because setup() is still running and nothing else
-// needs the loop.
-static float readTempSync(bool clear)
-{
-  float result = 0.0f;
-  bool wifiWasOn = (WiFi.getMode() == WIFI_MODE_STA || WiFi.getMode() == WIFI_MODE_APSTA);
-  if (!wifiWasOn)
-  {
-    WiFi.mode(WIFI_STA);
-    if (esp_wifi_start() == ESP_OK)
-    {
-      WiFi.setSleep(false);
-      WiFi.scanNetworks(true);   // async scan forces the radio fully on
-      delay(kTempSettleMs);
-      uint8_t samples[kTempSampleCount] = {0};
-      for (int i = 0; i < kTempSampleCount; i++)
-      {
-        samples[i] = temprature_sens_read();
-        delay(20);
-      }
-      result = rawTempToCelsius(median5(samples));
-      WiFi.scanDelete();
-      esp_wifi_stop();
-      WiFi.mode(WIFI_OFF);
-    }
-  }
-  else
-  {
-    result = readtemp(clear);
-  }
-  return result;
-}
-
 // Kick off a background read, but only when a consumer has asked for a fresh
 // value (see getCPUtemp). Never blocks.
 static void tempSensorRefresh()
@@ -172,7 +136,7 @@ static void tempSensorRefresh()
     return;
   }
   const uint32_t now = millis();
-  if (cachedTemp != 0.0f && (now - lastTempReadMs) < kTempReadIntervalMs)
+  if (lastTempReadMs != 0 && (now - lastTempReadMs) < kTempReadIntervalMs)
   {
     return;
   }
@@ -235,19 +199,22 @@ void tempSensorLoop()
     }
     {
       uint8_t med = median5(tempSamples);
-      cachedTemp = rawTempToCelsius(med) - ConfigSettings.tempOffset;
       lastTempReadMs = now;
-#ifdef DEBUG
       if (med == 0x80)
       {
-        printLogMsg("CPUtemp: sensor not powered (0x80 sentinel)");
+        // PHY never came up - keep the last valid value (if any) and retry
+        // after the interval instead of caching the 53.3°C sentinel.
+        DEBUG_PRINTLN(F("CPUtemp: sensor not powered (0x80 sentinel)"));
       }
       else
       {
+        cachedTemp = rawTempToCelsius(med);
+        tempValid = true;
+#ifdef DEBUG
         printLogMsg(String("CPUtemp raw=") + String(tempSamples[0], HEX) + ".." + String(tempSamples[4], HEX) +
                     " t=" + String(cachedTemp));
-      }
 #endif
+      }
     }
     tempStage = TempReadStage::Idle;
     tempRequested = false; // the read was delivered to the cache
@@ -255,38 +222,21 @@ void tempSensorLoop()
   }
 }
 
-float getCPUtemp(bool clear)
+float getCPUtemp()
 {
   DEBUG_PRINTLN(F("getCPUtemp"));
-  if (clear)
-  {
-    // Boot-time calibration only - a synchronous blocking read is acceptable
-    // here because setup() hasn't started serving yet.
-    float raw = readTempSync(true);
-    cachedTemp = raw;
-    lastTempReadMs = millis();
-    return raw;
-  }
-  // Normal path: never block the caller. If the cache is stale, mark that a
-  // fresh reading is wanted and let the async state machine (tempSensorLoop)
-  // do the radio power-up/sample/teardown in the background; return the cached
-  // value either way. The request flag is the only thing that makes the radio
+  // Normal path: never block the caller. If the cache is stale (or has no
+  // valid reading yet), mark that a fresh reading is wanted and let the async
+  // state machine (tempSensorLoop) do the radio power-up/sample/teardown in
+  // the background; return the cached value either way (NAN until the first
+  // valid read). The request flag is the only thing that makes the radio
   // cycle happen - no page open and MQTT off means the temp stays quiet.
-  if (cachedTemp == 0.0f || (millis() - lastTempReadMs) >= kTempReadIntervalMs)
+  if (!tempValid || (millis() - lastTempReadMs) >= kTempReadIntervalMs)
   {
     tempRequested = true;
   }
   tempSensorRefresh();
   return cachedTemp;
-}
-
-// Cache the offset-adjusted value after boot-time calibration (called by
-// loadSystemVar). Without this the first page view would show the raw die temp
-// (~71 °C on this sealed PoE gateway) until the first on-demand refresh runs.
-void tempSetCalibrated(float raw)
-{
-  cachedTemp = raw - ConfigSettings.tempOffset;
-  lastTempReadMs = millis();
 }
 
 void zigbeeRouterRejoin()
@@ -395,7 +345,6 @@ void resetSettings()
   LittleFS.remove(configFileGeneral);
   LittleFS.remove(configFileEther);
   LittleFS.remove(configFileWifi);
-  LittleFS.remove(configFileSystem);
   LittleFS.remove(configFileWg);
   DEBUG_PRINTLN(F("[resetSettings] Config del done"));
   ESP.restart();
