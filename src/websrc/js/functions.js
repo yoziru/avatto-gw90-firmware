@@ -5,7 +5,10 @@ const apiLink = "/api?action=";
 function gatewayFetch(url, options = {}) {
 	const headers = new Headers(options.headers);
 	headers.set("X-Gateway-Request", "1");
-	return fetch(url, { ...options, headers });
+	return fetch(url, { ...options, headers }).then(response => {
+		if (!response.ok) throw new Error("Gateway HTTP " + response.status);
+		return response;
+	});
 }
 
 function el(tag, opts = {}) {
@@ -33,7 +36,7 @@ function createSpinner() {
 const zbFwReleasesUrl = "https://api.github.com/repos/Koenkk/Z-Stack-firmware/releases?per_page=100";
 const zbFwIncludePrereleaseKey = "zb_include_prerelease";
 
-const GITHUB_REPO_OWNER = "AVATTO-smart";
+const GITHUB_REPO_OWNER = "yoziru";
 const GITHUB_REPO_NAME = "avatto-gw90-firmware";
 
 const pages = {
@@ -917,11 +920,22 @@ function wifiSignalBars(rssi) {
 // Map the ESP32 encryption type (wifi_auth_mode_t) to a friendly label.
 function wifiSecurityLabel(secure) {
 	switch (secure) {
+		case 0: return "OPEN";
+		case 1: return "WEP";
 		case 2: return "WPA";
-		case 3: case 4: return "WPA2";
-		case 5: return "WEP";
-		case 7: return "OPEN";
-		case 8: return "AUTO";
+		case 3: return "WPA2";
+		case 4: return "WPA/WPA2";
+		case 5: return "WPA2 Enterprise";
+		case 6: return "WPA3";
+		case 7: return "WPA2/WPA3";
+		case 8: return "WAPI";
+		case 9: return "OWE";
+		case 10: return "WPA3 Enterprise 192-bit";
+		case 11: case 12: return "WPA3";
+		case 13: return "DPP";
+		case 14: return "WPA3 Enterprise";
+		case 15: return "WPA2/WPA3 Enterprise";
+		case 16: return "WPA Enterprise";
 		default: return t("d.unknown");
 	}
 }
@@ -953,7 +967,7 @@ function wifiSavedSecure() {
 	const saved = wifiSavedSsid();
 	if (_wifiSavedSecure !== null && saved) return _wifiSavedSecure;
 	const hit = _wifiScanCache.find(n => n.ssid === saved);
-	return hit ? hit.secure !== 7 : true;
+	return hit ? hit.secure !== 0 : true;
 }
 
 // The SSID currently saved on the device (filled by data-replace on load).
@@ -1106,7 +1120,7 @@ function renderWifiList() {
 
 	sorted.forEach(n => {
 		if (saved && n.ssid === saved) return; // already shown in "Your Network"
-		const open = (n.secure === 7);
+		const open = (n.secure === 0);
 		const item = document.createElement("div");
 		item.className = "wifi-item";
 
@@ -1745,11 +1759,17 @@ async function showZigbeeVersionInfo(firmwareType) {
 	}
 }
 
-// Numeric version compare.
+// Compare release components; ignore local build metadata/dirty hashes.
 function verIsNewer(remote, local) {
-	const rn = Number(String(remote).replace(/[^0-9.]/g, "").split(".").join(""));
-	const ln = Number(String(local).replace(/[^0-9.]/g, "").split(".").join(""));
-	return rn > 0 && rn > ln;
+	const parse = value => String(value).trim().match(/^v?(\d+(?:\.\d+)*)(?=$|[-+])/i);
+	const r = parse(remote), l = parse(local);
+	if (!r) return false;
+	if (!l) return true;
+	const rn = r[1].split(".").map(Number), ln = l[1].split(".").map(Number);
+	for (let i = 0; i < Math.max(rn.length, ln.length); i++) {
+		if ((rn[i] || 0) !== (ln[i] || 0)) return (rn[i] || 0) > (ln[i] || 0);
+	}
+	return false;
 }
 
 function escHtml(s) {
