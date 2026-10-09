@@ -107,6 +107,9 @@ jobs:
       - name: Check Zigbee flash failures
         run: python tools/test_zigbee_flash.py
 
+      - name: Check bootloader packet safety
+        run: python tools/test_cctools.py
+
   lint:
     runs-on: ubuntu-latest
     steps:
