@@ -268,6 +268,7 @@ void setupCoordinatorMode()
 
 void setup()
 {
+  bootGuardBegin(); // enforce retry budget before any setup work can crash
   // PHY warm-restart workaround: ESP.restart() doesn't drop the 3.3V rail (esp. PoE),
   // so LAN8720 POR never fires. A 350ms delay at startup lets strapping pins settle.
   delay(350);
@@ -280,8 +281,6 @@ void setup()
   Serial.println("[DEBUG] Baud Rate: 115200");
   Serial.println("[DEBUG] Use Serial Monitor to view mode switching and system logs");
   Serial.println("[DEBUG] ==========================================\n");
-
-  bootGuardBegin();
 
   ConfigSettings.apStarted = false;
   ConfigSettings.serialSpeed = 115200;
@@ -462,7 +461,6 @@ void loop(void)
   profilingLoopTick(loopStartUs);
 #endif
 }
-
 
 
 

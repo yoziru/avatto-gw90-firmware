@@ -110,6 +110,9 @@ jobs:
       - name: Check bootloader packet safety
         run: python tools/test_cctools.py
 
+      - name: Check early OTA rollback
+        run: python tools/test_boot_guard.py
+
   lint:
     runs-on: ubuntu-latest
     steps:

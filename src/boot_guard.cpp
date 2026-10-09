@@ -95,13 +95,19 @@ void bootGuardBegin()
         bootGuardPrefs.end();
         return;
     }
-    bootGuardAttempts = static_cast<uint8_t>(bootGuardPrefs.getUChar(bootGuardAttemptsKey, 0) + 1);
+    const uint8_t previousAttempts = bootGuardPrefs.getUChar(bootGuardAttemptsKey, 0);
+    bootGuardAttempts = previousAttempts == UINT8_MAX ? previousAttempts : previousAttempts + 1;
     bootGuardPrefs.putUChar(bootGuardAttemptsKey, bootGuardAttempts);
     bootGuardPrefs.end();
 
     bootGuardArmed = true;
     bootGuardBootMs = millis();
     printLogMsg(String("[BOOT] OTA boot guard: attempt ") + String(bootGuardAttempts) + "/" + String(BOOT_GUARD_MAX_BOOT_ATTEMPTS));
+    if (bootGuardDecision(true, bootGuardAttempts, false, 0, 0) == BootGuardDecision::Rollback)
+    {
+        printLogMsg("[BOOT] OTA boot guard: startup retry budget exhausted");
+        bootGuardRollback();
+    }
 }
 
 void bootGuardLoop()
