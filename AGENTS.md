@@ -42,7 +42,7 @@ Set `UPLOAD_PORT=/dev/cu.usbserial-XXXX` before flashing.
 ### Network Flash (No Serial)
 
 1. **Web UI**: Browse to `http://<device-ip>/about`, upload `bin/AVATTO-GW90-Ti.bin`, confirm the unsigned-firmware dialog
-2. **API (signed)**: `curl "http://<ip>/api?action=6&cmd=9&url=http://your-server/AVATTO-GW90-Ti.bin"` (fetches `<url>.sig`)
+2. **API (signed)**: `curl -H 'X-Gateway-Request: 1' "http://<ip>/api?action=6&cmd=9&url=http://your-server/AVATTO-GW90-Ti.bin"` (fetches `<url>.sig`)
 3. **API (unsigned, e.g. local build)**: same URL with `&force=1`
 
 `cmd=9` is `CMD_ESP_UPD_URL` (the docs previously said cmd=10, which is `CMD_ZB_CHK_REV`). Only the non-full `.bin` at offset 0x10000 is used for OTA. The `.full.bin` is for serial flashing only.

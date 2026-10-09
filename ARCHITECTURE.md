@@ -197,6 +197,8 @@ Up to `MAX_SOCKET_CLIENTS` (5) `WiFiClient`s. Each loop iteration:
 
 `common.cpp` owns the `WebServer serverWeb(80)` instance and registers all routes (page routes, `/api`, `/status`, `/saveParams`, `/update`, `/updateZB`, `/events`, `/logout`) plus the auto-generated static asset routes (`web_routes.h`).
 
+State-changing requests require `X-Gateway-Request: 1`. The non-safelisted header forces a CORS preflight for cross-origin browser requests, and the gateway does not grant CORS access. The frontend and OTA uploader supply the header; custom API clients must add it. Read-only requests and SSE do not require it.
+
 `pages.cpp` `getRootData()` builds the shared device-status JSON into a **reused module-level `JsonDocument`** (steady allocation, no per-poll churn). `/status` serializes it to a reused String.
 
 `api.cpp` dispatches `/api?action=N` (see [API Endpoints](#19-api-endpoints)); includes the CC2652P firmware download (HTTPS via `NetworkClientSecure`, progress over SSE).

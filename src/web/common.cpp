@@ -58,7 +58,7 @@ void sendGzip(const char *contentType, const uint8_t content[], uint16_t content
     serverWeb.send_P(HTTP_CODE_OK, contentType, (const char *)content, contentLen);
 }
 
-bool checkAuth()
+bool checkAuth(bool mutation)
 {
     String source = serverWeb.header("Origin");
     if (source.length() == 0)
@@ -66,10 +66,11 @@ bool checkAuth()
     String host = serverWeb.header("X-Forwarded-Host");
     if (host.length() == 0)
         host = serverWeb.hostHeader();
-    if (!sameOrigin(source.c_str(), host.c_str()))
+    if (!webRequestAllowed(source.c_str(), host.c_str(), mutation || serverWeb.method() != HTTP_GET,
+                           serverWeb.header("X-Gateway-Request").c_str()))
     {
         printLogMsg("web: cross-origin request rejected: " + source);
-        serverWeb.send(HTTP_CODE_FORBIDDEN, contTypeText, "cross-origin request rejected");
+        serverWeb.send(HTTP_CODE_FORBIDDEN, contTypeText, "request rejected; mutations require X-Gateway-Request: 1");
         return false;
     }
 
@@ -330,7 +331,7 @@ void initWebServer()
             }
         });
 
-    const char *headerkeys[] = {"Content-Length", "Origin", "Referer", "X-Forwarded-Host"};
+    const char *headerkeys[] = {"Content-Length", "Origin", "Referer", "X-Forwarded-Host", "X-Gateway-Request"};
     size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
     registerStaticRoutes();
     serverWeb.collectHeaders(headerkeys, headerkeyssize);

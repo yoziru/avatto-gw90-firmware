@@ -41,4 +41,12 @@ inline bool sameOrigin(std::string_view source, std::string_view host) noexcept
     return strncasecmp(sourceHost.data(), requestHost.data(), sourceHost.size()) == 0;
 }
 
+// Non-safelisted headers require a successful CORS preflight from other
+// origins. This server never grants CORS access; curl can supply the marker.
+inline bool webRequestAllowed(std::string_view source, std::string_view host,
+                              bool mutation, std::string_view marker) noexcept
+{
+    return sameOrigin(source, host) && (!mutation || marker == "1");
+}
+
 #endif

@@ -26,11 +26,11 @@ DEVICE_IP="${OTA_DEVICE_IP:?Set OTA_DEVICE_IP env var}"
 
 echo "Uploading firmware to http://$DEVICE_IP/update ..."
 if [ -n "${OTA_USER:-}" ]; then
-    curl -sS -u "${OTA_USER}:${OTA_PASS:-}" \
+    curl -sS -H 'X-Gateway-Request: 1' -u "${OTA_USER}:${OTA_PASS:-}" \
         -F "firmware=@$BIN;filename=$(basename "$BIN")" \
         "http://$DEVICE_IP/update?force=1"
 else
-    curl -sS \
+    curl -sS -H 'X-Gateway-Request: 1' \
         -F "firmware=@$BIN;filename=$(basename "$BIN")" \
         "http://$DEVICE_IP/update?force=1"
 fi

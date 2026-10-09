@@ -42,7 +42,7 @@ void initWebServer();
 void webServerHandleClient();
 void sendEvent(const char *event, const uint8_t evsz, const String &data);
 void sendGzip(const char *contentType, const uint8_t content[], uint16_t contentLen);
-bool checkAuth();
+bool checkAuth(bool mutation = false);
 void printLogTime();
 void printLogTimeZb();
 void printLogMsg(const String &msg);

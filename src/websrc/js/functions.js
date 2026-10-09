@@ -2,6 +2,12 @@ const disbl = "disabled";
 const classHide = "visually-hidden";
 const apiLink = "/api?action=";
 
+function gatewayFetch(url, options = {}) {
+	const headers = new Headers(options.headers);
+	headers.set("X-Gateway-Request", "1");
+	return fetch(url, { ...options, headers });
+}
+
 function el(tag, opts = {}) {
 	const node = document.createElement(tag);
 	if (opts["class"]) node.className = opts["class"];
@@ -304,7 +310,7 @@ function loadPage(url, fromHistory) {
 					}));
 				}
 				const clr = getEl("clearLogBtn");
-				fetch(apiLink + api.actions.API_GET_PARAM + "&param=refreshLogs").then(r => r.text()).then(data => {
+				gatewayFetch(apiLink + api.actions.API_GET_PARAM + "&param=refreshLogs").then(r => r.text()).then(data => {
 					logRefresh(parseInt(data) >= 1000 ? parseInt(data) : 1000);
 				});
 			});
@@ -320,7 +326,7 @@ function loadPage(url, fromHistory) {
 }
 
 function espReboot() {
-	fetch(apiLink + api.actions.API_CMD + "&cmd=3");
+	gatewayFetch(apiLink + api.actions.API_CMD + "&cmd=3");
 }
 
 function apiGetPage(page, doneCall) {
@@ -331,7 +337,7 @@ function apiGetPage(page, doneCall) {
 	pc.style.transition = "opacity " + animDuration + "ms";
 	pc.style.opacity = "0";
 	setTimeout(() => {
-		fetch(apiLink + api.actions.API_GET_PAGE + "&page=" + page.num).then(r => {
+		gatewayFetch(apiLink + api.actions.API_GET_PAGE + "&page=" + page.num).then(r => {
 			if (!r.ok) throw new Error(r.status + " " + r.statusText);
 			const authHeader = r.headers.get("Authentication");
 			const respValues = r.headers.get("respValuesArr");
@@ -366,7 +372,7 @@ function apiGetPage(page, doneCall) {
 					btn.appendChild(sp2);
 					btn.disabled = true;
 					formData.append("pageId", page.num);
-					fetch(e.currentTarget.action, { method: "POST", body: formData }).then(() => {
+					gatewayFetch(e.currentTarget.action, { method: "POST", body: formData }).then(() => {
 						modalConstructor("saveOk");
 					}).catch(() => {
 						alert(t("d.saveErr"));
@@ -394,7 +400,7 @@ function apiGetPage(page, doneCall) {
 						this.appendChild(sp);
 						this.appendChild(sp2);
 						this.disabled = true;
-						fetch(apiLink + api.actions.API_CMD + "&cmd=" + cmd).then(() => {
+						gatewayFetch(apiLink + api.actions.API_CMD + "&cmd=" + cmd).then(() => {
 							this.classList.remove(btnStndrt);
 							this.classList.add(btnGrn);
 							const self = this;
@@ -525,7 +531,7 @@ function espFlashGitWait() {
 		console.log("[flash] start");
 		const prg = getEl("prg");
 		if (prg) prg.innerHTML = t("d.githubStart");
-		fetch(apiLink + api.actions.API_CMD + "&cmd=9")
+		gatewayFetch(apiLink + api.actions.API_CMD + "&cmd=9")
 			.then((r) => r.text())
 			.then((text) => {
 				if (text && text !== "ok") {
@@ -611,7 +617,7 @@ function startFlashProcess(fwUrl, role, roleSwitch) {
 	if (barZb) barZb.style.width = "5%";
 	let apiUrl = apiLink + api.actions.API_FLASH_ZB + "&fwurl=" + encodeURIComponent(fwUrl) + "&role=" + encodeURIComponent(role || "");
 	if (roleSwitch) apiUrl += "&confirmRoleSwitch=1";
-	fetch(apiUrl).then(async r => {
+	gatewayFetch(apiUrl).then(async r => {
 		const data = await r.text();
 		if (!r.ok) throw new Error(data || r.statusText);
 		console.log("API Response:", data);
@@ -863,10 +869,10 @@ function getWifiList() {
 		if (!list) return;
 		list.innerHTML = '<div class="wifi-item wifi-placeholder" onclick="getWifiList()"><span class="wifi-name">' + t("w.scanTimeout") + '</span></div>' + wifiJoinRowHTML();
 	};
-	fetch(apiLink + api.actions.API_STARTWIFISCAN).then(() => {
+	gatewayFetch(apiLink + api.actions.API_STARTWIFISCAN).then(() => {
 		const tmrUpdWifi = setInterval(() => {
 			const expire = () => { clearInterval(tmrUpdWifi); giveUp(); }; // ~30s
-			fetch(apiLink + api.actions.API_WIFISCANSTATUS).then(r => r.json()).then(data => {
+			gatewayFetch(apiLink + api.actions.API_WIFISCANSTATUS).then(r => r.json()).then(data => {
 				if (!data.scanDone) {
 					if (++polls >= 15) expire();
 					return;
@@ -996,7 +1002,7 @@ function wifiJoin(ssid, pass, statusEl, btn, secure) {
 	if (secure !== undefined) _wifiSavedSecure = !!secure;
 	if (statusEl) { statusEl.className = "wifi-join-status connecting"; statusEl.innerHTML = '<span class="busy-shimmer">' + t("w.connecting") + '</span>'; }
 	wifiBusyBtn(btn, true);
-	fetch("/saveParams", { method: "POST", body: fd }).then(r => {
+	gatewayFetch("/saveParams", { method: "POST", body: fd }).then(r => {
 		if (!r.ok) throw new Error("save failed");
 		wifiPollConnect(seq, statusEl, ssid, pass, btn);
 	}).catch(() => {
@@ -1011,7 +1017,7 @@ function wifiPollConnect(seq, statusEl, ssid, pass, btn) {
 	let tries = 0;
 	const tmr = setInterval(() => {
 		if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
-		fetch(apiLink + api.actions.API_WIFICONNECTSTAT).then(r => r.json()).then(data => {
+		gatewayFetch(apiLink + api.actions.API_WIFICONNECTSTAT).then(r => r.json()).then(data => {
 			if (seq !== _wifiJoinSeq) { clearInterval(tmr); return; }
 			tries++;
 			if (data.connected) {
@@ -1167,7 +1173,7 @@ function toggleCollapseIp(show) {
 // Fetch the live STA connection info (ip/mask/gw) once; used by the info panel
 // and to reflect connected state in "Your Network".
 function wifiRefreshConnection() {
-	return fetch(apiLink + api.actions.API_WIFICONNECTSTAT)
+	return gatewayFetch(apiLink + api.actions.API_WIFICONNECTSTAT)
 		.then(r => r.json())
 		.then(data => { _wifiConnInfo = data; return data; })
 		.catch(() => { _wifiConnInfo = null; return null; });
@@ -1223,7 +1229,7 @@ function wifiSaveIp() {
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
 	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.innerHTML = '<span class="busy-shimmer">' + t("d.saving") + '</span>'; }
-	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
+	gatewayFetch("/saveParams", { method: "POST", body: fd }).then(() => {
 		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = t("w.saved"); }
 	}).catch(() => {
 		if (statusEl) { statusEl.className = "wifi-ip-status err"; statusEl.textContent = t("w.saveFail"); }
@@ -1241,7 +1247,7 @@ function wifiForget() {
 	const fd = wifiFormData();
 	const statusEl = getEl("wifiIpStatus");
 	if (statusEl) { statusEl.className = "wifi-ip-status"; statusEl.innerHTML = '<span class="busy-shimmer">' + t("w.forgetting") + '</span>'; }
-	fetch("/saveParams", { method: "POST", body: fd }).then(() => {
+	gatewayFetch("/saveParams", { method: "POST", body: fd }).then(() => {
 		if (statusEl) { statusEl.className = "wifi-ip-status ok"; statusEl.textContent = t("w.forgotten"); }
 		toggleCollapseIp(false);
 		renderWifiYourNetwork();
@@ -1633,9 +1639,9 @@ async function fetchData(url, isJson = true) {
 	if (isJson) {
 		const separator = url.includes("?") ? "&" : "?";
 		url = url + separator + "_t=" + Date.now();
-		return await fetch(url).then(r => r.json());
+		return await (url.startsWith("/") ? gatewayFetch(url) : fetch(url)).then(r => r.json());
 	} else {
-		return await fetch(url).then(r => r.text());
+		return await (url.startsWith("/") ? gatewayFetch(url) : fetch(url)).then(r => r.text());
 	}
 }
 

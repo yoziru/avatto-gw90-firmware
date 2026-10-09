@@ -444,6 +444,7 @@
           }
         }, false);
         xhr.open("POST", "/update?force=1", true);
+        xhr.setRequestHeader("X-Gateway-Request", "1");
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             console.log("ESP32 firmware upload and flash completed!");
@@ -481,6 +482,7 @@
           }
         }, false);
         xhr.open("POST", "/updateZB", true);
+        xhr.setRequestHeader("X-Gateway-Request", "1");
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             console.log("Success!");
