@@ -353,7 +353,7 @@ void startAP(const bool start)
     Serial.println("[startAP] Starting AP mode...");
     WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
     char apSsid[32];  // Increased to 32 to safely hold SSID + null terminator
-    getDeviceID(apSsid);
+    getDeviceID(apSsid, sizeof(apSsid));
     Serial.print("[startAP] SSID: ");
     Serial.println(apSsid);
     bool apResult = WiFi.softAP(apSsid); //, WIFIPASS);

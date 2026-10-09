@@ -49,7 +49,7 @@ void mqttReconnect()
     const char *willMessage = "offline";
     boolean willRetain = false;
     char deviceIdArr[20];
-    getDeviceID(deviceIdArr);
+    getDeviceID(deviceIdArr, sizeof(deviceIdArr));
 
     if (clientPubSub.connect(String(deviceIdArr).c_str(), MqttSettings.user, MqttSettings.pass, willTopic.c_str(), willQoS, willRetain, willMessage))
     {
@@ -250,7 +250,7 @@ void mqttPublishDiscovery()
     String deviceName(MqttSettings.topic);
 
     char deviceIdArr[20];
-    getDeviceID(deviceIdArr);
+    getDeviceID(deviceIdArr, sizeof(deviceIdArr));
 
     // Minimal device reference (ids only) used by every entity.
     JsonDocument via;

@@ -16,6 +16,7 @@ extern void run_profiling_tests(void);
 extern void run_web_csrf_tests(void);
 extern void run_boot_guard_logic_tests(void);
 extern void run_fw_verify_tests(void);
+extern void run_device_id_tests(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -38,5 +39,6 @@ int main(int argc, char **argv) {
     run_web_csrf_tests();
     run_boot_guard_logic_tests();
     run_fw_verify_tests();
+    run_device_id_tests();
     return UNITY_END();
 }

@@ -393,7 +393,7 @@ void setup()
   printLogMsg("Setup done");
 
   char deviceIdArr[20];
-  getDeviceID(deviceIdArr);
+  getDeviceID(deviceIdArr, sizeof(deviceIdArr));
 
   DEBUG_PRINTLN(String(deviceIdArr));
   printLogMsg(String(deviceIdArr));
@@ -461,7 +461,6 @@ void loop(void)
   profilingLoopTick(loopStartUs);
 #endif
 }
-
 
 
 
