@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- Releases fall back to generated notes when the changelog section is empty or missing. Full-flash artifacts reuse the platform's checked esptool merge, including OTA initialization data; builds stop on missing/empty artifacts. Generated CSS is no longer tracked, and firmware build/release/lint jobs no longer install unused Node tooling.
 - Factory reset clears MQTT credentials too, MQTT retains offline availability after an unexpected disconnect, and the serial page selects saved 38400 baud correctly. WireGuard asks for a plain IPv4 local address and rejects unsupported CIDR input when enabled.
 - Update checks use this repository and compare version components correctly, including dirty/local builds. WiFi scans label open, enterprise, and WPA3 networks correctly; rejected saves/commands no longer display success.
 - Open WiFi networks and one-character SSIDs work as saved fallback networks. Switching static WiFi back to DHCP clears the static address before joining; a later sustained WiFi outage starts the recovery AP, which stops once WiFi returns. Temperature reads no longer turn off a radio acquired by a join, scan, or recovery AP.

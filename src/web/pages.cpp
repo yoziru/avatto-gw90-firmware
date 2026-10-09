@@ -33,10 +33,8 @@ extern zbVerStruct zbVer;
 
 namespace
 {
-// Reused across page/status requests so the (several-KiB) document pool is
-// allocated once and never freed, instead of being churned on every 5 s
-// status poll - that alloc/free cycle was the main source of heap
-// fragmentation on this gateway. clear() keeps the pool capacity.
+// Shared document because callers borrow the returned reference. ArduinoJson
+// 7 clear() releases its pools; this is not an allocation/fragmentation cache.
 JsonDocument s_rootData;
 } // namespace
 
