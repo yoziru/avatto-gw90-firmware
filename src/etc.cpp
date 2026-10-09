@@ -11,6 +11,7 @@
 #include "web.h"
 #include "log.h"
 #include "etc.h"
+#include "device_id.h"
 #include "zones.h"
 
 extern CCTools CCTool;
@@ -280,30 +281,9 @@ void ledUSBToggle()
   digitalWrite(LED_USB, !digitalRead(LED_USB));
 }
 
-void getDeviceID(char *arr)
+void getDeviceID(char *arr, size_t capacity)
 {
-  uint64_t mac = ESP.getEfuseMac();
-  uint8_t a = 0;
-  uint8_t b = 0;
-  a ^= mac >> 8 * 0;
-  a ^= mac >> 8 * 1;
-  a ^= mac >> 8 * 2;
-  a ^= mac >> 8 * 3;
-  b ^= mac >> 8 * 4;
-  b ^= mac >> 8 * 5;
-  b ^= mac >> 8 * 6;
-  b ^= mac >> 8 * 7;
-
-  char buf[20];
-
-  sprintf(buf, "%02x%02x", a, b);
-
-  for (uint8_t cnt = 0; cnt < strlen(buf); cnt++)
-  {
-    buf[cnt] = toupper(buf[cnt]);
-  }
-
-  sprintf(arr, "%s-%s", deviceModel, buf);
+  formatDeviceID(arr, capacity, deviceModel, ESP.getEfuseMac());
 }
 
 void writeDefaultConfig(const char *path, JsonDocument &doc)

@@ -23,7 +23,7 @@ void zigbeeRestart();
 void ledPowerToggle();
 void ledUSBToggle();
 
-void getDeviceID(char * arr);
+void getDeviceID(char *arr, size_t capacity);
 void writeDefaultConfig(const char *path, JsonDocument& doc);
 
 void resetSettings();

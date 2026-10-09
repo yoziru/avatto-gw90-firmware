@@ -242,7 +242,7 @@ bool loadConfigMqtt()
   if (!LittleFS.exists(configFileMqtt))
   {
     char deviceIdArr[20];
-    getDeviceID(deviceIdArr);
+    getDeviceID(deviceIdArr, sizeof(deviceIdArr));
 
     JsonDocument doc;
     doc[enable] = 0;

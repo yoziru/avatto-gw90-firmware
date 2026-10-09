@@ -330,8 +330,8 @@ JsonDocument &getRootData()
     if (ConfigSettings.apStarted)
     {
         String AP_NameString;
-        char apSsid[18];
-        getDeviceID(apSsid);
+        char apSsid[20];
+        getDeviceID(apSsid, sizeof(apSsid));
         char wifiSsidBuf[35];
         sprintf(wifiSsidBuf, "%s (no password)", apSsid);
         doc[wifiSsid] = wifiSsidBuf;
