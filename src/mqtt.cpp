@@ -181,6 +181,7 @@ void mqttPublishIo(String const &io, String const &state)
 
 void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
+    if (ConfigSettings.zbFlashing) return;
     (void)topic;
     const MqttCmd cmd = parseMqttCommand(payload, length);
     if (cmd == MqttCmd::None)

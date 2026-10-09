@@ -242,6 +242,7 @@ float getCPUtemp()
 
 void zigbeeRouterRejoin()
 {
+  if (ConfigSettings.zbFlashing) return;
   printLogMsg("Router rejoin begin");
   DEBUG_PRINTLN(F("Router rejoin begin"));
   CCTool.routerRejoin();
@@ -251,6 +252,7 @@ void zigbeeRouterRejoin()
 
 void zigbeeEnableBSL()
 {
+  if (ConfigSettings.zbFlashing) return;
   printLogMsg("ZB enable BSL");
   DEBUG_PRINTLN(F("ZB enable BSL"));
   CCTool.enterBSL();
@@ -260,6 +262,7 @@ void zigbeeEnableBSL()
 
 void zigbeeRestart()
 {
+  if (ConfigSettings.zbFlashing) return;
   printLogMsg("ZB RST begin");
   DEBUG_PRINTLN(F("ZB RST begin"));
   CCTool.restart();

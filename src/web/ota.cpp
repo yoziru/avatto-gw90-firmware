@@ -87,6 +87,15 @@ bool verifyFirmwareSignature()
 }
 } // namespace
 
+bool startZbFlashTask()
+{
+    if (xTaskCreatePinnedToCore(checkFwHexTask, "CheckFWHex", 8192, const_cast<char *>(tempFile), 3, NULL, 0) == pdPASS)
+        return true;
+    ConfigSettings.zbFlashing = false;
+    sendEvent("ZB_FW_err", sizeof("ZB_FW_err"), "Could not start firmware update task");
+    return false;
+}
+
 void checkFwHexTask(void *param)
 {
     const char *hexFilePath = static_cast<const char *>(param);
@@ -108,6 +117,7 @@ void checkFwHexTask(void *param)
 
     Serial.println("[ZB_FW_TASK] Firmware update task completed");
 
+    ConfigSettings.zbFlashing = false;
     vTaskDelete(NULL);
 }
 

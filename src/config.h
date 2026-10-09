@@ -2,6 +2,7 @@
 #define CONFIG_H_
 
 #include <Arduino.h>
+#include <atomic>
 #include <CircularBuffer.hpp>
 #include "version.h"
 
@@ -103,7 +104,7 @@ struct ConfigSettingsStruct
     IPAddress fwIp;                    // Firmware update IP
 
     bool zbLedState;                   // ZB LED state
-    bool zbFlashing;                   // ZB LED flashing
+    std::atomic<bool> zbFlashing{false}; // update owns UART and firmware files
     char timeZone[50];                 // Time zone
 };
 

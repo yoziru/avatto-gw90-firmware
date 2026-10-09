@@ -106,6 +106,7 @@ void bootGuardBegin()
 
 void bootGuardLoop()
 {
+    if (ConfigSettings.zbFlashing) return; // never reboot during coordinator erase/write
     if (!bootGuardArmed)
     {
         return;

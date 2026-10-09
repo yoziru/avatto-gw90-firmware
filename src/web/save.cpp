@@ -112,6 +112,10 @@ void handleSaveParams()
 {
     if (!checkAuth())
         return;
+    if (ConfigSettings.zbFlashing) {
+        serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update in progress");
+        return;
+    }
     String result;
     JsonDocument doc;
     const char *pageId = "pageId";

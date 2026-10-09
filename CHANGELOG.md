@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- Zigbee updates now exclusively own the coordinator UART and firmware files until completion. Failed erase/download/data acknowledgments stop flashing instead of reporting success, and repeated updates re-enter the bootloader correctly.
 - Corrupt, truncated, overlapping, and out-of-range Zigbee HEX images are rejected before flashing; long HEX records no longer overrun the validation buffer.
 - Opening the status page while the recovery access point is active no longer overwrites stack memory; device IDs are bounded to their destination buffers.
 - **The status page reports the chip's real temperature** instead of a stand-in that was auto-adjusted on first boot to look like a ~30 °C room. That calibration hid the actual die temperature (around 70 °C on this gateway), so overheating would have gone unnoticed. The value is now the raw ESP32 die temperature and is labelled "CPU temperature"; it is normal for it to read far above room temperature. Until the first radio-powered read completes the status page shows `--` and MQTT omits the value.

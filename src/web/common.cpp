@@ -193,6 +193,10 @@ void initWebServer()
                     updateResponded = true;
                     return;
                 }
+                if (ConfigSettings.zbFlashing) {
+                    sendUpdateResponse(HTTP_CODE_CONFLICT, "Zigbee update in progress");
+                    return;
+                }
 
                 updateRejected = serverWeb.arg("force") != "1";
                 if (updateRejected)
@@ -260,6 +264,11 @@ void initWebServer()
                 zbUploadAuth = checkAuth();
                 if (!zbUploadAuth)
                     return;
+                if (ConfigSettings.zbFlashing.exchange(true)) {
+                    zbUploadAuth = false;
+                    serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update already in progress");
+                    return;
+                }
                 DEBUG_PRINTLN(String(millis()) + " Upload zigbee fw file: " + String(upload.filename.c_str()));
                 printLogMsg("[ZB_FW] upload: " + String(upload.filename.c_str()));
             }
@@ -283,6 +292,10 @@ void initWebServer()
                 if (!fwFile)
                 {
                     DEBUG_PRINTLN(F("- failed to open file for writing"));
+                    ConfigSettings.zbFlashing = false;
+                    opened = false;
+                    zbUploadAuth = false;
+                    serverWeb.send(500, contTypeText, "Could not create firmware file");
                     return;
                 }
             }
@@ -304,13 +317,16 @@ void initWebServer()
                 DEBUG_PRINTLN("Total file size: " + String(upload.totalSize));
 
                 Serial.println("[ZB_FW] Validating and flashing firmware...");
-                xTaskCreatePinnedToCore(checkFwHexTask,
-                            "CheckFWHex",
-                            8192,
-                            (void *)tempFile,
-                            3,
-                            NULL,
-                            0);
+                if (!startZbFlashTask()) {
+                    zbUploadAuth = false;
+                    serverWeb.send(500, contTypeText, "Could not start firmware update task");
+                }
+            }
+            else if (upload.status == UPLOAD_FILE_ABORTED) {
+                fwFile.close();
+                LittleFS.remove(tempFile);
+                opened = zbUploadAuth = false;
+                ConfigSettings.zbFlashing = false;
             }
         });
 
