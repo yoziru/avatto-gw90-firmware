@@ -208,6 +208,10 @@ void handleZigbeeBSL()
 {
     if (checkAuth())
     {
+        if (ConfigSettings.zbFlashing) {
+            serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update in progress");
+            return;
+        }
         zigbeeEnableBSL();
         serverWeb.send(HTTP_CODE_OK, contTypeText, "");
     }
@@ -217,6 +221,10 @@ void handleZigbeeRestart()
 {
     if (checkAuth())
     {
+        if (ConfigSettings.zbFlashing) {
+            serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update in progress");
+            return;
+        }
         zigbeeRestart();
         serverWeb.send(HTTP_CODE_OK, contTypeText, "");
     }
@@ -263,7 +271,10 @@ void handleApi()
         case API_FLASH_ZB:
         {
             Serial.println("\n\n========== api_update zigbee =========");
-            ConfigSettings.zbFlashing = 1;
+            if (ConfigSettings.zbFlashing) {
+                serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update already in progress");
+                break;
+            }
             const char *fwurlArg = "fwurl";
             const char *fwRoleArg = "role";
             const char *confirmRoleSwitchArg = "confirmRoleSwitch";
@@ -350,6 +361,7 @@ void handleApi()
                     break;
                 }
 
+                ConfigSettings.zbFlashing = true;
                 serverWeb.send(HTTP_CODE_OK, contTypeText, ok);
 
                 uint8_t evWaitCount = 0;
@@ -485,7 +497,7 @@ void handleApi()
                     {
                         LittleFS.remove(downloadedFirmwareFile);
                         sendEvent(tagZB_FW_info, sizeof(tagZB_FW_info), "Validating and flashing...");
-                        xTaskCreatePinnedToCore(checkFwHexTask, "CheckFWHex", 8192, (void *)tempFile, 3, NULL, 0);
+                        if (startZbFlashTask()) return; // task releases ownership
                     }
                     else
                     {
@@ -517,6 +529,10 @@ void handleApi()
         break;
         case API_CMD:
         {
+            if (ConfigSettings.zbFlashing) {
+                serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update in progress");
+                break;
+            }
             enum CMD_t : uint8_t
             {
                 CMD_ZB_ROUTER_RECON = 0,

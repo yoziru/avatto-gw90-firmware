@@ -104,6 +104,9 @@ jobs:
       - name: Check HEX parser safety
         run: python tools/test_intelhex.py
 
+      - name: Check Zigbee flash failures
+        run: python tools/test_zigbee_flash.py
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -167,6 +167,7 @@ void handleLongBtn()
 
 void toggleSerialMode()
 {
+  if (ConfigSettings.zbFlashing) return;
   Serial.println("\n========== MODE TOGGLE TRIGGERED ==========");
   
   const char* modeNames[] = {"Network", "Serial"};
@@ -461,7 +462,6 @@ void loop(void)
   profilingLoopTick(loopStartUs);
 #endif
 }
-
 
 
 

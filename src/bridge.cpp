@@ -139,6 +139,7 @@ void printSendSocket(size_t bytes_read, const uint8_t *serial_buf)
 
 void processSocketBridge()
 {
+  if (ConfigSettings.zbFlashing) return;
   uint16_t net_bytes_read = 0;
   uint8_t net_buf[BUFFER_SIZE];
 

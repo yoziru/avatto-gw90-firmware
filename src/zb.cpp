@@ -50,6 +50,7 @@ void zbRequestInfoRefresh()
 
 void zbInfoRefreshLoop()
 {
+    if (ConfigSettings.zbFlashing) return;
     if (!zbInfoRefreshPending)
         return;
     if (zbInfoRefreshAttempts > 0 && millis() - zbInfoRefreshLastMs < ZB_INFO_REFRESH_INTERVAL_MS)
@@ -170,6 +171,7 @@ static void getZbRole()
 
 void getZbVer()
 {
+    if (ConfigSettings.zbFlashing) return;
     if (zbInfoDetectState != ZbDetectState::KNOWN)
     {
         zbInfoDetectState = ZbDetectState::DETECTING; // query in flight, nothing to show
@@ -264,6 +266,7 @@ bool zbLedCommand(const byte *cmd, size_t cmdLen)
 
 void zbCheck()
 {
+    if (ConfigSettings.zbFlashing) return;
     bool respOk = false;
     for (uint8_t i = 0; i < 12; i++)
     { // wait for zigbee start
@@ -319,6 +322,7 @@ void zbCheck()
 // corrupt live ZNP frames and break connectivity - do not reintroduce that.
 void zbHealthCheck()
 {
+    if (ConfigSettings.zbFlashing) return;
     if (ConfigSettings.coordinator_mode == CoordinatorMode::PASSTHROUGH)
     {
         return; // Serial passthrough: nothing to monitor
@@ -352,6 +356,7 @@ void zbHealthCheck()
 
 void zbLedToggle()
 {
+    if (ConfigSettings.zbFlashing) return;
     if (ConfigSettings.zbLedState == 0)
     {
         printLogMsg("[ZB] LED toggle ON");
@@ -396,7 +401,7 @@ void parseCallback(uint32_t address, uint8_t len, uint8_t *data, size_t currentP
 int8_t runFlash(const char *hexFilePath,uint32_t binsize)
 {
     //const char *tempFile = "/config/fw.hex";
-    File fwFile = LittleFS.open(tempFile, "r");
+    File fwFile = LittleFS.open(hexFilePath, "r");
     if (!fwFile)
     {
         DEBUG_PRINTLN(F("Failed to open fw.hex file"));
@@ -416,7 +421,16 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
         fwFile.close();
         return -1;
     }
-    zbFlashStart(0,zbFlashTotalSize);
+    zbRoleLiveThisBoot = false;
+    if (!zbFlashStart(0, zbFlashTotalSize)) {
+        fwFile.close();
+        Serial2.updateBaudRate(ConfigSettings.serialSpeed);
+        CCTool.restart();
+        bslActive = false;
+        printLogMsg("[ZB_FLASH] Failed to start flash");
+        return -1;
+    }
+    bool flashSucceeded = false;
 
     size_t packetCount = 0;
 
@@ -520,7 +534,6 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                     if (totalBytes >= 240)
                     {
                         packetCount++;
-                        zbFlashTotalSent += totalBytes;
                         
                         DEBUG_PRINT("Packet #");
                         DEBUG_PRINT(packetCount);
@@ -535,7 +548,8 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                             i++;
                             if(i>10)goto flash_quit;
                         }
-                        zbSendCommand(0x24, dataBuffer, totalBytes, 3);
+                        if (!zbSendCommand(0x24, dataBuffer, totalBytes, 3) || !zbCheckLastCmd()) goto flash_quit;
+                        zbFlashTotalSent += totalBytes;
                         
                         memset(dataBuffer, 0, sizeof(dataBuffer));
                         totalBytes = 0;
@@ -544,7 +558,7 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                         
                         if (zbFlashTotalSent - lastProgressSize >= progressInterval)
                         {
-                            uint8_t percent = ((float)zbFlashTotalSent / zbFlashTotalSize) * 100;
+                            uint8_t percent = min(99, int(((float)zbFlashTotalSent / zbFlashTotalSize) * 100));
                             sendEvent("ZB_FW_flashing", sizeof("ZB_FW_flashing"), String(percent));
                             lastProgressSize = zbFlashTotalSent;
                         }
@@ -557,7 +571,6 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
             {
                 // Buffer is full, send current data first
                 packetCount++;
-                zbFlashTotalSent += totalBytes;
                 
                 DEBUG_PRINT("Packet #");
                 DEBUG_PRINT(packetCount);
@@ -575,7 +588,8 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
                     i++;
                     if(i>10)goto flash_quit;
                 }
-                zbSendCommand(0x24, dataBuffer, totalBytes, 3);
+                if (!zbSendCommand(0x24, dataBuffer, totalBytes, 3) || !zbCheckLastCmd()) goto flash_quit;
+                zbFlashTotalSent += totalBytes;
                 
                 // Clear buffer, update start address
                 memset(dataBuffer, 0, sizeof(dataBuffer));
@@ -587,7 +601,7 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
 
                 if (zbFlashTotalSent - lastProgressSize >= progressInterval)
                 {
-                    uint8_t percent = ((float)zbFlashTotalSent / zbFlashTotalSize) * 100;
+                    uint8_t percent = min(99, int(((float)zbFlashTotalSent / zbFlashTotalSize) * 100));
                     sendEvent("ZB_FW_flashing", sizeof("ZB_FW_flashing"), String(percent));
                     lastProgressSize = zbFlashTotalSent;
                 }
@@ -612,7 +626,6 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
     if (totalBytes > 0)
     {
         packetCount++;
-        zbFlashTotalSent += totalBytes;
         
         DEBUG_PRINT("Packet #");
         DEBUG_PRINT(packetCount);
@@ -630,20 +643,17 @@ int8_t runFlash(const char *hexFilePath,uint32_t binsize)
             i++;
             if(i>10)goto flash_quit;
         }
-        zbSendCommand(0x24, dataBuffer, totalBytes, 3);
-
-        // Report final progress
-        zbFlashTotalSent = zbFlashTotalSize;
-
-        // Send flash complete event
-        sendEvent("ZB_FW_flashing", sizeof("ZB_FW_flashing"), "100");
+        if (!zbSendCommand(0x24, dataBuffer, totalBytes, 3) || !zbCheckLastCmd()) goto flash_quit;
+        zbFlashTotalSent += totalBytes;
     }
     i=0;              
     while(!zbCheckLastCmd())
     {
         i++;
-        if(i>10)break;
+        if(i>10)goto flash_quit;
     }
+    flashSucceeded = zbFlashTotalSent == zbFlashTotalSize;
+    if (flashSucceeded) sendEvent("ZB_FW_flashing", sizeof("ZB_FW_flashing"), "100");
 flash_quit:
     fwFile.close();
     // The coordinator's firmware may just have changed: the role is no longer
@@ -651,10 +661,11 @@ flash_quit:
     zbRoleLiveThisBoot = false;
     Serial2.updateBaudRate(ConfigSettings.serialSpeed); 
     CCTool.restart();         // Restart
+    bslActive = false;
     DEBUG_PRINTLN(F("fw.hex data send complete"));
     Serial.printf("total send: %ld",zbFlashTotalSent);
-    printLogMsg(String("[ZB_FLASH] fw.hex data send complete | Total: ") + String(zbFlashTotalSent) + " bytes");
-    if(zbFlashTotalSent == zbFlashTotalSize)return 0;
+    printLogMsg(String(flashSucceeded ? "[ZB_FLASH] Complete | Total: " : "[ZB_FLASH] Failed | Acknowledged: ") + String(zbFlashTotalSent) + " bytes");
+    if(flashSucceeded)return 0;
     return -1;
 }
 
@@ -770,6 +781,7 @@ bool zbWaitForAck(uint32_t timeout)
                 return false;
             }
         }
+        delay(1);
     }
     return false;
 }
@@ -789,7 +801,7 @@ bool zbSendCmdResponse(bool ack)
 
 bool zbSendCommand(uint8_t cmd, uint8_t *data, uint8_t len,uint8_t timeout)
 {
-    if(len > 252)return false;
+    if (len > 252 || (len > 0 && data == nullptr)) return false;
 
     byte cmd_buf[255] = {0}; // 3 header bytes + max 252 payload
 
@@ -802,15 +814,13 @@ bool zbSendCommand(uint8_t cmd, uint8_t *data, uint8_t len,uint8_t timeout)
         cmd_buf[i + 3] = data[i];
     }
 
-    Serial2.write(cmd_buf, len + 3);
+    if (Serial2.write(cmd_buf, len + 3) != size_t(len + 3)) return false;
 
-    return zbWaitForAck(1);
+    return zbWaitForAck(timeout);
 }
 
-// Read a ZNP response frame into `data` (capacity `dataLen`). Returns 1 on a
-// checksum-valid frame, 0 on timeout/corruption. The payload size announced in
-// the frame header is clamped to the caller's buffer to avoid stack corruption
-// from a malformed coordinator response.
+// Read a bootloader reply into `data` (capacity `dataLen`). Returns 1 on a
+// complete checksum-valid packet, 0 on timeout/corruption/oversized payload.
 static uint32_t zbGetResponseData(uint8_t *data, uint8_t dataLen, uint8_t timeout)
 {
     unsigned int i = 0;
@@ -830,15 +840,18 @@ static uint32_t zbGetResponseData(uint8_t *data, uint8_t dataLen, uint8_t timeou
         }
         if (i == 2)
             break;
+        delay(1);
     }
 
     if (i < 2)
         return 0;
 
+    if (data[0] < 3) return 0;
     numPayloadBytes = data[0] - 2;
     if (numPayloadBytes > dataLen)
     {
-        numPayloadBytes = dataLen; // clamp to the caller's buffer
+        zbSendCmdResponse(false);
+        return 0;
     }
     checksum = data[1];
 
@@ -851,6 +864,7 @@ static uint32_t zbGetResponseData(uint8_t *data, uint8_t dataLen, uint8_t timeou
         }
         if (i == numPayloadBytes)
             break;
+        delay(1);
     }
 
     if (i < numPayloadBytes)
@@ -910,7 +924,7 @@ bool zbCheckLastCmd(void)
     Serial.printf("update baud\n");
     Serial2.updateBaudRate(1000000);         // Increase baud rate
     Serial.printf("erase flash\n");
-    zbEraseFlash(0,size);
+    if (!zbEraseFlash(0, size) || !zbCheckLastCmd()) return false;
 
     Serial.printf("send start\n");
     if(zbSendCommand(0x21,buf,8,2))

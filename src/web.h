@@ -67,6 +67,7 @@ void handleSaveParams();
 void wifiCommitPending();
 
 void checkFwHexTask(void *param);
+bool startZbFlashTask(); // caller holds zbFlashing; task releases it
 void progressFunc(unsigned int progress, unsigned int total);
 String getEspUpdate(String esp_fw_url, bool force);
 
