@@ -1,4 +1,5 @@
 #include <unity.h>
+#include <string.h>
 #include <string>
 #include "../lib/IntelHex/src/IntelHexRecord.h"
 
