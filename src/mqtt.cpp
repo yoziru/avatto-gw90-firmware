@@ -47,7 +47,7 @@ void mqttReconnect()
     byte willQoS = 0;
     String willTopic = String(MqttSettings.topic) + "/avty";
     const char *willMessage = "offline";
-    boolean willRetain = false;
+    boolean willRetain = true;
     char deviceIdArr[20];
     getDeviceID(deviceIdArr, sizeof(deviceIdArr));
 

@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- Factory reset clears MQTT credentials too, MQTT retains offline availability after an unexpected disconnect, and the serial page selects saved 38400 baud correctly. WireGuard asks for a plain IPv4 local address and rejects unsupported CIDR input when enabled.
 - Update checks use this repository and compare version components correctly, including dirty/local builds. WiFi scans label open, enterprise, and WPA3 networks correctly; rejected saves/commands no longer display success.
 - Open WiFi networks and one-character SSIDs work as saved fallback networks. Switching static WiFi back to DHCP clears the static address before joining; a later sustained WiFi outage starts the recovery AP, which stops once WiFi returns. Temperature reads no longer turn off a radio acquired by a join, scan, or recovery AP.
 - Firmware transfers now fail visibly on write errors, stalled/incomplete downloads, and aborted uploads. Remote ESP32 OTA accepts HTTP and HTTPS URLs and unknown-length HTTP/1.0 responses while yielding and servicing the Zigbee bridge. The OTA script uses Digest authentication and verifies upload acceptance plus a reboot instead of reporting false success.

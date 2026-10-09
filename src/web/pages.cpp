@@ -511,7 +511,7 @@ void handleSerial()
     }
     else if (ConfigSettings.serialSpeed == 38400)
     {
-        doc["8400"] = checked;
+        doc["38400"] = checked;
     }
     else if (ConfigSettings.serialSpeed == 57600)
     {
