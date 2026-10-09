@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- Zigbee chip detection safely rejects missing, truncated, wrong-sized, and corrupt bootloader replies instead of crashing or leaking memory; IEEE protocol capability is checked correctly.
 - Zigbee updates now exclusively own the coordinator UART and firmware files until completion. Failed erase/download/data acknowledgments stop flashing instead of reporting success, and repeated updates re-enter the bootloader correctly.
 - Corrupt, truncated, overlapping, and out-of-range Zigbee HEX images are rejected before flashing; long HEX records no longer overrun the validation buffer.
 - Opening the status page while the recovery access point is active no longer overwrites stack memory; device IDs are bounded to their destination buffers.
