@@ -110,6 +110,11 @@ static uint8_t tempSamples[kTempSampleCount] = {0};
 static uint8_t tempSampleIdx = 0;
 static bool tempPowered = false;
 
+void tempSensorReleaseRadio()
+{
+  tempPowered = false;
+}
+
 // Median of a 5-sample buffer (rejects outliers from the coarse TSENS).
 static uint8_t median5(uint8_t s[5])
 {
@@ -143,7 +148,7 @@ static void tempSensorRefresh()
   }
   tempStageStartMs = now;
   tempSampleIdx = 0;
-  if (WiFi.getMode() == WIFI_MODE_STA || WiFi.getMode() == WIFI_MODE_APSTA)
+  if (WiFi.getMode() != WIFI_OFF)
   {
     // Radio already powered (STA fallback active): sample immediately.
     tempStage = TempReadStage::Sampling;

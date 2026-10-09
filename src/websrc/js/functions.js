@@ -1274,7 +1274,7 @@ function wifiJoinOther() {
 	const ssid = ((getEl("otherSsid") || {}).value || "").trim();
 	const pass = (getEl("otherPass") || {}).value || "";
 	const openNet = (getEl("otherSec") || {}).value === "open";
-	if (ssid.length < 2) {
+	if (ssid.length < 1) {
 		const other = getEl("otherSsid");
 		if (other) other.classList.add("is-invalid");
 		if (statusEl) { statusEl.className = "wifi-join-status err"; statusEl.textContent = t("w.enterSsid"); }

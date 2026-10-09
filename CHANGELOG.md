@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- Open WiFi networks and one-character SSIDs work as saved fallback networks. Switching static WiFi back to DHCP clears the static address before joining; a later sustained WiFi outage starts the recovery AP, which stops once WiFi returns. Temperature reads no longer turn off a radio acquired by a join, scan, or recovery AP.
 - Firmware transfers now fail visibly on write errors, stalled/incomplete downloads, and aborted uploads. Remote ESP32 OTA accepts HTTP and HTTPS URLs and unknown-length HTTP/1.0 responses while yielding and servicing the Zigbee bridge. The OTA script uses Digest authentication and verifies upload acceptance plus a reboot instead of reporting false success.
 - Browser requests cannot bypass mutation protection by omitting Origin/Referer. State-changing API calls and uploads now require `X-Gateway-Request: 1`; the web UI and OTA script supply it automatically. Add that header to custom scripts and integrations.
 - OTA rollback now runs at the start of setup when the startup retry budget is exhausted, recovering firmware that crashes before reaching the main loop. Crashes before setup still require bootloader-level rollback support.

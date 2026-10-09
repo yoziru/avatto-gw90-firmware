@@ -292,6 +292,10 @@ void handleSaveParams()
             const String gwArg = serverWeb.arg("ipGW");
 
             const WifiSaveMode mode = wifiSaveMode(ssidArg.c_str(), ConfigSettings.ssid);
+            if (mode != WifiSaveMode::Forget && !wifiHasCredentials(ssidArg.c_str(), passArg.c_str())) {
+                serverWeb.send(HTTP_CODE_BAD_REQUEST, contTypeText, "invalid WiFi SSID or password length");
+                return;
+            }
 
             if (mode == WifiSaveMode::Forget)
             {

@@ -12,7 +12,7 @@
 // network. An already-saved network may be updated immediately (its params are
 // being tweaked, there is nothing new to validate), and "forget" always clears.
 enum class WifiSaveMode : uint8_t {
-    Forget,        // SSID empty/short -> clear saved config, drop STA connection
+    Forget,        // SSID empty -> clear saved config, drop STA connection
     SaveNow,       // SSID matches the saved network -> persist now, then reconnect
     ConnectFirst   // NEW network -> stage in RAM, persist only on successful connect
 };
@@ -25,16 +25,18 @@ inline WifiSaveMode wifiSaveMode(const char *ssid, const char *savedSsid) noexce
     {
         return WifiSaveMode::Forget;
     }
-    // The handler treats an SSID shorter than 2 chars as "forget".
-    if (ssid[1] == '\0')
-    {
-        return WifiSaveMode::Forget;
-    }
     if (savedSsid != nullptr && strcmp(ssid, savedSsid) == 0)
     {
         return WifiSaveMode::SaveNow;
     }
     return WifiSaveMode::ConnectFirst;
+}
+
+inline bool wifiHasCredentials(const char *ssid, const char *password) noexcept
+{
+    if (!ssid || !password || strlen(ssid) == 0 || strlen(ssid) > 32) return false;
+    const size_t length = strlen(password);
+    return length == 0 || (length >= 8 && length <= 63);
 }
 
 // True when the request persists immediately instead of waiting for a connect.

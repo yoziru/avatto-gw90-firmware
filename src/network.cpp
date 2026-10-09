@@ -23,6 +23,7 @@ WiFiServer server(TCP_LISTEN_PORT, MAX_SOCKET_CLIENTS);
 
 WireGuard wg;
 volatile uint16_t wifiLastDisconnectReason = 0;
+static unsigned long wifiFallbackLastOnlineMs = 0;
 
 Ticker tmrNetworkOverseer(handleTmrNetworkOverseer, overseerInterval, 0, MILLIS);
 Ticker tmrZbHealth(zbHealthCheck, 30000, 0, MILLIS);
@@ -146,7 +147,6 @@ void handleTmrNetworkOverseer()
       if (ConfigSettings.wifiFallbackActive)
       {
         ConfigSettings.wifiFallbackActive = false;
-        ConfigSettings.wifiFallbackHadConnection = false;
         Serial.println(F("[OVERSEER] ETH recovered, stopping WiFi fallback"));
         startAP(false);   // tear down AP + DNS if it was the last resort
         WiFi.disconnect();
@@ -161,10 +161,11 @@ void handleTmrNetworkOverseer()
       {
         if (!ConfigSettings.wifiFallbackActive)
         {
-          if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
+          if (wifiHasCredentials(ConfigSettings.ssid, ConfigSettings.password))
           {
             // Ethernet down: try WiFi STA as a secondary uplink before AP.
             ConfigSettings.wifiFallbackActive = true;
+            wifiFallbackLastOnlineMs = millis();
             Serial.println(F("[OVERSEER] ETH down, trying WiFi STA fallback"));
             connectWifi();
             // keep the overseer running so we notice when ETH comes back
@@ -180,18 +181,19 @@ void handleTmrNetworkOverseer()
         }
         else if (WiFi.isConnected())
         {
-          ConfigSettings.wifiFallbackHadConnection = true;
+          wifiFallbackLastOnlineMs = millis();
+          if (ConfigSettings.apStarted) startAP(false);
           startServers();
           // keep the overseer running to catch ETH recovery
         }
-        else if (!ConfigSettings.apStarted && !ConfigSettings.wifiFallbackHadConnection &&
-                 tmrNetworkOverseer.counter() > overseerMaxRetry + wifiFallbackMaxRetry)
+        else if (!ConfigSettings.apStarted &&
+                 millis() - wifiFallbackLastOnlineMs >= uint32_t(overseerInterval) * wifiFallbackMaxRetry)
         {
-          // WiFi STA never connected during this fallback: last-resort AP.
+          // STA never joined or subsequently stayed down: last-resort AP.
           Serial.println(F("[OVERSEER] WiFi fallback failed, starting AP"));
           startAP(true);
         }
-        else if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
+        else if (wifiHasCredentials(ConfigSettings.ssid, ConfigSettings.password))
         {
           // WiFi was up before but dropped, or still connecting: retry STA.
           connectWifi();
@@ -347,6 +349,7 @@ void startAP(const bool start)
   {
     if (!start)
       return;
+    tempSensorReleaseRadio(); // AP now owns the radio, not the temperature reader
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
 
@@ -386,7 +389,7 @@ void connectWifi()
   }
   lastBeginMs = now;
 
-  if ((strlen(ConfigSettings.ssid) >= 2) && (strlen(ConfigSettings.password) >= 8))
+  if (wifiHasCredentials(ConfigSettings.ssid, ConfigSettings.password))
   {
     DEBUG_PRINTLN(F("[connectWifi] Ok SSID & PASS"));
     connectWifiSta(ConfigSettings.ssid, ConfigSettings.password, ConfigSettings.dhcpWiFi,
@@ -408,6 +411,7 @@ void connectWifi()
 // is running, applies a static IP when DHCP is off.
 void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *ip, const char *mask, const char *gw)
 {
+  tempSensorReleaseRadio();
   WiFi.persistent(false);
   // Retries are driven by the overseer and the wifi save flow, never by the
   // radio itself - otherwise a join to a non-existent SSID would retry
@@ -424,22 +428,27 @@ void connectWifiSta(const char *ssid, const char *pass, bool dhcp, const char *i
   delay(100);
 
   wifiLastDisconnectReason = 0;
-  WiFi.begin(ssid, pass);
-  WiFi.setSleep(false);
-  DEBUG_PRINTLN(F("[connectWifiSta] WiFi.begin"));
-
+  bool configured;
   if (!dhcp)
   {
     IPAddress ip_address = parse_ip_address(ip);
     IPAddress gateway_address = parse_ip_address(gw);
     IPAddress netmask = parse_ip_address(mask);
-    WiFi.config(ip_address, gateway_address, netmask);
+    configured = WiFi.config(ip_address, gateway_address, netmask);
     DEBUG_PRINTLN(F("[connectWifiSta] WiFi.config"));
   }
   else
   {
+    configured = WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     DEBUG_PRINTLN(F("[connectWifiSta] Try DHCP"));
   }
+  if (!configured) {
+    printLogMsg("WiFi IP configuration failed; join cancelled");
+    return;
+  }
+  WiFi.begin(ssid, pass);
+  WiFi.setSleep(false);
+  DEBUG_PRINTLN(F("[connectWifiSta] WiFi.begin"));
 }
 
 void mDNS_start()

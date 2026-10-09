@@ -38,11 +38,15 @@ static void test_empty_ssid_forgets(void)
     TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::Forget));
 }
 
-// A too-short SSID (< 2 chars) is treated as forget (mirrors the handler).
-static void test_short_ssid_forgets(void)
+// One-character SSIDs are valid; only an empty SSID means forget.
+static void test_single_character_ssid_connects(void)
 {
-    TEST_ASSERT_EQUAL(WifiSaveMode::Forget, wifiSaveMode("A", "Home"));
-    TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::Forget));
+    TEST_ASSERT_EQUAL(WifiSaveMode::ConnectFirst, wifiSaveMode("A", "Home"));
+    TEST_ASSERT_TRUE(wifiHasCredentials("A", ""));
+    TEST_ASSERT_TRUE(wifiHasCredentials("Home", "password"));
+    TEST_ASSERT_FALSE(wifiHasCredentials("Home", "short"));
+    TEST_ASSERT_FALSE(wifiHasCredentials("", "password"));
+    TEST_ASSERT_FALSE(wifiHasCredentials(nullptr, "password"));
 }
 
 // --- Desired behaviour: staged config only commits on a matching connect ---
@@ -117,7 +121,7 @@ void run_wifi_save_logic_tests(void)
     RUN_TEST(test_first_join_is_connect_first);
     RUN_TEST(test_saved_network_persists_now);
     RUN_TEST(test_empty_ssid_forgets);
-    RUN_TEST(test_short_ssid_forgets);
+    RUN_TEST(test_single_character_ssid_connects);
     RUN_TEST(test_commit_requires_matching_connection);
     RUN_TEST(test_persistence_flag_consistency);
     RUN_TEST(test_connect_in_progress_recently_not_restarted);
