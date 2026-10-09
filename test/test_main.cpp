@@ -17,6 +17,7 @@ extern void run_web_csrf_tests(void);
 extern void run_boot_guard_logic_tests(void);
 extern void run_fw_verify_tests(void);
 extern void run_device_id_tests(void);
+extern void run_intel_hex_record_tests(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -40,5 +41,6 @@ int main(int argc, char **argv) {
     run_boot_guard_logic_tests();
     run_fw_verify_tests();
     run_device_id_tests();
+    run_intel_hex_record_tests();
     return UNITY_END();
 }

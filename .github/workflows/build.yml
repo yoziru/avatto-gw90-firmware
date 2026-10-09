@@ -101,6 +101,9 @@ jobs:
       - name: Run unit tests
         run: pio test -e native
 
+      - name: Check HEX parser safety
+        run: python tools/test_intelhex.py
+
   lint:
     runs-on: ubuntu-latest
     steps:
