@@ -58,7 +58,17 @@ static void test_same_origin_ipv6(void) {
     TEST_ASSERT_FALSE(sameOrigin("http://[fe80::1]", "[fe80::2]"));
 }
 
+static void test_mutations_require_non_simple_header(void) {
+    TEST_ASSERT_FALSE(webRequestAllowed("", "gateway.local", true, ""));
+    TEST_ASSERT_FALSE(webRequestAllowed("", "gateway.local", true, "0"));
+    TEST_ASSERT_FALSE(webRequestAllowed("http://gateway.local", "gateway.local", true, ""));
+    TEST_ASSERT_TRUE(webRequestAllowed("", "gateway.local", true, "1"));
+    TEST_ASSERT_FALSE(webRequestAllowed("http://evil.example", "gateway.local", true, "1"));
+    TEST_ASSERT_TRUE(webRequestAllowed("", "gateway.local", false, ""));
+}
+
 void run_web_csrf_tests(void) {
+    RUN_TEST(test_mutations_require_non_simple_header);
     RUN_TEST(test_same_origin_allow_origin);
     RUN_TEST(test_same_origin_allow_origin_with_port);
     RUN_TEST(test_same_origin_allow_referer_with_path);

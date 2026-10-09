@@ -113,6 +113,14 @@ jobs:
       - name: Check early OTA rollback
         run: python tools/test_boot_guard.py
 
+      - name: Check frontend contracts
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24.15'
+
+      - name: Run frontend contracts
+        run: node tools/test_frontend.cjs
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -35,6 +35,7 @@ Please report vulnerabilities privately through GitHub Security Advisories: open
 
 ## Recommendations
 
+- State-changing web/API requests require `X-Gateway-Request: 1`, including uploads and WiFi scans. The UI and OTA script add it; custom clients must do so too. This non-safelisted header forces cross-origin browsers to preflight, which the gateway does not authorize. Do not configure a reverse proxy to grant cross-origin access or inject this header into arbitrary requests. Origin/Referer host checks remain an additional restriction, not the primary CSRF boundary.
 - Never expose the device to the internet (no port forwarding, no DMZ, no cloud proxy).
 - For remote access, use the built-in WireGuard client or a VPN/reverse proxy with TLS.
 - If you enable web auth, use a strong, unique password, and remember that everyone on the LAN still sees the traffic.

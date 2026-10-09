@@ -206,7 +206,7 @@ bool prepareZigbeeFirmware(const char *downloadPath)
 
 void handleZigbeeBSL()
 {
-    if (checkAuth())
+    if (checkAuth(true))
     {
         if (ConfigSettings.zbFlashing) {
             serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update in progress");
@@ -219,7 +219,7 @@ void handleZigbeeBSL()
 
 void handleZigbeeRestart()
 {
-    if (checkAuth())
+    if (checkAuth(true))
     {
         if (ConfigSettings.zbFlashing) {
             serverWeb.send(HTTP_CODE_CONFLICT, contTypeText, "Zigbee update in progress");
@@ -251,7 +251,12 @@ void handleApi()
     const char *wrongArgs = "wrong args";
     const char *ok = "ok";
 
-    if (!checkAuth())
+    const int requestedAction = serverWeb.arg(action).toInt();
+    const bool mutation = requestedAction == API_CMD || requestedAction == API_FLASH_ZB ||
+                          requestedAction == API_STARTWIFISCAN || requestedAction == API_WIFISCANSTATUS ||
+                          requestedAction == API_SEND_HEX ||
+                          (requestedAction == API_GET_PARAM && serverWeb.arg(param) == "zbRole");
+    if (!checkAuth(mutation))
         return;
     if (ConfigSettings.webAuth)
     {

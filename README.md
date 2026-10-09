@@ -45,8 +45,8 @@ Alternatively, once the device is on your network at `http://<ip>`:
 
 1. **Web UI**: `http://<ip>/about` → ESP32 Firmware → select `AVATTO-GW90-Ti.bin` → confirm the unsigned-firmware dialog
 2. **API** (signed firmware, `AVATTO-GW90-Ti.bin.sig` hosted next to it):
-   `curl "http://<ip>/api?action=6&cmd=9&url=http://your-server/AVATTO-GW90-Ti.bin"`
-3. **API** (local/unsigned build): `curl "http://<ip>/api?action=6&cmd=9&url=http://your-server/AVATTO-GW90-Ti.bin&force=1"`
+   `curl -H 'X-Gateway-Request: 1' "http://<ip>/api?action=6&cmd=9&url=http://your-server/AVATTO-GW90-Ti.bin"`
+3. **API** (local/unsigned build): `curl -H 'X-Gateway-Request: 1' "http://<ip>/api?action=6&cmd=9&url=http://your-server/AVATTO-GW90-Ti.bin&force=1"`
 
 Only the non-full `.bin` (offset 0x10000) works for OTA.
 
