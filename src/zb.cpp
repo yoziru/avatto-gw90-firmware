@@ -670,6 +670,7 @@ int8_t checkFwHex(const char *tempFile) // check Zigbee FW file using IntelHEX, 
         String msg = ("Failed to parse the zb_hex HEX file. Corrupted file");
         DEBUG_PRINTLN(msg);
         printLogMsg(msg);
+        return -1;
     }
 
     if (!zb_hex.fileParsed())
@@ -677,6 +678,7 @@ int8_t checkFwHex(const char *tempFile) // check Zigbee FW file using IntelHEX, 
         String msg = ("File not good");
         DEBUG_PRINTLN(msg);
         printLogMsg(msg);
+        return -1;
     }
 
     u_int8_t local_chip_id = ALL_CHIP_ID;
@@ -689,7 +691,8 @@ int8_t checkFwHex(const char *tempFile) // check Zigbee FW file using IntelHEX, 
         DEBUG_PRINTLN(msg);
         printLogMsg(msg);
 
-        if (zb_hex.bslAddr() == local_chip_id && zb_hex.bslPin() == NEED_BSL_PIN && zb_hex.bslLevel() == NEED_BSL_LEVEL) // All series DIO 15 LOW
+        if (zb_hex.bslAddr() == local_chip_id && zb_hex.bslPin() == NEED_BSL_PIN && zb_hex.bslLevel() == NEED_BSL_LEVEL &&
+            zb_hex.getBinSize() <= (local_chip_id == P7_CHIP_ID ? 0xB0000U : 0x58000U)) // All series DIO 15 LOW
         {
             zb_hex.setFileValidated(true);
             String msg = ("BSL config OK");
