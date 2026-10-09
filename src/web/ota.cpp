@@ -16,6 +16,7 @@
 #include "fw_pubkey.h"
 #include "fw_verify.h"
 #include "tls_client.h"
+#include "bridge.h"
 
 namespace
 {
@@ -47,10 +48,16 @@ bool verifyFirmwareSignature()
 
     HTTPClient clientSig;
     NetworkClientSecure client;
+    NetworkClient plainClient;
     trustEspCertificateBundle(client);
     client.setTimeout(10000);
     clientSig.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    clientSig.begin(client, fwSigUrlBuf);
+    NetworkClient &transport = String(fwSigUrlBuf).startsWith("https://") ? static_cast<NetworkClient &>(client) : plainClient;
+    if (!clientSig.begin(transport, fwSigUrlBuf)) {
+        fwRejectError = fwUnsignedError;
+        return false;
+    }
+    clientSig.setTimeout(10000);
     if (clientSig.GET() != HTTP_CODE_OK)
     {
         DEBUG_PRINTLN("Firmware signature download failed");
@@ -138,18 +145,21 @@ void progressFunc(unsigned int progress, unsigned int total)
 #endif
 };
 
-static void runEspUpdateFirmware(uint8_t *data, size_t len)
+static bool runEspUpdateFirmware(uint8_t *data, size_t len)
 {
-    Update.write(data, len);
+    if (Update.write(data, len) != len) return false;
     if (fwHashActive)
     {
-        mbedtls_sha256_update(&fwSha256, data, len);
+        if (mbedtls_sha256_update(&fwSha256, data, len) != 0) return false;
     }
     currentLength += len;
+    return true;
 }
 
 String getEspUpdate(String esp_fw_url, bool force)
 {
+    if (!esp_fw_url.startsWith("http://") && !esp_fw_url.startsWith("https://"))
+        return "firmware URL must use HTTP or HTTPS";
     DEBUG_PRINTLN("getEspUpdate: " + esp_fw_url);
     printLogMsg("ESP OTA download start");
 
@@ -169,9 +179,20 @@ String getEspUpdate(String esp_fw_url, bool force)
 
     HTTPClient clientWeb;
     NetworkClientSecure client;
+    NetworkClient plainClient;
     trustEspCertificateBundle(client);
     clientWeb.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    clientWeb.begin(client, esp_fw_url);
+    NetworkClient &transport = esp_fw_url.startsWith("https://") ? static_cast<NetworkClient &>(client) : plainClient;
+    if (!clientWeb.begin(transport, esp_fw_url)) {
+        fwHashAbort();
+        return "invalid firmware URL";
+    }
+    clientWeb.setTimeout(10000);
+    // ponytail: request close-delimited HTTP/1.0 bodies; reject chunked replies
+    // rather than feed HTTP framing to Update. Add chunk decoding if needed.
+    clientWeb.useHTTP10(true);
+    const char *responseHeaders[] = {"Transfer-Encoding"};
+    clientWeb.collectHeaders(responseHeaders, 1);
     clientWeb.addHeader("Content-Type", "application/octet-stream");
 
     int resp = clientWeb.GET();
@@ -187,7 +208,12 @@ String getEspUpdate(String esp_fw_url, bool force)
 
     totalLength = clientWeb.getSize();
     currentLength = 0;
-    Update.begin(totalLength);
+    if (clientWeb.header("Transfer-Encoding").length() || totalLength == 0 ||
+        !Update.begin(totalLength > 0 ? size_t(totalLength) : UPDATE_SIZE_UNKNOWN)) {
+        clientWeb.end();
+        fwHashAbort();
+        return "unsupported, empty, or oversized firmware response";
+    }
     Update.onProgress(progressFunc);
     DEBUG_PRINT("FW Size: ");
 
@@ -196,23 +222,33 @@ String getEspUpdate(String esp_fw_url, bool force)
     WiFiClient *stream = clientWeb.getStreamPtr();
     DEBUG_PRINTLN("Updating firmware...");
     int len = totalLength;
-    while (clientWeb.connected() && (len > 0 || len == -1))
+    unsigned long lastDataMs = millis();
+    bool transferOk = true;
+    while ((clientWeb.connected() || stream->available()) && (len > 0 || len == -1))
     {
         size_t size = stream->available();
         if (size)
         {
-            int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-            runEspUpdateFirmware(buff, c);
+            size_t toRead = min(size, sizeof(buff));
+            if (len > 0) toRead = min(toRead, size_t(len));
+            int c = stream->readBytes(buff, toRead);
+            if (c > 0) {
+                if (!runEspUpdateFirmware(buff, c)) { transferOk = false; break; }
+                lastDataMs = millis();
+            }
 
             if (len > 0)
             {
                 len -= c;
             }
         }
+        if (millis() - lastDataMs > 15000) { transferOk = false; break; }
+        processSocketBridge();
+        delay(1);
     }
     clientWeb.end();
 
-    if (currentLength != totalLength)
+    if (!transferOk || currentLength == 0 || (totalLength > 0 && currentLength != totalLength))
     {
         Update.abort();
         fwHashAbort();
@@ -233,4 +269,5 @@ String getEspUpdate(String esp_fw_url, bool force)
     bootGuardArm();
     DEBUG_PRINTLN("Update success. Rebooting...");
     esp_restart();
+    return "reboot failed";
 }

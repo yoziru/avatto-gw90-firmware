@@ -446,7 +446,7 @@
         xhr.open("POST", "/update?force=1", true);
         xhr.setRequestHeader("X-Gateway-Request", "1");
         xhr.onload = function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
+          if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText.trim() === "OK") {
             console.log("ESP32 firmware upload and flash completed!");
             getEl("prg").innerHTML = t("d.updDoneReboot");
             getEl("bar").style.width = "100%";
