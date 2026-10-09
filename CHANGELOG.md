@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ### Fixes
 
+- OTA rollback now runs at the start of setup when the startup retry budget is exhausted, recovering firmware that crashes before reaching the main loop. Crashes before setup still require bootloader-level rollback support.
 - Zigbee chip detection safely rejects missing, truncated, wrong-sized, and corrupt bootloader replies instead of crashing or leaking memory; IEEE protocol capability is checked correctly.
 - Zigbee updates now exclusively own the coordinator UART and firmware files until completion. Failed erase/download/data acknowledgments stop flashing instead of reporting success, and repeated updates re-enter the bootloader correctly.
 - Corrupt, truncated, overlapping, and out-of-range Zigbee HEX images are rejected before flashing; long HEX records no longer overrun the validation buffer.
