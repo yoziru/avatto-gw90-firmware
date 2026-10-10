@@ -23,11 +23,14 @@ with tempfile.TemporaryDirectory() as directory:
     build = work / 'build'
     build.mkdir()
     (build / 'firmware.bin').write_bytes(b'app')
-    (build / 'firmware.factory.bin').write_bytes(b'native full image')
+    full_data = bytes(0x10000) + b'app'
+    (build / 'firmware.factory.bin').write_bytes(full_data)
     class Env:
         action = None
         def subst(self, key):
-            return str(build if key == '$BUILD_DIR' else ROOT)
+            return {'$BUILD_DIR': str(build), '$PROJECT_DIR': str(ROOT), '$ESP32_APP_OFFSET': '0x10000'}.get(key, key)
+        def get(self, key, fallback):
+            return fallback
         def AddPostAction(self, target, action):
             self.action = action
     env = Env()
@@ -39,7 +42,14 @@ with tempfile.TemporaryDirectory() as directory:
         env.action(None, None, env)
         assert (work / 'bin/AVATTO-GW90-Ti.bin').read_bytes() == b'app'
         full = next((work / 'bin').glob('*.full.bin'))
-        assert full.read_bytes() == b'native full image'
+        assert full.read_bytes() == full_data
+        (build / 'firmware.factory.bin').write_bytes(bytes(0x10000) + b'old')
+        try:
+            env.action(None, None, env)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('stale native artifact accepted')
         (build / 'firmware.factory.bin').write_bytes(b'')
         try:
             env.action(None, None, env)

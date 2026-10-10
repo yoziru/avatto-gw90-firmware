@@ -17,6 +17,17 @@ def after_build(source, target, env):
     for path in (firmware_source, full_source):
         if not os.path.isfile(path) or os.path.getsize(path) == 0:
             raise RuntimeError("Missing or empty firmware artifact: " + path)
+    # The platform logs merge errors without failing the build. Reject a stale
+    # factory image too, rather than silently publishing last build's bytes.
+    images = list(env.get("FLASH_EXTRA_IMAGES", []))
+    images.append((env.subst("$ESP32_APP_OFFSET") or "0x10000", firmware_source))
+    with open(full_source, "rb") as merged:
+        for offset, path in images:
+            with open(env.subst(path), "rb") as image:
+                data = image.read()
+            merged.seek(int(str(offset), 0))
+            if not data or merged.read(len(data)) != data:
+                raise RuntimeError("Factory image missing current input: " + path)
     for f in glob ('bin/AVATTO-GW90-Ti*.bin'):
         os.unlink (f)
 
