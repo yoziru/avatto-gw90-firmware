@@ -533,15 +533,33 @@ function espFlashGitWait() {
 	setTimeout(() => {
 		console.log("[flash] start");
 		const prg = getEl("prg");
+		const bar = getEl("bar");
+		const button = getEl("updEspGit");
 		if (prg) prg.innerHTML = t("d.githubStart");
-		gatewayFetch(apiLink + api.actions.API_CMD + "&cmd=9")
+		if (button) button.disabled = true;
+		if (bar) { bar.classList.add("busy-shimmer"); bar.style.width = "100%"; }
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 120000);
+		gatewayFetch(apiLink + api.actions.API_CMD + "&cmd=9", { signal: controller.signal })
 			.then((r) => r.text())
 			.then((text) => {
 				if (text && text !== "ok") {
 					if (prg) prg.innerHTML = '<span style="color:red">' + escHtml(text) + "</span>";
 				}
 			})
-			.catch(() => {});
+			.catch(error => {
+				if (espUpdateCompleted) return; // reboot can close the API socket before its response
+				const message = error.name === "AbortError"
+					? "Update request timed out. The gateway may still be updating; check its version before retrying."
+					: t("d.pageErr") + error.message;
+				if (prg) prg.innerHTML = '<span style="color:red">' + escHtml(message) + "</span>";
+			})
+			.finally(() => {
+				clearTimeout(timeout);
+				if (bar) { bar.classList.remove("busy-shimmer"); bar.style.width = "0%"; }
+				if (button) button.disabled = false;
+				if (espEventSource) { espEventSource.close(); espEventSource = null; }
+			});
 	}, 500);
 }
 
@@ -634,8 +652,10 @@ function startFlashProcess(fwUrl, role, roleSwitch) {
 }
 
 let espEventSource = null;
+let espUpdateCompleted = false;
 function ESPfwStartEvents() {
 	if (espEventSource) espEventSource.close();
+	espUpdateCompleted = false;
 	espEventSource = new EventSource("/events");
 	console.log("Events try");
 	espEventSource.addEventListener("open", () => console.log("Events Connected"));
@@ -646,13 +666,17 @@ function ESPfwStartEvents() {
 		const prg = getEl("prg");
 		const bar = getEl("bar");
 		if (prg) prg.innerHTML = t("d.progress") + Math.round(e.data) + "%";
-		if (bar) bar.style.width = Math.round(e.data) + "%";
-		if (Math.round(e.data) > 99.5) {
-			setTimeout(() => {
-				if (prg) prg.innerHTML = t("d.updDoneReboot");
-				rebootWait();
-			}, 250);
-		}
+		if (bar) { bar.classList.remove("busy-shimmer"); bar.style.width = Math.round(e.data) + "%"; }
+	});
+	espEventSource.addEventListener("ESP_FW_info", e => {
+		const prg = getEl("prg");
+		if (prg) prg.textContent = e.data;
+	});
+	espEventSource.addEventListener("ESP_FW_done", () => {
+		espUpdateCompleted = true;
+		const prg = getEl("prg");
+		if (prg) prg.innerHTML = t("d.updDoneReboot");
+		rebootWait();
 	});
 }
 
