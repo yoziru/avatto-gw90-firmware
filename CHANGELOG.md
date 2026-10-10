@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+## v1.1.5 — 2026-10-10
+
 ### Fixes
 
 - GitHub firmware installs show activity while waiting for download progress, report failed/timed-out requests instead of silently hanging, and disable the install button while pending.

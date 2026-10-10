@@ -1,12 +1,12 @@
 {
     "name": "avatto-gw90-ti",
-    "version": "v1.1.4",
+    "version": "v1.1.5",
     "builds": [
       {
         "chipFamily": "ESP32",
         "improv": false,
         "parts": [
-          { "path": "bin/AVATTO-GW90-Ti_v1.1.4.full.bin", "offset": 0 }
+          { "path": "bin/AVATTO-GW90-Ti_v1.1.5.full.bin", "offset": 0 }
         ]
       }
     ]
