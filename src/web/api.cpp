@@ -452,7 +452,14 @@ void handleApi()
 
                         if (bytesRead > 0)
                         {
-                            fwFile.write(buff, bytesRead);
+                            if (fwFile.write(buff, bytesRead) != size_t(bytesRead)) {
+                                fwFile.close();
+                                LittleFS.remove(downloadedFirmwareFile);
+                                ConfigSettings.zbFlashing = false;
+                                http.end();
+                                sendEvent(tagZB_FW_err, sizeof(tagZB_FW_err), "Firmware download write failed");
+                                return;
+                            }
                             downloaded += bytesRead;
                             lastDataMs = millis();
 

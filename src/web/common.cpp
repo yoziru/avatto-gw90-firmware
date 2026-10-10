@@ -172,15 +172,20 @@ void initWebServer()
     serverWeb.on(
         "/update", HTTP_POST, []()
         {
-        if (updateResponded)
+        if (updateResponded) {
+            updateResponded = false;
             return;
+        }
         serverWeb.sendHeader("Connection", "close");
         if (updateRejected)
         {
             sendUpdateResponse(HTTP_CODE_BAD_REQUEST, "unsigned firmware; add force=1 to install anyway");
+            updateResponded = updateRejected = false;
             return;
         }
-        sendUpdateResponse(HTTP_CODE_OK, (Update.hasError()) ? "FAIL" : "OK"); },
+        if (!checkAuth(true)) return;
+        sendUpdateResponse(HTTP_CODE_BAD_REQUEST, "no firmware uploaded");
+        updateResponded = false; },
         []()
         {
             HTTPUpload &upload = serverWeb.upload();
@@ -212,9 +217,11 @@ void initWebServer()
 
                 DEBUG_PRINTLN("Update ESP from file " + String(upload.filename.c_str()) + " size: " + String(upload.totalSize));
                 DEBUG_PRINTLN("upload.currentSize " + String(upload.currentSize));
-                if (!Update.begin(contentLength))
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN))
                 {
                     Update.printError(Serial);
+                    sendUpdateResponse(500, "could not start firmware upload");
+                    return;
                 }
                 Update.onProgress(progressFunc);
             }
@@ -225,6 +232,8 @@ void initWebServer()
                 if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
                 {
                     Update.printError(Serial);
+                    Update.abort();
+                    sendUpdateResponse(500, "firmware upload write failed");
                 }
             }
             else if (upload.status == UPLOAD_FILE_END)
@@ -243,8 +252,14 @@ void initWebServer()
                 {
                     DEBUG_PRINTLN("Update error: ");
                     Update.printError(Serial);
-                    sendUpdateResponse(HTTP_CODE_OK, "FAIL");
+                    sendUpdateResponse(500, "firmware verification failed");
                 }
+            }
+            else if (upload.status == UPLOAD_FILE_ABORTED) {
+                if (!updateRejected && !updateResponded) {
+                    Update.abort();
+                }
+                updateResponded = updateRejected = false;
             }
         });
 
@@ -303,7 +318,14 @@ void initWebServer()
 
             if (upload.status == UPLOAD_FILE_WRITE)
             {
-                fwFile.write(upload.buf, sizeof(upload.buf));
+                if (fwFile.write(upload.buf, upload.currentSize) != upload.currentSize) {
+                    fwFile.close();
+                    LittleFS.remove(tempFile);
+                    opened = zbUploadAuth = false;
+                    ConfigSettings.zbFlashing = false;
+                    serverWeb.send(500, contTypeText, "Zigbee firmware upload write failed");
+                    return;
+                }
             }
             else if (upload.status == UPLOAD_FILE_END)
             {
