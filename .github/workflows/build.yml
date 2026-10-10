@@ -104,7 +104,9 @@ jobs:
         run: python tools/test_network_recovery.py
 
       - name: Check reset and MQTT contracts
-        run: python tools/test_config_contracts.py
+        run: |
+          python tools/test_config_contracts.py
+          python tools/test_clock_logs.py
 
       - name: Check packaging and release notes
         run: python tools/test_build_release.py

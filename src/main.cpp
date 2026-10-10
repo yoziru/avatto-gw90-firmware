@@ -365,6 +365,7 @@ void setup()
     DEBUG_PRINTLN(F("Config files load OK"));
   }
 
+  applyClockTimezone(); // timestamp startup/coordinator logs in the configured local zone
   printLogMsg(String("[BOOT] reset reason=") + int(esp_reset_reason()));
   zbInit();
 #ifdef BUILD_FACTORY_TEST
@@ -465,6 +466,3 @@ void loop(void)
   profilingLoopTick(loopStartUs);
 #endif
 }
-
-
-

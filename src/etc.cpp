@@ -343,6 +343,8 @@ void resetSettings()
   ESP.restart();
 }
 
+bool clockTimezoneReady = false;
+
 void setClock()
 {
   // Configure NTP. configTime() returns immediately - the sync happens in the
@@ -350,7 +352,11 @@ void setClock()
   // whole loop (web server, socket bridge, MQTT) for up to 60 s waiting for
   // the sync on every link-up event.
   configTime(0, 0, "pool.ntp.org", "time.google.com");
+  applyClockTimezone();
+}
 
+void applyClockTimezone()
+{
   const char *zoneToFind = "Europe/Kiev";
   if (ConfigSettings.timeZone[0] != '\0')
   {
@@ -379,6 +385,7 @@ void setTimezone(const String &timezone)
   DEBUG_PRINTLN(F("Setting Timezone"));
   setenv("TZ", timezone.c_str(), 1); // Now adjust the TZ. Clock settings are adjusted to show the new local time
   tzset();
+  clockTimezoneReady = true;
 
   // If NTP hasn't synced yet, time() is still 0 - don't log a misleading
   // "Thu Jan 1 1970" local time to the web console.
