@@ -32,9 +32,8 @@ def stage_and_emit():
     for old in WEBH.glob("*.gz.h"):
         old.unlink()
     WEBH.mkdir(parents=True, exist_ok=True)
-    # Old stylesConcat: water.css + style.css -> tracked required.css ('\n' join)
+    # Concatenation belongs only in the generated stage, never the source tree.
     css = (WEBSRC / "css" / "water.css").read_bytes() + b"\n" + (WEBSRC / "css" / "style.css").read_bytes()
-    (WEBSRC / "css" / "required.css").write_bytes(css)
     (STAGE / "css").mkdir(parents=True)
     (STAGE / "css" / "required.css").write_bytes(css)
     write_header("required.css.gz", gzip.compress(css, compresslevel=9))
