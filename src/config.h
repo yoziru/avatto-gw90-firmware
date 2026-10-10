@@ -98,7 +98,6 @@ struct ConfigSettingsStruct
     bool keepWeb;                      // Keep web server
     bool apStarted;                    // AP started
     bool wifiFallbackActive;           // WiFi STA fallback in progress (NETWORK mode)
-    bool wifiFallbackHadConnection;    // WiFi STA reached a connected state this fallback
     bool serversStarted;               // Web + socket servers already started once
     bool fwEnabled;                    // Firmware update enabled
     IPAddress fwIp;                    // Firmware update IP

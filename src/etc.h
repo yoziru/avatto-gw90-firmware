@@ -15,6 +15,7 @@ uint8_t temprature_sens_read();
 
 float getCPUtemp();
 void tempSensorLoop();
+void tempSensorReleaseRadio(); // a network/scan operation takes over the radio
 
 void zigbeeRouterRejoin();
 void zigbeeEnableBSL();

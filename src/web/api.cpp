@@ -687,6 +687,7 @@ void handleApi()
         }
         break;
         case API_STARTWIFISCAN:
+            tempSensorReleaseRadio();
             if (WiFi.getMode() == WIFI_OFF)
             {
                 WiFi.mode(WIFI_STA);
@@ -704,6 +705,7 @@ void handleApi()
             doc[scanDone] = false;
             if (scanRes == -2)
             {
+                tempSensorReleaseRadio();
                 WiFi.scanNetworks(true);
             }
             else if (scanRes > 0)
