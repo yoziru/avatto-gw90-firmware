@@ -40,11 +40,6 @@ inline bool wifiHasCredentials(const char *ssid, const char *password) noexcept
 }
 
 // True when the request persists immediately instead of waiting for a connect.
-inline bool wifiSavePersistsNow(WifiSaveMode mode) noexcept
-{
-    return mode != WifiSaveMode::ConnectFirst;
-}
-
 // True when a staged (pending) save may be committed: the STA link is up and it
 // is connected to the very network we staged. Any other association (or no
 // link at all) must NOT commit the pending config.

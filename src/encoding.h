@@ -31,20 +31,4 @@ inline std::string urlDecode(const std::string_view input) {
     return decoded;
 }
 
-inline void hex2bin(uint8_t *out, const std::string_view in) {
-    size_t i = 0;
-    while (i < in.length()) {
-        while (i < in.length() && in[i] == ' ')
-            i++;
-        if (i >= in.length())
-            break;
-        uint8_t c = hexNibble(in[i++]);
-        c <<= 4;
-        if (i >= in.length())
-            break;
-        c |= hexNibble(in[i++]);
-        *out++ = c;
-    }
-}
-
 #endif
