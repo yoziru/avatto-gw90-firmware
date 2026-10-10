@@ -199,7 +199,7 @@ String getEspUpdate(String esp_fw_url, bool force)
     clientWeb.collectHeaders(responseHeaders, 1);
     clientWeb.addHeader("Content-Type", "application/octet-stream");
 
-    sendEvent("ESP_FW_info", sizeof("ESP_FW_info"), "Connecting to GitHub / firmware server...");
+    sendEvent("ESP_FW_info", sizeof("ESP_FW_info"), "Connecting to server...");
     int resp = clientWeb.GET();
     DEBUG_PRINTLN("Response: " + String(resp));
     if (resp != HTTP_CODE_OK)

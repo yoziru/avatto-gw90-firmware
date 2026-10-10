@@ -110,14 +110,17 @@
         [data-theme="dark"] .version-badge { background: var(--accent); color: #1a1a2e; border-color: transparent; }
         /* Firmware update sections */
         .fw-status { font-size: 15px; }
-        .fw-status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 12px; font-size: 15px; }
-        .fw-status-row .fw-status { min-width: 0; overflow-wrap: anywhere; }
+        .fw-status-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 12px; font-size: 15px; }
+        .fw-status-row .fw-status { min-width: 0; flex: 1 1 220px; }
         .fw-status-row .btn { flex-shrink: 0; }
         #zbFwStatus { margin: 8px 0 12px; }
         #espFwChglog {
             white-space: pre-wrap; font-size: 0.8rem;
             max-height: 220px; overflow: auto;
         }
+        .fw-update-progress { margin: 12px 0; font-size: 0.9rem; }
+        .fw-update-progress:has(#prg:empty) { display: none; }
+        #prg { margin-bottom: 8px; }
         .zb-fw-row {
             display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
             gap: 10px; padding: 8px 0;
@@ -131,7 +134,7 @@
         }
         .zb-fw-btns { display: flex; flex-wrap: wrap; gap: 8px; }
         .file-pick {
-            display: block; width: 280px; height: 38px; padding: 0 0.75rem;
+            display: block; width: 100%; max-width: 280px; height: 38px; padding: 0 0.75rem;
             margin: 0 auto 0.5rem; background-color: #f8f9fa;
             border: 1px solid #dee2e6; border-radius: 0.25rem;
             font-size: 0.875rem; white-space: nowrap; overflow: hidden;
@@ -302,6 +305,10 @@
                     >
                       Check for updates
                     </button>
+                    <div class="fw-update-progress" role="status" aria-live="polite">
+                      <div id="prg"></div>
+                      <div id="prgbar" style="display: none"><div id="bar"></div></div>
+                    </div>
                     <hr />
                     <form
                       method="POST"
@@ -326,12 +333,6 @@
                         data-i18n="a.espFwUpd[value]"
                         disabled
                       />
-                      <div class="container" style="max-width: 300px; margin: 30px auto 0">
-                        <div id="prg"></div>
-                        <div id="prgbar" style="display: none">
-                          <div id="bar"></div>
-                        </div>
-                      </div>
                     </form>
                 </div>
             </div>
