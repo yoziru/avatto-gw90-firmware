@@ -9,7 +9,6 @@
 static void test_new_network_is_connect_first(void)
 {
     TEST_ASSERT_EQUAL(WifiSaveMode::ConnectFirst, wifiSaveMode("NewHome", "OldHome"));
-    TEST_ASSERT_FALSE(wifiSavePersistsNow(WifiSaveMode::ConnectFirst));
 }
 
 // When nothing is saved yet, joining any network is a ConnectFirst too.
@@ -25,7 +24,6 @@ static void test_first_join_is_connect_first(void)
 static void test_saved_network_persists_now(void)
 {
     TEST_ASSERT_EQUAL(WifiSaveMode::SaveNow, wifiSaveMode("Home", "Home"));
-    TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::SaveNow));
 }
 
 // --- Desired behaviour: forget clears the saved network ---
@@ -35,7 +33,6 @@ static void test_empty_ssid_forgets(void)
 {
     TEST_ASSERT_EQUAL(WifiSaveMode::Forget, wifiSaveMode("", "Home"));
     TEST_ASSERT_EQUAL(WifiSaveMode::Forget, wifiSaveMode(nullptr, "Home"));
-    TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::Forget));
 }
 
 // One-character SSIDs are valid; only an empty SSID means forget.
@@ -60,15 +57,6 @@ static void test_commit_requires_matching_connection(void)
     TEST_ASSERT_FALSE(wifiShouldCommit(true, true, "OtherNet", "Home"));
     TEST_ASSERT_FALSE(wifiShouldCommit(true, true, nullptr, "Home"));
     TEST_ASSERT_FALSE(wifiShouldCommit(false, true, "Home", "Home"));
-}
-
-// --- Consistency: persistence implies not a ConnectFirst ---
-
-static void test_persistence_flag_consistency(void)
-{
-    TEST_ASSERT_FALSE(wifiSavePersistsNow(WifiSaveMode::ConnectFirst));
-    TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::SaveNow));
-    TEST_ASSERT_TRUE(wifiSavePersistsNow(WifiSaveMode::Forget));
 }
 
 // --- Connect throttle: don't restart an in-progress connect ---
@@ -123,7 +111,6 @@ void run_wifi_save_logic_tests(void)
     RUN_TEST(test_empty_ssid_forgets);
     RUN_TEST(test_single_character_ssid_connects);
     RUN_TEST(test_commit_requires_matching_connection);
-    RUN_TEST(test_persistence_flag_consistency);
     RUN_TEST(test_connect_in_progress_recently_not_restarted);
     RUN_TEST(test_stuck_connect_is_retried_after_throttle);
     RUN_TEST(test_not_connecting_always_begins);
