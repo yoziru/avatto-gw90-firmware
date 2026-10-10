@@ -6,6 +6,7 @@
 #include <Update.h>
 #include <Ticker.h>
 #include <esp_wifi.h>
+#include <esp_system.h>
 #include <ETH.h>
 #include <ESPmDNS.h>
 #include <DNSServer.h>
@@ -364,6 +365,7 @@ void setup()
     DEBUG_PRINTLN(F("Config files load OK"));
   }
 
+  printLogMsg(String("[BOOT] reset reason=") + int(esp_reset_reason()));
   zbInit();
 #ifdef BUILD_FACTORY_TEST
   if (!digitalRead(BTN) && ConfigSettings.coordinator_mode != CoordinatorMode::PASSTHROUGH)
