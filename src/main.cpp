@@ -30,6 +30,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+SET_LOOP_TASK_STACK_SIZE(16384); // HTTPS OTA runs on loopTask, including TLS verification
+
 #ifdef ETH_CLK_MODE
 #undef ETH_CLK_MODE
 #endif
