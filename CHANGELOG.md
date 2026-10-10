@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+### Fixes
+
+- GitHub firmware installs show activity while waiting for download progress, report failed/timed-out requests instead of silently hanging, and disable the install button while pending.
+- Remote OTA bounds TLS handshakes and reports HTTP/connection failures; the UI only reports success after firmware verification and finalization, not merely at 100% downloaded.
+- Zigbee firmware actions wrap below their description in narrow cards instead of squeezing the text into a vertical column.
+
 ## v1.1.4 — 2026-10-10
 
 ### Fixes

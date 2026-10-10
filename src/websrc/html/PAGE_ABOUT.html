@@ -119,17 +119,17 @@
             max-height: 220px; overflow: auto;
         }
         .zb-fw-row {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
             gap: 10px; padding: 8px 0;
             border-top: 1px solid var(--border-color); font-size: 15px;
         }
-        .zb-fw-info { min-width: 0; }
+        .zb-fw-info { min-width: 0; flex: 1 1 180px; }
         .zb-fw-sub { font-size: 0.85rem; }
         .default-badge {
             font-size: 0.7rem; font-weight: 600; padding: 1px 8px; border-radius: 10px;
             background: rgba(245,166,35,0.16); color: var(--accent-text); white-space: nowrap;
         }
-        .zb-fw-btns { display: flex; gap: 8px; flex-shrink: 0; }
+        .zb-fw-btns { display: flex; flex-wrap: wrap; gap: 8px; }
         .file-pick {
             display: block; width: 280px; height: 38px; padding: 0 0.75rem;
             margin: 0 auto 0.5rem; background-color: #f8f9fa;

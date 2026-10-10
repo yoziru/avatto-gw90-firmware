@@ -51,6 +51,8 @@ bool verifyFirmwareSignature()
     NetworkClient plainClient;
     trustEspCertificateBundle(client);
     client.setTimeout(10000);
+    client.setHandshakeTimeout(10);
+    clientSig.setConnectTimeout(10000);
     clientSig.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     NetworkClient &transport = String(fwSigUrlBuf).startsWith("https://") ? static_cast<NetworkClient &>(client) : plainClient;
     if (!clientSig.begin(transport, fwSigUrlBuf)) {
@@ -181,6 +183,8 @@ String getEspUpdate(String esp_fw_url, bool force)
     NetworkClientSecure client;
     NetworkClient plainClient;
     trustEspCertificateBundle(client);
+    client.setHandshakeTimeout(10);
+    clientWeb.setConnectTimeout(10000);
     clientWeb.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     NetworkClient &transport = esp_fw_url.startsWith("https://") ? static_cast<NetworkClient &>(client) : plainClient;
     if (!clientWeb.begin(transport, esp_fw_url)) {
@@ -195,15 +199,17 @@ String getEspUpdate(String esp_fw_url, bool force)
     clientWeb.collectHeaders(responseHeaders, 1);
     clientWeb.addHeader("Content-Type", "application/octet-stream");
 
+    sendEvent("ESP_FW_info", sizeof("ESP_FW_info"), "Connecting to GitHub / firmware server...");
     int resp = clientWeb.GET();
     DEBUG_PRINTLN("Response: " + String(resp));
     if (resp != HTTP_CODE_OK)
     {
         DEBUG_PRINTLN("Cannot download firmware file.");
-        printLogMsg("ESP OTA download failed");
+        const String error = "firmware download failed: " + (resp < 0 ? HTTPClient::errorToString(resp) : "HTTP " + String(resp));
+        printLogMsg("ESP OTA " + error);
         clientWeb.end();
         fwHashAbort();
-        return "download failed";
+        return error;
     }
 
     totalLength = clientWeb.getSize();
@@ -215,6 +221,7 @@ String getEspUpdate(String esp_fw_url, bool force)
         return "unsupported, empty, or oversized firmware response";
     }
     Update.onProgress(progressFunc);
+    printLogMsg("ESP OTA firmware response received");
     DEBUG_PRINT("FW Size: ");
 
     DEBUG_PRINTLN(totalLength);
@@ -255,6 +262,7 @@ String getEspUpdate(String esp_fw_url, bool force)
         printLogMsg("ESP OTA download incomplete");
         return fwIncompleteError;
     }
+    sendEvent("ESP_FW_info", sizeof("ESP_FW_info"), "Download complete; verifying firmware...");
     if (!force && !verifyFirmwareSignature())
     {
         Update.abort();
@@ -267,6 +275,8 @@ String getEspUpdate(String esp_fw_url, bool force)
         return "update finalize failed";
     }
     bootGuardArm();
+    sendEvent("ESP_FW_done", sizeof("ESP_FW_done"), "ok");
+    delay(100); // let the completion event leave before restarting the network
     DEBUG_PRINTLN("Update success. Rebooting...");
     esp_restart();
     return "reboot failed";

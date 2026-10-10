@@ -24,6 +24,7 @@ using std::min;
 struct String : std::string {
     using std::string::string;
     String(std::string s) : std::string(s) {}
+    String(int value) : std::string(std::to_string(value)) {}
     bool startsWith(const char *prefix) const { return rfind(prefix, 0) == 0; }
     size_t length() const { return size(); }
 };
@@ -37,6 +38,8 @@ unsigned long millis() { return clockMs; }
 void delay(unsigned ms) { clockMs += ms; }
 void processSocketBridge() { ++bridgeTicks; }
 void printLogMsg(const String &) {}
+std::vector<std::string> events;
+void sendEvent(const char *name, unsigned, const String &) { events.push_back(name); }
 void progressFunc(unsigned, unsigned) {}
 struct NetworkClient {
     bool secure = false;
@@ -46,7 +49,7 @@ struct NetworkClient {
     }
     void setTimeout(unsigned) {}
 };
-struct NetworkClientSecure : NetworkClient { NetworkClientSecure() { secure = true; } };
+struct NetworkClientSecure : NetworkClient { NetworkClientSecure() { secure = true; } void setHandshakeTimeout(unsigned) {} };
 void trustEspCertificateBundle(NetworkClientSecure &) {}
 std::string encoding;
 struct HTTPClient {
@@ -54,6 +57,8 @@ struct HTTPClient {
     bool begin(NetworkClient &client, const String &) { transport = &client; secureSelected = client.secure; return true; }
     void setFollowRedirects(int) {}
     void setTimeout(unsigned) {}
+    void setConnectTimeout(unsigned) {}
+    static String errorToString(int) { return "connection refused"; }
     void useHTTP10(bool) {}
     void collectHeaders(const char **, size_t) {}
     void addHeader(const char *, const char *) {}
@@ -94,12 +99,13 @@ int main() {
         body = {0xE9, 1, 2, 3}; written.clear(); contentLength = 4; response = 200;
         clockMs = bridgeTicks = cursor = 0; stall = false;
         beginOk = writeOk = finalizeOk = signatureOk = true;
-        armed = aborted = signatureChecked = false; encoding.clear();
+        armed = aborted = signatureChecked = false; encoding.clear(); events.clear();
     };
     auto succeeds = [](const char *url, bool force) {
         bool rebooted = false;
         try { getEspUpdate(url, force); } catch (Reboot &) { rebooted = true; }
         assert(rebooted && armed && written == body);
+        assert(events.back() == "ESP_FW_done");
     };
     reset(); succeeds("http://server/firmware.bin", true); assert(!secureSelected);
     reset(); contentLength = -1; succeeds("https://server/firmware.bin", false);
@@ -112,6 +118,11 @@ int main() {
     reset(); writeOk = false; getEspUpdate("http://server/fw.bin", true); assert(aborted && !armed);
     reset(); beginOk = false; getEspUpdate("http://server/fw.bin", true); assert(written.empty() && !armed);
     reset(); signatureOk = false; getEspUpdate("https://server/fw.bin", false); assert(aborted && !armed && signatureChecked);
+    assert(std::find(events.begin(), events.end(), "ESP_FW_done") == events.end());
+    reset(); response = -1;
+    assert(getEspUpdate("https://server/fw.bin", false) == "firmware download failed: connection refused" && written.empty() && !armed);
+    reset(); response = 404;
+    assert(getEspUpdate("https://server/fw.bin", false) == "firmware download failed: HTTP 404" && written.empty() && !armed);
     reset(); encoding = "chunked"; getEspUpdate("http://server/fw.bin", true); assert(written.empty() && !armed);
     reset(); getEspUpdate("file:///fw.bin", true); assert(written.empty() && !armed);
 }
