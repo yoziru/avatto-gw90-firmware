@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+## v1.1.6 — 2026-10-10
+
 ### Fixes
 
 - GitHub OTA no longer crashes during TLS negotiation: HTTPS verification exceeded the default 8 KB loop-task stack; the gateway now reserves 16 KB.
