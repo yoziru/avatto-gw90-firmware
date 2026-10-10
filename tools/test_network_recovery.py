@@ -34,6 +34,8 @@ struct { template<class T> void println(T) {} template<class T> void print(T) {}
 struct { unsigned counter() { return 20; } void stop() {} } tmrNetworkOverseer;
 unsigned long now = 100000, wifiFallbackLastOnlineMs = 0;
 unsigned connects = 0, apStarts = 0, radioStops = 0, relinquishes = 0;
+bool scanning = false;
+unsigned scanStops = 0;
 std::vector<std::string> order;
 unsigned long millis() { return now; }
 void delay(unsigned ms) { now += ms; }
@@ -57,14 +59,15 @@ struct {
     void setSleep(bool) {}
     int getMode() { return modeValue; }
     void mode(int mode) { modeValue = mode; }
-    void scanNetworks(bool) {}
+    void scanNetworks(bool) { scanning = true; }
     void scanDelete() {}
     bool config(IPAddress ip, IPAddress, IPAddress) {
         dhcp = ip.value == INADDR_NONE; order.push_back("config"); return configOk;
     }
-    void begin(const char *, const char *) { order.push_back("begin"); }
+    void begin(const char *, const char *) { assert(!scanning); order.push_back("begin"); }
 } WiFi;
 int esp_wifi_start() { return ESP_OK; }
+int esp_wifi_scan_stop() { scanning = false; ++scanStops; return ESP_OK; }
 void esp_wifi_stop() { ++radioStops; }
 uint8_t temprature_sens_read() { return 160; }
 """
@@ -82,8 +85,11 @@ int main() {
     assert(order == std::vector<std::string>({"config"})); WiFi.configOk = true;
     WiFi.mode(WIFI_OFF); getCPUtemp(); assert(tempPowered); // temperature temporarily owns radio
     connectWifiSta("A", "", true, "", "", ""); assert(!tempPowered);
+    assert(!scanning && scanStops == 1); // stop only the old owner's scan before joining
     for (unsigned i = 0; i < 30; ++i) { now += 100; tempSensorLoop(); }
     assert(radioStops == 0 && WiFi.getMode() == WIFI_STA && tempValid); // join owns it at teardown
+    scanning = true; tempSensorReleaseRadio();
+    assert(scanning && scanStops == 1); // never cancel a network/user-owned scan
 }
 """
 with tempfile.TemporaryDirectory() as directory:
