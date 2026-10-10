@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 ## [Unreleased]
 
+## v1.1.4 — 2026-10-10
+
 ### Fixes
 
 - A WiFi join/scan taking over from a temperature read cancels the temperature-owned scan first, avoiding a competing scan that can make the join fail; unrelated scans are left alone.
