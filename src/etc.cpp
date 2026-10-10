@@ -334,6 +334,7 @@ void resetSettings()
   LittleFS.remove(configFileEther);
   LittleFS.remove(configFileWifi);
   LittleFS.remove(configFileWg);
+  LittleFS.remove(configFileMqtt);
   DEBUG_PRINTLN(F("[resetSettings] Config del done"));
   ESP.restart();
 }

@@ -257,10 +257,15 @@ void handleSaveParams()
         break;
         case API_PAGE_WG:
         {
+            const String localAddr = serverWeb.arg("WgLocalAddr");
+            if (serverWeb.arg("WgEnable") == on && parse_ip_address(localAddr.c_str()) == IPAddress()) {
+                serverWeb.send(HTTP_CODE_BAD_REQUEST, contTypeText, "WireGuard local address must be IPv4 without a CIDR prefix");
+                return;
+            }
             configFile = LittleFS.open(configFileWg, FILE_READ);
             deserializeJson(doc, configFile);
             configFile.close();
-            doc["localAddr"] = serverWeb.arg("WgLocalAddr");
+            doc["localAddr"] = localAddr;
             doc["localPrivKey"] = serverWeb.arg("WgLocalPrivKey");
             doc["endAddr"] = serverWeb.arg("WgEndAddr");
             doc["endPubKey"] = serverWeb.arg("WgEndPubKey");
