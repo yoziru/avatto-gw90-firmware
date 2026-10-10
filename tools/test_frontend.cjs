@@ -4,13 +4,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const calls = [];
+let responseOk = true;
 const context = vm.createContext({
     document: { addEventListener() {} },
     localStorage: { getItem() { return null; } },
     window: {}, console, Headers,
     fetch: async (url, options) => {
         calls.push({ url, options });
-        return { ok: true, json: async () => ({}), text: async () => "OK" };
+        return { ok: responseOk, status: responseOk ? 200 : 500, json: async () => ({}), text: async () => "OK" };
     }
 });
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/websrc/js/functions.js"), "utf8"), context);
@@ -24,6 +25,18 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/websrc/js/functions
     assert.equal(calls[1].options.headers.get("X-Gateway-Request"), "1");
     await vm.runInContext('fetchData("https://api.github.com/repos/Koenkk/Z-Stack-firmware/releases")', context);
     assert.equal(calls[2].options, undefined); // never leak gateway headers to GitHub
+    responseOk = false;
+    await assert.rejects(vm.runInContext('gatewayFetch("/saveParams", {method: "POST"})', context), /HTTP 500/);
+    responseOk = true;
+    for (const [remote, local, newer] of [
+        ["v1.10.0", "1.9.9", true], ["v2.0.0", "1.99.99", true],
+        ["v1.2.3", "1.2.3-dirty+g123456", false], ["1.2.4", "1.2.3+g999999", true],
+        ["1.2", "1.2.0", false], ["20260101", "20251231", true],
+        ["unknown", "1.0.0", false], ["1.0.0", "unknown", true]
+    ]) assert.equal(vm.runInContext(`verIsNewer(${JSON.stringify(remote)}, ${JSON.stringify(local)})`, context), newer);
+    for (const [mode, label] of [[0, "OPEN"], [1, "WEP"], [5, "WPA2 Enterprise"], [6, "WPA3"], [7, "WPA2/WPA3"]])
+        assert.equal(vm.runInContext(`wifiSecurityLabel(${mode})`, context), label);
+    assert.equal(vm.runInContext('GITHUB_REPO_OWNER', context), "yoziru");
 
     const handlers = {}, elements = {}, uploads = [];
     let reboots = 0;
