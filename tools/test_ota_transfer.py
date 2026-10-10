@@ -33,13 +33,16 @@ int contentLength = 4, response = 200;
 unsigned clockMs = 0, bridgeTicks = 0;
 size_t cursor = 0;
 bool stall = false, beginOk = true, writeOk = true, finalizeOk = true, signatureOk = true;
-bool secureSelected = false, armed = false, aborted = false, signatureChecked = false;
+bool secureSelected = false, armed = false, aborted = false, signatureChecked = false, finalized = false;
 unsigned long millis() { return clockMs; }
 void delay(unsigned ms) { clockMs += ms; }
 void processSocketBridge() { ++bridgeTicks; }
 void printLogMsg(const String &) {}
 std::vector<std::string> events;
-void sendEvent(const char *name, unsigned, const String &) { events.push_back(name); }
+void sendEvent(const char *name, unsigned, const String &) {
+    if (std::string(name) == "ESP_FW_done") assert(armed && finalized);
+    events.push_back(name);
+}
 void progressFunc(unsigned, unsigned) {}
 struct NetworkClient {
     bool secure = false;
@@ -76,7 +79,7 @@ struct {
     size_t write(uint8_t *data, size_t n) {
         if (!writeOk) return 0; written.insert(written.end(), data, data + n); return n;
     }
-    bool end(bool) { return finalizeOk; }
+    bool end(bool) { finalized = finalizeOk; return finalizeOk; }
     void abort() { aborted = true; }
 } Update;
 int fwSha256;
@@ -99,7 +102,7 @@ int main() {
         body = {0xE9, 1, 2, 3}; written.clear(); contentLength = 4; response = 200;
         clockMs = bridgeTicks = cursor = 0; stall = false;
         beginOk = writeOk = finalizeOk = signatureOk = true;
-        armed = aborted = signatureChecked = false; encoding.clear(); events.clear();
+        armed = aborted = signatureChecked = finalized = false; encoding.clear(); events.clear();
     };
     auto succeeds = [](const char *url, bool force) {
         bool rebooted = false;
@@ -118,6 +121,9 @@ int main() {
     reset(); writeOk = false; getEspUpdate("http://server/fw.bin", true); assert(aborted && !armed);
     reset(); beginOk = false; getEspUpdate("http://server/fw.bin", true); assert(written.empty() && !armed);
     reset(); signatureOk = false; getEspUpdate("https://server/fw.bin", false); assert(aborted && !armed && signatureChecked);
+    assert(std::find(events.begin(), events.end(), "ESP_FW_done") == events.end());
+    reset(); finalizeOk = false;
+    assert(getEspUpdate("https://server/fw.bin", false) == "update finalize failed" && !armed);
     assert(std::find(events.begin(), events.end(), "ESP_FW_done") == events.end());
     reset(); response = -1;
     assert(getEspUpdate("https://server/fw.bin", false) == "firmware download failed: connection refused" && written.empty() && !armed);

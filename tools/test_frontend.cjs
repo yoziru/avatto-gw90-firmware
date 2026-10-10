@@ -41,13 +41,13 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/websrc/js/functions
     // Exercise the real install handler: pending feedback, HTTP failures and a
     // request that never resolves must not leave the page silently stuck.
     const installElements = {}, timers = new Map();
-    let timerId = 0, pendingResolve, closed = 0, installReboots = 0;
+    let timerId = 0, pendingResolve, pendingReject, closed = 0, installReboots = 0;
     const eventHandlers = {};
     Object.assign(context, {
         AbortController,
-        getEl: id => installElements[id] ||= { style: {}, classList: {
-            add() { this.busy = true; }, remove() { this.busy = false; }
-        } },
+        getEl: id => installElements[id] ||= { style: {}, classList: Object.assign(new Set(), {
+            remove(name) { this.delete(name); }
+        }) },
         t: key => key,
         setTimeout: (callback, delay) => { timers.set(++timerId, { callback, delay }); return timerId; },
         clearTimeout: id => timers.delete(id),
@@ -55,6 +55,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/websrc/js/functions
         rebootWait: () => ++installReboots,
         fetch: (url, options) => new Promise((resolve, reject) => {
             pendingResolve = resolve;
+            pendingReject = reject;
             options.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
         })
     });
@@ -64,24 +65,30 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/websrc/js/functions
         const start = [...timers.values()].find(timer => timer.delay === 500);
         timers.clear(); start.callback();
         assert.equal(installElements.updEspGit.disabled, true);
-        assert.equal(installElements.bar.classList.busy, true);
+        assert.equal(installElements.bar.classList.has("busy-shimmer"), true);
         assert.equal(installElements.bar.style.width, "100%");
         if (timeoutCase) [...timers.values()][0].callback();
         else pendingResolve({ ok: false, status: 403 });
         await flush();
         assert.match(installElements.prg.innerHTML, timeoutCase ? /may still be updating/ : /HTTP 403/);
         assert.equal(installElements.updEspGit.disabled, false);
-        assert.equal(installElements.bar.classList.busy, false);
+        assert.equal(installElements.bar.classList.has("busy-shimmer"), false);
         assert.equal(timers.size, 0);
     }
     assert.equal(closed, 2);
-    vm.runInContext("ESPfwStartEvents()", context);
+    vm.runInContext("espFlashGitWait()", context);
+    const start = [...timers.values()].find(timer => timer.delay === 500);
+    timers.clear(); start.callback();
     eventHandlers.ESP_FW_prgs({ data: "100" });
     assert.equal(installReboots, 0); // downloaded is not signature-verified or finalized
     eventHandlers.ESP_FW_info({ data: "Verifying firmware..." });
     assert.equal(installElements.prg.textContent, "Verifying firmware...");
     eventHandlers.ESP_FW_done({ data: "ok" });
     assert.equal(installReboots, 1);
+    pendingReject(new TypeError("connection closed by reboot"));
+    await flush();
+    assert.equal(installElements.prg.innerHTML, "d.updDoneReboot");
+    assert.equal(timers.size, 0);
 
     const handlers = {}, elements = {}, uploads = [];
     let reboots = 0;
