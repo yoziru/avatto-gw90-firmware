@@ -30,4 +30,6 @@ void writeDefaultConfig(const char *path, JsonDocument& doc);
 void resetSettings();
 
 void setClock();
+extern bool clockTimezoneReady;
+void applyClockTimezone();
 void setTimezone(const String &timezone);

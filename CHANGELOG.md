@@ -8,6 +8,7 @@ All notable changes to this project are documented here. Entries are grouped by 
 
 - GitHub OTA no longer crashes during TLS negotiation: HTTPS verification exceeded the default 8 KB loop-task stack; the gateway now reserves 16 KB.
 - Boot logs include the reset reason for diagnosis.
+- Coordinator/startup logs use the configured local timezone before networking starts; early logs without a configured timezone show elapsed milliseconds rather than misleading UTC times.
 
 ## v1.1.5 — 2026-10-10
 

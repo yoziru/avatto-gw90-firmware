@@ -92,10 +92,10 @@ static void printTimeTo(Ring &ring)
     // Runs on every bridged frame and every log line - never allocate a String
     // here. A bounded snprintf into the stack is allocation-free. Wall clock
     // once NTP synced (same threshold as setTimezone), millis before that.
-    char timeBuf[12];
+    char timeBuf[16];
     int tlen;
     const time_t nowSecs = time(nullptr);
-    if (nowSecs >= 100000000)
+    if (clockTimezoneReady && nowSecs >= 100000000)
     {
         struct tm timeinfo;
         localtime_r(&nowSecs, &timeinfo);
@@ -103,7 +103,7 @@ static void printTimeTo(Ring &ring)
     }
     else
     {
-        tlen = snprintf(timeBuf, sizeof(timeBuf), "%lu", (unsigned long)millis());
+        tlen = snprintf(timeBuf, sizeof(timeBuf), "%lums", (unsigned long)millis());
     }
     ring.push('[');
     for (int j = 0; j < tlen; j++)
