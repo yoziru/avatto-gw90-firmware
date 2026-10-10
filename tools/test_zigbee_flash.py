@@ -9,10 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "src/zb.cpp").read_text()
 # Compile the owning function unchanged; fake only hardware/file boundaries.
 routine = source[source.index("int8_t runFlash("):source.index("int8_t checkFwHex(")]
+ota = (ROOT / "src/web/ota.cpp").read_text()
+task = ota[ota.index("bool startZbFlashTask()"):ota.index("void progressFunc(")]
 with tempfile.TemporaryDirectory() as directory:
     work = Path(directory)
     harness = r"""
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -49,8 +52,8 @@ struct File {
     void close() {}
 };
 struct FS { File open(const char *, const char *) { return {}; } } LittleFS;
-struct SerialStub { template<class... T> void printf(const char *, T...) {} void updateBaudRate(unsigned) {} } Serial, Serial2;
-struct { unsigned serialSpeed = 115200; } ConfigSettings;
+struct SerialStub { template<class... T> void printf(const char *, T...) {} void println(const char *) {} void updateBaudRate(unsigned) {} } Serial, Serial2;
+struct { unsigned serialSpeed = 115200; std::atomic<bool> zbFlashing{false}; } ConfigSettings;
 struct { void restart() {} } CCTool;
 bool bslActive = true, zbRoleLiveThisBoot = true;
 bool startOk = true, dataOk = true;
@@ -67,6 +70,21 @@ bool zbSendCommand(uint8_t, byte *data, uint8_t size, uint8_t) {
     if (!dataOk) return false;
     sent.insert(sent.end(), data, data + size); return true;
 }
+void checkFwHexTask(void *);
+bool createOk = true;
+void (*queuedTask)(void *) = nullptr;
+void *taskArg = nullptr;
+constexpr int pdPASS = 1;
+unsigned refreshes = 0, deletes = 0;
+int validationResult = 0;
+int xTaskCreatePinnedToCore(void (*callback)(void *), const char *, unsigned, void *arg, unsigned, void *, int) {
+    if (!createOk) return 0;
+    queuedTask = callback; taskArg = arg; return pdPASS;
+}
+void esp_task_wdt_reset() {}
+int checkFwHex(const char *path) { assert(ConfigSettings.zbFlashing && path == tempFile); return validationResult; }
+void zbRequestInfoRefresh() { ++refreshes; }
+void vTaskDelete(void *) { ++deletes; }
 """
     checks = r"""
 int main() {
@@ -90,9 +108,20 @@ int main() {
     for (size_t i = 4; i < 16; ++i) assert(sent[i] == 0xFF);
     reset();
     assert(runFlash("test.hex", 21) == -1 && completeEvents == 0); // never fake total sent
+    ConfigSettings.zbFlashing = true; createOk = false;
+    assert(!startZbFlashTask() && !ConfigSettings.zbFlashing && !queuedTask);
+    createOk = true;
+    for (int result : {0, -1}) {
+        ConfigSettings.zbFlashing = true; validationResult = result;
+        const unsigned before = refreshes;
+        assert(startZbFlashTask() && ConfigSettings.zbFlashing && queuedTask);
+        queuedTask(taskArg);
+        assert(!ConfigSettings.zbFlashing && refreshes == before + (result == 0));
+    }
+    assert(deletes == 2);
 }
 """
-    (work / "test.cpp").write_text(harness + routine + checks)
+    (work / "test.cpp").write_text(harness + routine + task + checks)
     subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", "-fsanitize=address,undefined",
                     str(work / "test.cpp"), "-o", str(work / "check")], check=True)
     subprocess.run([str(work / "check")], check=True)

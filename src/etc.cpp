@@ -112,6 +112,10 @@ static bool tempPowered = false;
 
 void tempSensorReleaseRadio()
 {
+  if (tempPowered) {
+    esp_wifi_scan_stop(); // a join cannot overlap the temperature-owned scan
+    WiFi.scanDelete();
+  }
   tempPowered = false;
 }
 
