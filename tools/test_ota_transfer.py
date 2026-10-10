@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Execute the OTA transfer owner with deterministic HTTP/Update boundaries."""
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+# Hardware regression: measured TLS peak exceeds Arduino's default 8192 bytes.
+stack = re.search(r'SET_LOOP_TASK_STACK_SIZE\((\d+)\)', (ROOT / 'src/main.cpp').read_text())
+assert stack and int(stack[1]) >= 16384, 'HTTPS OTA needs at least 16 KiB of loop-task stack'
 source = (ROOT / "src/web/ota.cpp").read_text()
 routine = source[source.index("static bool runEspUpdateFirmware("):]
 harness = r"""
